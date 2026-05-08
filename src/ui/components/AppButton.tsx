@@ -1,4 +1,13 @@
-import { ActivityIndicator, Pressable, PressableProps, StyleProp, StyleSheet, TextStyle, View, ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  PressableProps,
+  StyleProp,
+  StyleSheet,
+  TextStyle,
+  View,
+  ViewStyle,
+} from 'react-native';
 
 import { AppText } from '@/src/ui/components/AppText';
 import { theme } from '@/src/ui/theme';
@@ -30,7 +39,11 @@ function getVariantStyle(variant: ButtonVariant) {
 
   if (variant === 'outline') {
     return {
-      container: { backgroundColor: theme.colors.surface, borderColor: theme.colors.borderStrong, borderWidth: 1 },
+      container: {
+        backgroundColor: theme.colors.surface,
+        borderColor: theme.colors.borderStrong,
+        borderWidth: 1,
+      },
       text: { color: theme.colors.textPrimary },
       spinner: theme.colors.textPrimary,
     };
@@ -44,9 +57,15 @@ function getVariantStyle(variant: ButtonVariant) {
 }
 
 function getSizeStyle(size: ButtonSize) {
-  if (size === 'sm') return { height: theme.components.buttonHeights.sm, paddingHorizontal: theme.spacing.md };
-  if (size === 'lg') return { height: theme.components.buttonHeights.lg, paddingHorizontal: theme.spacing.lg };
-  if (size === 'icon') return { height: theme.components.buttonHeights.icon, width: theme.components.buttonHeights.icon };
+  if (size === 'sm')
+    return { height: theme.components.buttonHeights.sm, paddingHorizontal: theme.spacing.md };
+  if (size === 'lg')
+    return { height: theme.components.buttonHeights.lg, paddingHorizontal: theme.spacing.lg };
+  if (size === 'icon')
+    return {
+      height: theme.components.buttonHeights.icon,
+      width: theme.components.buttonHeights.icon,
+    };
   return { height: theme.components.buttonHeights.md, paddingHorizontal: theme.spacing.lg };
 }
 
@@ -75,14 +94,18 @@ export function AppButton({
         variantStyle.container,
         iconOnly ? styles.iconOnly : null,
         pressed ? styles.pressed : null,
-        (disabled || loading) ? styles.disabled : null,
+        disabled || loading ? styles.disabled : null,
         style,
       ]}
-      {...props}>
+      {...props}
+    >
       <View style={styles.content}>
         {loading ? <ActivityIndicator size="small" color={variantStyle.spinner} /> : leftIcon}
         {label ? (
-          <AppText variant="button" style={[variantStyle.text, hasContent ? styles.label : null, labelStyle]}>
+          <AppText
+            variant="button"
+            style={[variantStyle.text, hasContent ? styles.label : null, labelStyle]}
+          >
             {label}
           </AppText>
         ) : null}
@@ -119,4 +142,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

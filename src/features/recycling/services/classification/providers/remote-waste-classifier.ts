@@ -9,4 +9,3 @@ async function classify(_imageUri: string): Promise<ClassificationPrediction> {
 export const remoteWasteClassifier: WasteClassifier = {
   classify,
 };
-

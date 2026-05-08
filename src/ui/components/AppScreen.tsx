@@ -25,7 +25,8 @@ export function AppScreen({
       <SafeAreaView style={styles.safe}>
         <ScrollView
           contentContainerStyle={[bodyPadding, contentContainerStyle]}
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={style}>{children}</View>
         </ScrollView>
       </SafeAreaView>
@@ -51,4 +52,3 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.components.screenPaddingHorizontal,
   },
 });
-

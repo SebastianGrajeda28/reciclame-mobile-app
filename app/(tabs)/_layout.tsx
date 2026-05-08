@@ -16,7 +16,8 @@ export default function TabLayout() {
           fontSize: theme.fontSizes.xs,
           marginBottom: theme.spacing.xs,
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -27,14 +28,18 @@ export default function TabLayout() {
         name="map"
         options={{
           title: 'Reciclar',
-          tabBarIcon: ({ color, size }) => <Ionicons name="sync-outline" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sync-outline" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="amigos"
         options={{
           title: 'Amigos',
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="groups" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="groups" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen

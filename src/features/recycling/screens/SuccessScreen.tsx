@@ -1,7 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { useRecycleFlow, useResolvedRecycleSelection } from '@/src/features/recycling/hooks/useRecycleFlow';
+import {
+  useRecycleFlow,
+  useResolvedRecycleSelection,
+} from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 
 export function SuccessScreen() {
@@ -17,9 +20,7 @@ export function SuccessScreen() {
     <AppScreen style={styles.root} padded>
       <AppCard style={styles.card}>
         <View style={styles.iconWrap}>
-          <AppText style={styles.check}>
-            ✓
-          </AppText>
+          <AppText style={styles.check}>✓</AppText>
         </View>
         <AppText variant="title" style={styles.title}>
           Reciclaje registrado
@@ -32,7 +33,8 @@ export function SuccessScreen() {
             Dato curioso
           </AppText>
           <AppText muted>
-            Reciclar una lata de aluminio ahorra suficiente energia para mantener un televisor durante tres horas.
+            Reciclar una lata de aluminio ahorra suficiente energia para mantener un televisor
+            durante tres horas.
           </AppText>
         </AppCard>
         <AppButton label="Volver al mapa" onPress={backToMap} />
@@ -81,4 +83,3 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeights.bold,
   },
 });
-

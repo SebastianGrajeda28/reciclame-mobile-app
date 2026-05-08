@@ -28,4 +28,3 @@ export function RecycleMap({ markers, region, onMarkerPress }: Props) {
     </MapView>
   );
 }
-

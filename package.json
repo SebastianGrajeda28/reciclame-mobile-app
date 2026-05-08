@@ -3,12 +3,17 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "dev": "expo start",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"*.{js,json,md}\" --write",
+    "format:check": "prettier \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"*.{js,json,md}\" --check",
+    "check": "npm run lint && npm run format:check"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -42,9 +47,15 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "typescript": "~5.9.2",
     "eslint": "^9.25.0",
-    "eslint-config-expo": "~10.0.0"
+    "eslint-config-expo": "~10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.3",
+    "typescript": "~5.9.2"
+  },
+  "engines": {
+    "node": ">=20 <25",
+    "npm": ">=10"
   },
   "private": true
 }

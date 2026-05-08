@@ -27,4 +27,3 @@ export function RecycleMap(props: Props) {
   }
   return <NativeRecycleMap {...props} />;
 }
-

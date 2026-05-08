@@ -9,7 +9,10 @@ import { router } from 'expo-router';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
-import { useRecycleFlow, useResolvedRecycleSelection } from '@/src/features/recycling/hooks/useRecycleFlow';
+import {
+  useRecycleFlow,
+  useResolvedRecycleSelection,
+} from '@/src/features/recycling/hooks/useRecycleFlow';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
 import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 
@@ -22,7 +25,10 @@ const pUCPRegion = {
 
 export function MapScreen() {
   const [category, setCategory] = useState<'all' | string>('all');
-  const [location, setLocation] = useState({ latitude: pUCPRegion.latitude, longitude: pUCPRegion.longitude });
+  const [location, setLocation] = useState({
+    latitude: pUCPRegion.latitude,
+    longitude: pUCPRegion.longitude,
+  });
   const { state, setSelectedContainerId } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
@@ -59,7 +65,7 @@ export function MapScreen() {
         latitude: container.latitude,
         longitude: container.longitude,
       })),
-    [nearby]
+    [nearby],
   );
 
   useEffect(() => {
@@ -73,7 +79,9 @@ export function MapScreen() {
 
   useEffect(() => {
     if (nearby.length === 0 && category !== 'all') {
-      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [{ text: 'Entendido' }]);
+      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
+        { text: 'Entendido' },
+      ]);
     }
   }, [category, nearby.length]);
 
@@ -92,7 +100,13 @@ export function MapScreen() {
             iconOnly
             size="icon"
             variant="outline"
-            leftIcon={<Ionicons name="arrow-undo-outline" size={theme.iconSizes.md} color={theme.colors.textPrimary} />}
+            leftIcon={
+              <Ionicons
+                name="arrow-undo-outline"
+                size={theme.iconSizes.md}
+                color={theme.colors.textPrimary}
+              />
+            }
             style={styles.headerIconButton}
           />
           <AppText style={styles.title}>Reciclaje</AppText>
@@ -105,51 +119,95 @@ export function MapScreen() {
 
       <View style={styles.filterRow}>
         <AppText style={styles.filterTitle}>Filtrar por contenedores</AppText>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterChips}
+        >
           <IconFilterButton
             selected={category === 'all'}
             onPress={() => setCategory('all')}
-            icon={<Ionicons name="trash-outline" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />}
+            icon={
+              <Ionicons
+                name="trash-outline"
+                size={theme.iconSizes.md}
+                color={theme.recycle.iconNeutral}
+              />
+            }
           />
           <IconFilterButton
             selected={category === 'plastic_pet'}
             onPress={() => setCategory('plastic_pet')}
             icon={
-              <MaterialCommunityIcons name="bottle-soda-outline" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
+              <MaterialCommunityIcons
+                name="bottle-soda-outline"
+                size={theme.iconSizes.md}
+                color={theme.recycle.iconNeutral}
+              />
             }
           />
           <IconFilterButton
             selected={category === 'paper_cardboard'}
             onPress={() => setCategory('paper_cardboard')}
-            icon={<Ionicons name="briefcase-outline" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />}
+            icon={
+              <Ionicons
+                name="briefcase-outline"
+                size={theme.iconSizes.md}
+                color={theme.recycle.iconNeutral}
+              />
+            }
           />
           <IconFilterButton
             selected={category === 'glass'}
             onPress={() => setCategory('glass')}
-            icon={<MaterialCommunityIcons name="flask-outline" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />}
+            icon={
+              <MaterialCommunityIcons
+                name="flask-outline"
+                size={theme.iconSizes.md}
+                color={theme.recycle.iconNeutral}
+              />
+            }
           />
           <IconFilterButton
             selected={category === 'non_recoverable'}
             onPress={() => setCategory('non_recoverable')}
             icon={
-              <MaterialCommunityIcons name="delete-empty-outline" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
+              <MaterialCommunityIcons
+                name="delete-empty-outline"
+                size={theme.iconSizes.md}
+                color={theme.recycle.iconNeutral}
+              />
             }
           />
           <IconFilterButton
             selected={category === 'battery'}
             onPress={() => setCategory('battery')}
-            icon={<Ionicons name="battery-half-outline" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />}
+            icon={
+              <Ionicons
+                name="battery-half-outline"
+                size={theme.iconSizes.md}
+                color={theme.recycle.iconNeutral}
+              />
+            }
           />
           <IconFilterButton
             selected={category === 'electronic_waste'}
             onPress={() => setCategory('electronic_waste')}
-            icon={<MaterialCommunityIcons name="laptop" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />}
+            icon={
+              <MaterialCommunityIcons
+                name="laptop"
+                size={theme.iconSizes.md}
+                color={theme.recycle.iconNeutral}
+              />
+            }
           />
           <AppButton
             iconOnly
             size="icon"
             variant="secondary"
-            leftIcon={<Ionicons name="camera" size={theme.iconSizes.md} color={theme.colors.textInverse} />}
+            leftIcon={
+              <Ionicons name="camera" size={theme.iconSizes.md} color={theme.colors.textInverse} />
+            }
             onPress={() => router.push('/recycle/camera')}
             style={styles.cameraButton}
           />
@@ -178,7 +236,13 @@ export function MapScreen() {
           <AppButton
             variant="outline"
             label="Mostrar instrucciones de reciclaje"
-            rightIcon={<FontAwesome6 name="book-open-reader" size={theme.iconSizes.xs} color={theme.colors.textPrimary} />}
+            rightIcon={
+              <FontAwesome6
+                name="book-open-reader"
+                size={theme.iconSizes.xs}
+                color={theme.colors.textPrimary}
+              />
+            }
             style={styles.instructionsButton}
           />
         )}
@@ -299,5 +363,3 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.xs,
   },
 });
-
-

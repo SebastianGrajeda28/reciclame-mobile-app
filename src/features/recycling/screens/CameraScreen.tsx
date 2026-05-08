@@ -28,7 +28,10 @@ export function CameraScreen() {
         <AppText muted style={styles.webGap}>
           Esta pantalla se usa en iOS/Android.
         </AppText>
-        <AppButton label="Continuar con mock" onPress={() => router.replace('/recycle/processing')} />
+        <AppButton
+          label="Continuar con mock"
+          onPress={() => router.replace('/recycle/processing')}
+        />
       </AppScreen>
     );
   }
@@ -64,4 +67,3 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
 });
-

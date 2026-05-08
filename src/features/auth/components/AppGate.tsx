@@ -27,7 +27,8 @@ function AuthGate({ children }: PropsWithChildren) {
 
 function PermissionGate({ children }: PropsWithChildren) {
   const [cameraPermission, requestCameraPermission, getCameraPermission] = useCameraPermissions();
-  const [locationPermission, requestLocationPermission, getLocationPermission] = Location.useForegroundPermissions();
+  const [locationPermission, requestLocationPermission, getLocationPermission] =
+    Location.useForegroundPermissions();
   const [loading, setLoading] = useState(false);
   const [grantedOverride, setGrantedOverride] = useState(false);
 
@@ -72,7 +73,7 @@ function PermissionGate({ children }: PropsWithChildren) {
       if (Platform.OS === 'web') {
         Alert.alert(
           'Permisos pendientes',
-          `Camara: ${cameraStatus}. Ubicacion: ${locationStatus}. Si ya aceptaste, recarga la pagina una vez.`
+          `Camara: ${cameraStatus}. Ubicacion: ${locationStatus}. Si ya aceptaste, recarga la pagina una vez.`,
         );
       } else {
         Alert.alert('Permisos requeridos', 'Sin estos permisos no se puede usar la app.');
@@ -95,7 +96,11 @@ function PermissionGate({ children }: PropsWithChildren) {
         </AppText>
         <View style={styles.rowGap}>
           <AppButton label="Conceder permisos" onPress={askPermissions} loading={loading} />
-          <AppButton label="Abrir ajustes" variant="outline" onPress={() => Linking.openSettings()} />
+          <AppButton
+            label="Abrir ajustes"
+            variant="outline"
+            onPress={() => Linking.openSettings()}
+          />
         </View>
       </AppCard>
     </AppScreen>
@@ -127,4 +132,3 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
 });
-

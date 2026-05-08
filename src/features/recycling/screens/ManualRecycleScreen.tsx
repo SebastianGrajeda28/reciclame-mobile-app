@@ -29,7 +29,7 @@ export function ManualRecycleScreen() {
     const nearby = getNearbyContainersMock(
       { latitude: position.coords.latitude, longitude: position.coords.longitude },
       selectedWasteTypeId,
-      3
+      3,
     );
     if (nearby.length === 0) {
       Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
@@ -55,7 +55,8 @@ export function ManualRecycleScreen() {
                   <AppText
                     key={item.id}
                     style={[styles.item, selected ? styles.selectedItem : null]}
-                    onPress={() => setSelectedWasteTypeId(item.id)}>
+                    onPress={() => setSelectedWasteTypeId(item.id)}
+                  >
                     {selected ? '●' : '○'} {item.label}
                   </AppText>
                 );
@@ -93,4 +94,3 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeights.semibold,
   },
 });
-

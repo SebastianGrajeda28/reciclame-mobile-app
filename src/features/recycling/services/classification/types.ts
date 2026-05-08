@@ -3,4 +3,3 @@ import { ClassificationPrediction } from '@/src/features/recycling/types/recycli
 export type WasteClassifier = {
   classify: (imageUri: string) => Promise<ClassificationPrediction>;
 };
-

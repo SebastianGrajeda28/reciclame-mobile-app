@@ -30,7 +30,10 @@ export function InstructionsScreen() {
             </AppText>
           ))}
         </View>
-        <AppButton label="Confirmar finalizacion" onPress={() => router.replace('/recycle/success')} />
+        <AppButton
+          label="Confirmar finalizacion"
+          onPress={() => router.replace('/recycle/success')}
+        />
       </AppCard>
     </AppScreen>
   );
@@ -53,4 +56,3 @@ const styles = StyleSheet.create({
     lineHeight: theme.fontSizes.lg + theme.spacing.xxs,
   },
 });
-

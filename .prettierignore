@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+.expo-shared/
+.history/
+dist/
+web-build/
+coverage/
+android/
+ios/
+package-lock.json

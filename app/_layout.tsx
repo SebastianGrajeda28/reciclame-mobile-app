@@ -15,7 +15,10 @@ export default function RootLayout() {
             <Stack.Screen name="recycle/processing" options={{ title: 'Procesar residuo' }} />
             <Stack.Screen name="recycle/manual" options={{ title: 'Seleccionar residuo' }} />
             <Stack.Screen name="recycle/instructions" options={{ title: 'Instrucciones' }} />
-            <Stack.Screen name="recycle/success" options={{ title: 'Reciclaje registrado', headerLeft: () => null }} />
+            <Stack.Screen
+              name="recycle/success"
+              options={{ title: 'Reciclaje registrado', headerLeft: () => null }}
+            />
           </Stack>
         </AppGate>
       </RecycleFlowProvider>

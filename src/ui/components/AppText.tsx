@@ -45,13 +45,8 @@ const variantStyles: Record<AppTextVariant, TextStyle> = {
 export function AppText({ variant = 'body', muted, style, ...props }: AppTextProps) {
   return (
     <Text
-      style={[
-        variantStyles[variant],
-        muted ? { color: theme.colors.textSecondary } : null,
-        style,
-      ]}
+      style={[variantStyles[variant], muted ? { color: theme.colors.textSecondary } : null, style]}
       {...props}
     />
   );
 }
-

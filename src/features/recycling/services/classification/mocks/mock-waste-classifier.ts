@@ -27,4 +27,3 @@ async function classify(imageUri: string): Promise<ClassificationPrediction> {
 export const mockWasteClassifier: WasteClassifier = {
   classify,
 };
-

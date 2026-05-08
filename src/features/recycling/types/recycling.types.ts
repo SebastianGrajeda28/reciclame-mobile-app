@@ -26,4 +26,3 @@ export type ClassificationPrediction = {
   wasteTypeId: string;
   confidence: number;
 };
-

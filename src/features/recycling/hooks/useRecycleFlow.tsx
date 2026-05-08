@@ -1,4 +1,11 @@
-import { createContext, PropsWithChildren, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  PropsWithChildren,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
@@ -65,7 +72,14 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       setSelectedContainerId,
       resetFlow,
     }),
-    [state, resetFlow, setCapturedPhotoUri, setFinalWasteTypeId, setPrediction, setSelectedContainerId]
+    [
+      state,
+      resetFlow,
+      setCapturedPhotoUri,
+      setFinalWasteTypeId,
+      setPrediction,
+      setSelectedContainerId,
+    ],
   );
 
   return <RecycleFlowContext.Provider value={value}>{children}</RecycleFlowContext.Provider>;
@@ -86,5 +100,3 @@ export function useResolvedRecycleSelection() {
   const selectedContainer = containers.find((item) => item.id === state.selectedContainerId);
   return { predictedWasteType, finalWasteType, selectedContainer };
 }
-
-

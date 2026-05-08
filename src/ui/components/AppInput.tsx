@@ -1,4 +1,12 @@
-import { StyleProp, StyleSheet, TextInput, TextInputProps, TextStyle, View, ViewStyle } from 'react-native';
+import {
+  StyleProp,
+  StyleSheet,
+  TextInput,
+  TextInputProps,
+  TextStyle,
+  View,
+  ViewStyle,
+} from 'react-native';
 
 import { AppText } from '@/src/ui/components/AppText';
 import { theme } from '@/src/ui/theme';
@@ -10,17 +18,32 @@ type AppInputProps = TextInputProps & {
   inputStyle?: StyleProp<TextStyle>;
 };
 
-export function AppInput({ label, error, editable = true, containerStyle, inputStyle, ...props }: AppInputProps) {
+export function AppInput({
+  label,
+  error,
+  editable = true,
+  containerStyle,
+  inputStyle,
+  ...props
+}: AppInputProps) {
   return (
     <View style={containerStyle}>
-      {label ? <AppText variant="caption" style={styles.label}>{label}</AppText> : null}
+      {label ? (
+        <AppText variant="caption" style={styles.label}>
+          {label}
+        </AppText>
+      ) : null}
       <TextInput
         editable={editable}
         placeholderTextColor={theme.colors.inputPlaceholder}
         style={[styles.input, !editable ? styles.inputDisabled : null, inputStyle]}
         {...props}
       />
-      {error ? <AppText variant="error" style={styles.error}>{error}</AppText> : null}
+      {error ? (
+        <AppText variant="error" style={styles.error}>
+          {error}
+        </AppText>
+      ) : null}
     </View>
   );
 }
@@ -47,4 +70,3 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
 });
-

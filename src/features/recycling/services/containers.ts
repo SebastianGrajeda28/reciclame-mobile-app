@@ -7,7 +7,7 @@ export type NearbyContainer = RecyclingContainer & { distanceKm: number };
 export function getNearbyContainersMock(
   userLocation: { latitude: number; longitude: number },
   wasteTypeId: string,
-  radiusKm = 3
+  radiusKm = 3,
 ) {
   const compatible: NearbyContainer[] = containers
     .filter((container) => container.acceptedWasteTypeIds.includes(wasteTypeId))
@@ -23,4 +23,3 @@ export function getNearbyContainersMock(
 
   return compatible;
 }
-

@@ -1,6 +1,6 @@
 export function haversineDistanceKm(
   from: { latitude: number; longitude: number },
-  to: { latitude: number; longitude: number }
+  to: { latitude: number; longitude: number },
 ) {
   const toRad = (value: number) => (value * Math.PI) / 180;
   const earthRadiusKm = 6371;
@@ -15,4 +15,3 @@ export function haversineDistanceKm(
 
   return earthRadiusKm * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
-

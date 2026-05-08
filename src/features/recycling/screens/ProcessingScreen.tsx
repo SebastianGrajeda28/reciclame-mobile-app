@@ -3,9 +3,15 @@ import { Alert, StyleSheet, View } from 'react-native';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 
-import { classifyWaste, getConfidenceThreshold } from '@/src/features/recycling/services/classification';
+import {
+  classifyWaste,
+  getConfidenceThreshold,
+} from '@/src/features/recycling/services/classification';
 import { getNearbyContainersMock } from '@/src/features/recycling/services/containers';
-import { useRecycleFlow, useResolvedRecycleSelection } from '@/src/features/recycling/hooks/useRecycleFlow';
+import {
+  useRecycleFlow,
+  useResolvedRecycleSelection,
+} from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ProcessingScreen() {
@@ -45,7 +51,7 @@ export function ProcessingScreen() {
         longitude: position.coords.longitude,
       },
       state.finalWasteTypeId,
-      3
+      3,
     );
 
     if (nearby.length === 0) {
@@ -117,4 +123,3 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
 });
-
