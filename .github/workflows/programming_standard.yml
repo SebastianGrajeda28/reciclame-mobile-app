@@ -1,0 +1,38 @@
+name: CI Estándar de Programación
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalación de dependencias
+        run: npm install
+
+      # 1. Verificación de Estilo y Tipado
+      - name: Ejecutar Lint (Check de any, PascalCase, Indentación)
+        run: npm run lint
+
+      # 2. Verificación de Tests Unitarios
+      - name: Ejecutar Tests Unitarios (Jest)
+        run: npm test
+        env:
+          CI: true
+
+      # 3. Verificación de Build
+      - name: Validar compilación de TypeScript
+        run: npx tsc --noEmit
