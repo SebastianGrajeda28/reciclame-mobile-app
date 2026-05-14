@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/naming-convention": [
+      "error",
+      { "selector": "class", "format": ["PascalCase"] },
+      { "selector": "function", "format": ["camelCase", "PascalCase"] },
+      { "selector": "variable", "format": ["camelCase", "UPPER_CASE"] }
+    ],
+    "indent": ["error", 4]
+  }
+}
