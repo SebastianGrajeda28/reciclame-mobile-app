@@ -15,7 +15,7 @@ jobs:
       - name: Configurar Bun
         uses: actions/setup-bun@v1
         with:
-        bun-version: 'latest'
+          bun-version: 'latest'
 
       - name: Instalación de dependencias
         run: bun install
