@@ -1,4 +1,4 @@
-# Guía: Base de datos local con Supabase + Docker
+# Guía: Base de datos local con Supabase CLI
 
 Esta guía explica cómo levantar una base de datos Supabase en tu máquina para desarrollo local.
 
@@ -6,23 +6,21 @@ Esta guía explica cómo levantar una base de datos Supabase en tu máquina para
 
 ---
 
-## Archivos de variables de entorno
+## Archivo de variables de entorno
 
-El proyecto tiene **dos archivos `.env`** con propósitos distintos:
+El proyecto tiene **un solo archivo `.env.local`** en la raíz del proyecto con las variables de la app:
 
-| Archivo | Para qué sirve |
-|---|---|
-| `.env.local` (raíz del proyecto) | Variables que usa la app Expo: URL y anon key de Supabase |
-| `docker/.env.local` | Variables internas de Docker/Postgres: usuario y contraseña de la BD |
-
-> Nunca mezcles variables de un archivo en el otro.
+```
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<se llena en el Paso 5>
+```
 
 ---
 
 ## ¿Qué necesitas?
 
 - Tener el repo clonado e instalado (ver [INSTALACION_Y_CONFIGURACION.md](./INSTALACION_Y_CONFIGURACION.md))
-- Docker Desktop instalado y corriendo
+- Docker Desktop instalado y corriendo (el CLI de Supabase lo usa internamente)
 
 ---
 
@@ -91,36 +89,7 @@ Si no hay errores, Docker está listo.
 
 ---
 
-## Paso 4 — Verificar los archivos de entorno
-
-### 4.1 — `docker/.env.local` (variables internas de Docker)
-
-Este archivo ya viene en el proyecto con los valores correctos para desarrollo local. No necesitas cambiarlo.
-
-Contenido esperado:
-
-```
-POSTGRES_DB=reciclame_db
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres_local_dev_secure_123
-```
-
-> Solo modifica este archivo si necesitas cambiar la configuración interna de PostgreSQL. La app Expo **nunca** lee este archivo.
-
-### 4.2 — `.env.local` (raíz del proyecto, variables de la app)
-
-Este archivo usa la conexión a Supabase desde la app. Debe tener esta estructura:
-
-```
-EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<se llena en el Paso 6>
-```
-
-> Si el archivo no existe, créalo en la **raíz del proyecto** (no dentro de `docker/`) con ese contenido.
-
----
-
-## Paso 5 — Levantar Supabase local
+## Paso 4 — Levantar Supabase local
 
 Este comando descarga las imágenes Docker de Supabase (solo la primera vez tarda, luego es rápido) y levanta todos los servicios:
 
@@ -151,11 +120,11 @@ service_role key: eyJh...
 
 ---
 
-## Paso 6 — Copiar el anon key a `.env.local` (raíz)
+## Paso 5 — Copiar el anon key a `.env.local`
 
 Del output del paso anterior, copia el valor de **`anon key`** (empieza con `eyJh...`).
 
-Abre `.env.local` en la **raíz del proyecto** (NO el de `docker/`) y pégalo:
+Abre `.env.local` en la **raíz del proyecto** y pégalo:
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
@@ -166,30 +135,18 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJh...   ← pega aquí el anon key completo
 
 Si en algún momento necesitas ver las keys de nuevo:
 
-**Con npm:**
 ```bash
-npm run db:status
-```
-
-**Con bun:**
-```bash
-bun run db:status
+npm run db:status   # o: bun run db:status
 ```
 
 ---
 
-## Paso 7 — Verificar la conexión con el test
+## Paso 6 — Verificar la conexión con el test
 
 Ejecuta el test de conexión para confirmar que todo está bien:
 
-**Con npm:**
 ```bash
-npm test
-```
-
-**Con bun:**
-```bash
-bun test
+npm test   # o: bun test
 ```
 
 Si todo está correcto verás:
@@ -199,7 +156,7 @@ Si todo está correcto verás:
   ✓ Debería conectarse y leer la tabla health_check
 ```
 
-Si el test aparece como `skipped` significa que `.env.local` (raíz) no tiene las variables cargadas — revisa el Paso 6.
+Si el test aparece como `skipped` significa que `.env.local` no tiene las variables cargadas — revisa el Paso 5.
 
 ---
 
@@ -227,9 +184,9 @@ Docker Desktop no está corriendo. Ábrelo desde el menú inicio y espera a que 
 ### El test aparece como `skipped`
 
 Las variables de entorno no se cargaron. Verifica que:
-1. El archivo `.env.local` (raíz) existe y tiene el `EXPO_PUBLIC_SUPABASE_ANON_KEY` del Paso 6
-2. No estás editando `docker/.env.local` por error — ese no lo lee la app
-3. Supabase está corriendo (`npm run db:status` / `bun run db:status`)
+1. El archivo `.env.local` existe en la raíz del proyecto
+2. Tiene el `EXPO_PUBLIC_SUPABASE_ANON_KEY` del Paso 5
+3. Supabase está corriendo (`npm run db:status`)
 
 ### "supabase: command not found"
 
@@ -244,8 +201,8 @@ npm install   # o: bun install
 Otro proceso está usando ese puerto. Intenta:
 
 ```bash
-npm run db:stop   # o: bun run db:stop
-npm run db:start  # o: bun run db:start
+npm run db:stop
+npm run db:start
 ```
 
 Si persiste, reinicia Docker Desktop.
@@ -253,5 +210,148 @@ Si persiste, reinicia Docker Desktop.
 ### Error en Windows: "Analytics requires Docker daemon on tcp://localhost:2375"
 
 Es una advertencia, no un error. No afecta el funcionamiento. Puedes ignorarla.
+
+---
+
+## Por qué se eliminó el `docker-compose.yml`
+
+Al inicio del proyecto se creó un archivo `docker/docker-compose.yml` que levantaba PostgreSQL directamente con Docker. El error fue pensar que ese archivo era suficiente para el desarrollo local.
+
+**El problema:** ese setup solo levantaba PostgreSQL puro en el puerto `5432`, pero la app usa `@supabase/supabase-js` que se conecta a través de la **API REST de Supabase** (`http://localhost:54321`), no directamente a PostgreSQL. Sin la API, Auth y el resto del stack, la app no puede funcionar.
+
+**La confusión con los archivos `.env`:** se tenía `docker/.env.local` para las credenciales de PostgreSQL y `.env.local` en la raíz para la app. Esto generaba confusión porque eran dos archivos con propósitos distintos y era fácil editar el equivocado.
+
+**La decisión:** eliminar el `docker-compose.yml` y usar únicamente el CLI de Supabase (`npm run db:start`), que levanta el stack completo en un solo comando: PostgreSQL, API REST, Auth y Storage. La BD siempre se llama `postgres` y corre en el puerto `54322`.
+
+---
+
+## Conectarse a la BD con un cliente SQL (pgAdmin, DBeaver, TablePlus)
+
+Supabase usa PostgreSQL, así que puedes conectarte con cualquier cliente SQL compatible. No puedes usar MySQL Workbench porque ese es exclusivo de MySQL.
+
+**Clientes recomendados:**
+
+| Herramienta | Sistema | Precio |
+|---|---|---|
+| **pgAdmin 4** | Windows / Mac / Linux | Gratis |
+| **DBeaver** | Windows / Mac / Linux | Gratis |
+| **TablePlus** | Windows / Mac | Gratis (limitado) |
+
+**Datos de conexión** (con Supabase local corriendo):
+
+```
+Host:     localhost
+Port:     54322          ← puerto PostgreSQL del CLI de Supabase
+Database: postgres
+User:     postgres
+Password: postgres
+```
+
+> El puerto es **54322**, no 5432. Supabase CLI usa ese puerto para no chocar con otras instalaciones de PostgreSQL.
+
+Desde el cliente puedes explorar tus tablas, hacer queries, insertar datos de prueba y verificar relaciones — igual que en MySQL Workbench.
+
+---
+
+## Crear tablas y relaciones
+
+Las tablas **no se crean desde el cliente SQL ni manualmente** — se crean mediante archivos de migración en `supabase/migrations/`. Esto asegura que todos en el equipo tengan exactamente el mismo esquema.
+
+### Crear una migración nueva
+
+1. Crea un archivo `.sql` en `supabase/migrations/` con el formato `YYYYMMDDHHMMSS_descripcion.sql`:
+
+```
+supabase/migrations/20260519000001_crear_tablas.sql
+```
+
+> El timestamp debe ser mayor al del último archivo existente en esa carpeta.
+
+2. Escribe el SQL dentro:
+
+```sql
+-- Tabla simple
+create table if not exists public.usuarios (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  email text unique not null,
+  created_at timestamptz not null default now()
+);
+
+-- Tabla con relación (foreign key)
+create table if not exists public.recycling_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.usuarios(id) on delete cascade,
+  tipo_residuo text not null,
+  timestamp timestamptz not null default now()
+);
+```
+
+3. Aplica la migración:
+
+```bash
+npm run db:reset   # borra todo y aplica todas las migraciones en orden
+```
+
+### Tipos de datos más usados en PostgreSQL
+
+| Tipo | Uso |
+|---|---|
+| `uuid` | IDs únicos (recomendado sobre integer) |
+| `text` | Texto sin límite de caracteres |
+| `numeric` | Números decimales (ej: coordenadas) |
+| `boolean` | Verdadero / falso |
+| `timestamptz` | Fecha y hora con zona horaria |
+| `text[]` | Array de texto |
+
+### Relaciones entre tablas
+
+```sql
+-- Uno a muchos: un usuario tiene muchos logs
+user_id uuid not null references public.usuarios(id) on delete cascade
+
+-- Muchos a muchos: tabla intermedia con clave compuesta
+create table if not exists public.container_waste_types (
+  container_id uuid not null references public.recycling_containers(id) on delete cascade,
+  waste_type_id uuid not null references public.waste_types(id) on delete cascade,
+  primary key (container_id, waste_type_id)
+);
+```
+
+**`on delete cascade`** significa que si borras un usuario, todos sus logs se borran automáticamente. Úsalo cuando los registros hijos no tienen sentido sin el padre.
+
+### Regla importante
+
+Nunca edites un archivo de migración que ya fue aplicado. Si necesitas cambiar algo, crea una **nueva migración** con un timestamp mayor.
+
+---
+
+## ¿Qué es el timestamp en las migraciones?
+
+Es la fecha y hora en formato `YYYYMMDDHHMMSS`. Por ejemplo:
+
+```
+20260519000001_crear_tablas.sql
+│
+└─ 2026-05-19 a las 00:00:01
+```
+
+**¿Por qué se usa?** Porque Supabase necesita saber en qué **orden** aplicar las migraciones. Si tienes una tabla `recycling_logs` que referencia a `usuarios`, primero debe existir `usuarios`. El timestamp garantiza ese orden — siempre se aplican de menor a mayor.
+
+Sin timestamp, si dos personas del equipo crean migraciones el mismo día, no habría forma de saber cuál va primero.
+
+---
+
+## ¿Puedo crear tablas desde pgAdmin?
+
+Sí puedes, pero **no deberías** en este proyecto. El problema es que:
+
+- Los cambios que hagas en pgAdmin **no quedan registrados** en ningún archivo del proyecto
+- Cuando otro del equipo corra `npm run db:reset`, su BD no tendrá esas tablas
+- Cuando vayas a producción, esas tablas tampoco existirán
+
+pgAdmin es útil para **consultar datos, hacer queries de prueba e inspeccionar tablas** — pero para crear la estructura de la BD siempre usa migraciones en `supabase/migrations/`.
+
+> Regla simple: **leer y explorar** → pgAdmin. **Crear o modificar estructura** → archivo `.sql` de migración.
 
 ---
