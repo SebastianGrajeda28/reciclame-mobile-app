@@ -13,23 +13,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configurar Bun
-        uses: actions/setup-bun@v1
+        uses: oven-sh/setup-bun@v1
         with:
           bun-version: 'latest'
 
       - name: Instalación de dependencias
         run: bun install
 
-        # 1. Verificación de Estilo y Tipado
+      # 1. Verificación de Estilo y Tipado
       - name: Ejecutar Lint (Check de any, PascalCase, Indentación)
         run: bun run lint
 
-        # 2. Verificación de Tests Unitarios
-      - name: Ejecutar Tests Unitarios (Jest)
+      # 2. Verificación de Tests Unitarios
+      - name: Ejecutar Tests Unitarios
         run: bun run test
         env:
           CI: true
 
-          # 3. Verificación de Build
+      # 3. Verificación de Build
       - name: Validar compilación de TypeScript
         run: bunx tsc --noEmit
