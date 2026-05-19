@@ -7,8 +7,8 @@ Esta guía te ayudará a configurar el entorno de desarrollo para trabajar con *
 ## Requisitos Previos
 
 - Git instalado
-- Node.js 18+ instalado
-- (Opcional pero recomendado) Bun instalado
+- Node.js V22.22.0
+- Bun instalado
 
 ---
 
@@ -24,7 +24,7 @@ cd reciclame-mobile-app
 ### 2. Cambiar a la Rama Develop
 
 ```bash
-git checkout develop
+git switch develop
 ```
 
 ### 3. Verificar Node.js
@@ -33,10 +33,9 @@ Verifica que tengas Node.js instalado:
 
 ```bash
 node --version
-npm --version
 ```
 
-Debería mostrar versiones v18 o superior.
+Debería mostrar version v22.22.0.
 
 ---
 
@@ -46,13 +45,13 @@ Bun es un runtime JavaScript más rápido que Node.js. Es **opcional pero muy re
 
 ### Instalación de Bun
 
-#### En Windows:
+#### En Windows
 
 ```powershell
 powershell -c "curl https://bun.sh/install.ps1|iex"
 ```
 
-#### En macOS/Linux:
+#### En macOS/Linux
 
 ```bash
 curl -fsSL https://bun.sh/install | bash
@@ -64,33 +63,21 @@ curl -fsSL https://bun.sh/install | bash
 bun --version
 ```
 
-Debería mostrar `bun v1.x.x` o superior.
+Debería mostrar `bun v22.22.0` o superior.
 
 ---
 
 ## 5. Instalar Dependencias
 
-Una vez verificado Node.js (y opcionalmente Bun), instala las dependencias:
+Una vez verificado Node.js y Bun, instala las dependencias:
 
-### Con Bun (recomendado):
+### Con Bun (recomendado)
 
 ```bash
 bun install
 ```
 
-### Con npm (alternativa):
-
-```bash
-npm install
-```
-
-Esto descargará todos los paquetes necesarios, incluyendo:
-
-- Jest (Testing)
-- TypeScript
-- Husky (Git hooks)
-- CommitLint (Validación de commits)
-- Expo CLI
+Esto descargará todos los paquetes necesarios.
 
 ---
 
@@ -138,17 +125,11 @@ Verifica que todo esté configurado ejecutando los tests:
 bun test
 ```
 
-O con npm:
-
-```bash
-npm test
-```
-
 Deberías ver algo como:
 
 ```
 ✓ Entorno de Desarrollo - Reciclame
-  ✓ Debería confirmar que Jest y TypeScript están configurados
+✓ Debería confirmar que Jest y TypeScript están configurados
 ```
 
 ---
@@ -159,12 +140,6 @@ Deberías ver algo como:
 
 ```bash
 bun run start
-```
-
-O con npm:
-
-```bash
-npm run start
 ```
 
 Verás algo como:
@@ -194,14 +169,14 @@ Para ver la app en el navegador:
 
 ## 9. Ver la App en tu Celular
 
-### Requisitos:
+### Requisitos
 
 - Tu celular y computadora deben estar en **la misma red Wi-Fi**
 - Descargar la app **Expo Go** desde:
   - **iOS**: App Store
   - **Android**: Google Play Store
 
-### Pasos:
+### Pasos
 
 1. En la terminal donde corre Expo, presiona:
 
