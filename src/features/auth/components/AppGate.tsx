@@ -135,10 +135,10 @@ const styles = StyleSheet.create({
     maxWidth: theme.components.maxContentWidth,
   },
   gap: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.s2,
+    marginBottom: theme.spacing.s4,
   },
   rowGap: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.s2,
   },
 });

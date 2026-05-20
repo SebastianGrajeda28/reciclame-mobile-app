@@ -6,15 +6,10 @@ import { supabase } from '@/src/services/supabase/client';
 WebBrowser.maybeCompleteAuthSession();
 
 /**
- * Initiates Google OAuth sign-in via Supabase.
+ * Opens Google OAuth in an in-app browser and exchanges the result for a Supabase session.
+ * On success, `onAuthStateChange` fires automatically — no callback needed.
  *
- * Opens an in-app browser for the Google consent screen. On success,
- * exchanges the authorization code for a Supabase session, which triggers
- * `onAuthStateChange` listeners automatically.
- *
- * @throws {Error} If Supabase fails to generate the OAuth URL.
- * @throws {Error} If the user cancels or the browser session fails.
- * @throws {AuthError} If the code-for-session exchange fails.
+ * @throws {Error} If the OAuth URL is missing, the browser is cancelled, or the session exchange fails.
  */
 export async function signInWithGoogle(): Promise<void> {
   const redirectTo = Linking.createURL('/');
@@ -40,11 +35,7 @@ export async function signInWithGoogle(): Promise<void> {
   if (sessionError) throw sessionError;
 }
 
-/**
- * Signs the current user out and invalidates the Supabase session.
- *
- * @throws {AuthError} If the sign-out request fails.
- */
+/** Signs the current user out and invalidates the Supabase session. */
 export async function signOut(): Promise<void> {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;

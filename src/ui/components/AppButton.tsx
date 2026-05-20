@@ -76,13 +76,13 @@ function getVariantStyle(variant: ButtonVariant): VariantStyle {
 function getSizeStyle(size: ButtonSize) {
   switch (size) {
     case 'sm':
-      return { height: theme.components.buttonHeights.sm, paddingHorizontal: theme.spacing.md };
+      return { height: theme.components.buttonHeights.sm, paddingHorizontal: theme.spacing.s3 };
     case 'lg':
-      return { height: theme.components.buttonHeights.lg, paddingHorizontal: theme.spacing.xl };
+      return { height: theme.components.buttonHeights.lg, paddingHorizontal: theme.spacing.s6 };
     case 'icon':
       return { height: theme.components.buttonHeights.icon, width: theme.components.buttonHeights.icon };
     default: // md
-      return { height: theme.components.buttonHeights.md, paddingHorizontal: theme.spacing.lg };
+      return { height: theme.components.buttonHeights.md, paddingHorizontal: theme.spacing.s4 };
   }
 }
 
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.xs,
+    gap: theme.spacing.s1,
   },
   iconOnly: {
     paddingHorizontal: 0,

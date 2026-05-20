@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: theme.spacing.s1,
   },
   icon: {
     alignItems: 'center',
@@ -106,6 +106,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   labelInactiveDark: {
-    color: theme.colors.infoBg,
+    color: theme.colors.textInverseSubtle,
   },
 });

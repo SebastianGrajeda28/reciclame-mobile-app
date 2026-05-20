@@ -139,10 +139,8 @@ function WelcomeView({ onGooglePress }: WelcomeViewProps) {
     <SafeAreaView style={welcomeStyles.safe}>
       <DecorativeBlobs />
 
-      {/* Outer: centra vertical y horizontalmente en cualquier tamaño de pantalla */}
       <View style={welcomeStyles.outer}>
         <View style={welcomeStyles.inner}>
-          {/* Hero */}
           <BrandLogo />
           <AppText variant="h2" style={welcomeStyles.tagline}>
             Recicla, gana puntos{'\n'}y cuida el planeta
@@ -151,7 +149,6 @@ function WelcomeView({ onGooglePress }: WelcomeViewProps) {
             Inicia sesión para continuar
           </AppText>
 
-          {/* Actions */}
           <View style={welcomeStyles.actions}>
             <AppButton
               variant="outline"
@@ -160,10 +157,9 @@ function WelcomeView({ onGooglePress }: WelcomeViewProps) {
               onPress={onGooglePress}
               style={welcomeStyles.fullWidth}
             />
-            <InfoBanner text="Accede rápidamente con tu cuenta de Google." />
+            <InfoBanner text="Tu sesión se mantiene activa. No necesitas iniciar sesión cada vez que accedas." />
           </View>
 
-          {/* Terms */}
           <AppText style={welcomeStyles.termsText}>
             {'Al continuar aceptas nuestros '}
             <AppText style={welcomeStyles.termsLink}>Términos de Servicio</AppText>
@@ -188,7 +184,6 @@ const welcomeStyles = StyleSheet.create({
     paddingHorizontal: theme.spacing.s4,
     paddingVertical: theme.spacing.s6,
   },
-  // maxWidth 400 → mobile lo llena, web queda centrado y compacto
   inner: {
     width: '100%',
     maxWidth: 400,
@@ -379,7 +374,7 @@ export function LoginScreen({ onContinueOffline }: LoginScreenProps) {
     try {
       const { signInWithGoogle } = await import('@/src/features/auth/services/googleAuth');
       await signInWithGoogle();
-      // Session fires via onAuthStateChange → AppGate re-renders automatically
+      // AppGate re-renders automatically via onAuthStateChange
     } catch {
       setState('error');
     }

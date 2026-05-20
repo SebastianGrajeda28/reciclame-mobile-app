@@ -9,13 +9,10 @@ type AuthState = {
 };
 
 /**
- * Reactive hook that tracks the current Supabase auth session.
+ * Tracks the current Supabase auth session reactively.
  *
- * Resolves the initial session from storage, then subscribes to auth state
- * changes so the UI updates automatically on login, logout, and token refresh.
- *
- * @returns `session` — the active Supabase session, or null if unauthenticated.
- * @returns `loading` — true while the initial session check is in progress.
+ * @returns `session` — active session or null if unauthenticated.
+ * @returns `loading` — true while the initial session resolves.
  */
 export function useAuth(): AuthState {
   const [session, setSession] = useState<Session | null>(null);
@@ -24,6 +21,8 @@ export function useAuth(): AuthState {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
 

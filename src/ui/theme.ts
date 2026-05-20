@@ -9,6 +9,7 @@ export const theme = {
     textPrimary: '#0E1114',    // Neutral 900
     textSecondary: '#6B757D',  // Neutral 500
     textInverse: '#FFFFFF',
+    textInverseSubtle: 'rgba(255,255,255,0.6)', // white 60% — inactive text on dark surfaces
 
     // Borders
     border: '#D9DEE2',         // Neutral 200

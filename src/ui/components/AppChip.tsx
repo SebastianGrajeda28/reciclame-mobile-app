@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     height: theme.components.chipHeight,
     borderRadius: theme.radius.full,
     borderWidth: 1,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.s3,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: theme.spacing.s1,
   },
   icon: {
     alignItems: 'center',
