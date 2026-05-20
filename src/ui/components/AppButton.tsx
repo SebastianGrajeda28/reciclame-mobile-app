@@ -4,15 +4,15 @@ import {
   PressableProps,
   StyleProp,
   StyleSheet,
-  TextStyle,
   View,
   ViewStyle,
+  TextStyle,
 } from 'react-native';
 
 import { AppText } from '@/src/ui/components/AppText';
 import { theme } from '@/src/ui/theme';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline';
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 type AppButtonProps = Omit<PressableProps, 'style'> & {
@@ -28,45 +28,62 @@ type AppButtonProps = Omit<PressableProps, 'style'> & {
   labelStyle?: StyleProp<TextStyle>;
 };
 
-function getVariantStyle(variant: ButtonVariant) {
-  if (variant === 'secondary') {
-    return {
-      container: { backgroundColor: theme.colors.secondary },
-      text: { color: theme.colors.textInverse },
-      spinner: theme.colors.textInverse,
-    };
-  }
+type VariantStyle = {
+  container: ViewStyle;
+  text: TextStyle;
+  spinner: string;
+};
 
-  if (variant === 'outline') {
-    return {
-      container: {
-        backgroundColor: theme.colors.surface,
-        borderColor: theme.colors.borderStrong,
-        borderWidth: 1,
-      },
-      text: { color: theme.colors.textPrimary },
-      spinner: theme.colors.textPrimary,
-    };
+function getVariantStyle(variant: ButtonVariant): VariantStyle {
+  switch (variant) {
+    case 'secondary':
+      return {
+        container: { backgroundColor: theme.colors.secondary },
+        text: { color: theme.colors.textInverse },
+        spinner: theme.colors.textInverse,
+      };
+    case 'outline':
+      return {
+        container: {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outline,
+          borderWidth: 1,
+        },
+        text: { color: theme.colors.textPrimary },
+        spinner: theme.colors.textPrimary,
+      };
+    case 'ghost':
+      return {
+        container: { backgroundColor: 'transparent' },
+        text: { color: theme.colors.primary },
+        spinner: theme.colors.primary,
+      };
+    case 'danger':
+      return {
+        container: { backgroundColor: theme.colors.danger },
+        text: { color: theme.colors.textInverse },
+        spinner: theme.colors.textInverse,
+      };
+    default: // primary
+      return {
+        container: { backgroundColor: theme.colors.primary },
+        text: { color: theme.colors.textInverse },
+        spinner: theme.colors.textInverse,
+      };
   }
-
-  return {
-    container: { backgroundColor: theme.colors.primary },
-    text: { color: theme.colors.textInverse },
-    spinner: theme.colors.textInverse,
-  };
 }
 
 function getSizeStyle(size: ButtonSize) {
-  if (size === 'sm')
-    return { height: theme.components.buttonHeights.sm, paddingHorizontal: theme.spacing.md };
-  if (size === 'lg')
-    return { height: theme.components.buttonHeights.lg, paddingHorizontal: theme.spacing.lg };
-  if (size === 'icon')
-    return {
-      height: theme.components.buttonHeights.icon,
-      width: theme.components.buttonHeights.icon,
-    };
-  return { height: theme.components.buttonHeights.md, paddingHorizontal: theme.spacing.lg };
+  switch (size) {
+    case 'sm':
+      return { height: theme.components.buttonHeights.sm, paddingHorizontal: theme.spacing.md };
+    case 'lg':
+      return { height: theme.components.buttonHeights.lg, paddingHorizontal: theme.spacing.xl };
+    case 'icon':
+      return { height: theme.components.buttonHeights.icon, width: theme.components.buttonHeights.icon };
+    default: // md
+      return { height: theme.components.buttonHeights.md, paddingHorizontal: theme.spacing.lg };
+  }
 }
 
 export function AppButton({
@@ -83,7 +100,6 @@ export function AppButton({
   ...props
 }: AppButtonProps) {
   const variantStyle = getVariantStyle(variant);
-  const hasContent = Boolean(label || leftIcon || rightIcon || loading);
 
   return (
     <Pressable
@@ -102,10 +118,7 @@ export function AppButton({
       <View style={styles.content}>
         {loading ? <ActivityIndicator size="small" color={variantStyle.spinner} /> : leftIcon}
         {label ? (
-          <AppText
-            variant="button"
-            style={[variantStyle.text, hasContent ? styles.label : null, labelStyle]}
-          >
+          <AppText variant="button" style={[variantStyle.text, labelStyle]}>
             {label}
           </AppText>
         ) : null}
@@ -129,16 +142,13 @@ const styles = StyleSheet.create({
   },
   iconOnly: {
     paddingHorizontal: 0,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.radius.full,
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.8,
   },
   disabled: {
     backgroundColor: theme.colors.disabled,
     borderColor: theme.colors.disabled,
-  },
-  label: {
-    textAlign: 'center',
   },
 });
