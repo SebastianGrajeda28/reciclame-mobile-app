@@ -25,12 +25,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="login"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="map"
         options={{
           title: 'Reciclar',
