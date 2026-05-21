@@ -1,29 +1,39 @@
 import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, StyleSheet, View } from 'react-native';
 import { PermissionStatus, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 
 import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
+import { LoginScreen } from '@/src/features/auth/screens/LoginScreen';
+import { useAuth } from '@/src/hooks/useAuth';
 
 function AuthGate({ children }: PropsWithChildren) {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const { session, loading } = useAuth();
+  const [offlineMode, setOfflineMode] = useState(false);
 
-  if (isLoggedIn) {
-    return <>{children}</>;
+  if (loading) {
+    return (
+      <View style={authGateStyles.splash}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
   }
 
-  return (
-    <AppScreen style={styles.center} padded>
-      <AppCard style={styles.gateCard}>
-        <AppText variant="title">Iniciar sesion</AppText>
-        <AppText muted style={styles.gap}>
-          Este es un mock temporal. El login real se integrara con Firebase.
-        </AppText>
-        <AppButton label="Entrar (mock)" onPress={() => setIsLoggedIn(true)} />
-      </AppCard>
-    </AppScreen>
-  );
+  if (!session && !offlineMode) {
+    return <LoginScreen onContinueOffline={() => setOfflineMode(true)} />;
+  }
+
+  return <>{children}</>;
 }
+
+const authGateStyles = StyleSheet.create({
+  splash: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+});
 
 function PermissionGate({ children }: PropsWithChildren) {
   const [cameraPermission, requestCameraPermission, getCameraPermission] = useCameraPermissions();
@@ -125,10 +135,10 @@ const styles = StyleSheet.create({
     maxWidth: theme.components.maxContentWidth,
   },
   gap: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.s2,
+    marginBottom: theme.spacing.s4,
   },
   rowGap: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.s2,
   },
 });
