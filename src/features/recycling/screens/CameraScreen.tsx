@@ -23,7 +23,7 @@ export function CameraScreen() {
 
   if (Platform.OS === 'web') {
     return (
-      <AppScreen style={styles.center} padded>
+      <AppScreen padded centered>
         <AppText variant="title">Camara nativa</AppText>
         <AppText muted style={styles.webGap}>
           Esta pantalla se usa en iOS/Android.
@@ -57,10 +57,6 @@ const styles = StyleSheet.create({
   },
   actions: {
     padding: theme.spacing.lg,
-  },
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   webGap: {
     marginTop: theme.spacing.sm,
