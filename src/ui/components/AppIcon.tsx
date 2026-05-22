@@ -111,7 +111,7 @@ export function AppIcon({ name, size, color, style }: AppIconProps) {
     case 'info':
       return <Feather name="info" size={size} color={color} style={style} />;
     case 'loader':
-      return <AntDesign name="loading1" size={size} color={color} style={style} />;
+      return <AntDesign name="loading" size={size} color={color} style={style} />;
     case 'wifiOff':
       return <Feather name="wifi-off" size={size} color={color} style={style} />;
     case 'award':
@@ -131,9 +131,9 @@ export function AppIcon({ name, size, color, style }: AppIconProps) {
     case 'trash':
       return <Ionicons name="trash-outline" size={size} color={color} style={style} />;
     case 'arrowLeft':
-      return <AntDesign name="arrowleft" size={size} color={color} style={style} />;
+      return <AntDesign name="arrow-left" size={size} color={color} style={style} />;
     case 'arrowRight':
-      return <AntDesign name="arrowright" size={size} color={color} style={style} />;
+      return <AntDesign name="arrow-right" size={size} color={color} style={style} />;
     case 'arrowBack':
       return <Ionicons name="arrow-back-outline" size={size} color={color} style={style} />;
     case 'arrowUndo':
