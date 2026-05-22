@@ -11,6 +11,9 @@ export default function RootLayout() {
         <AppGate>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/achievements" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/avatar" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
             <Stack.Screen name="recycle/camera" options={{ title: 'Escanear' }} />
             <Stack.Screen name="recycle/processing" options={{ title: 'Procesar residuo' }} />
             <Stack.Screen name="recycle/manual" options={{ title: 'Seleccionar residuo' }} />

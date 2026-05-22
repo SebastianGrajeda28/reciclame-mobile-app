@@ -66,7 +66,7 @@ export function ProcessingScreen() {
   };
 
   return (
-    <AppScreen style={styles.root} padded>
+    <AppScreen padded centered>
       <AppCard style={styles.card}>
         <AppText variant="title">Procesando imagen...</AppText>
         {loading ? (
@@ -107,10 +107,6 @@ export function ProcessingScreen() {
 export default ProcessingScreen;
 
 const styles = StyleSheet.create({
-  root: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   card: {
     width: '100%',
     maxWidth: theme.components.maxContentWidth,
