@@ -1,31 +1,32 @@
-import { useRef } from 'react';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
+'use client';
+
+import { useState } from 'react';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView } from 'expo-camera';
+import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 
+import { CameraFlashToggle } from '@/src/features/recycling/components/CameraFlashToggle';
+import { CameraPermissionGate } from '@/src/features/recycling/components/CameraPermissionGate';
+import { CameraShutterButton } from '@/src/features/recycling/components/CameraShutterButton';
+import { useCameraCapture } from '@/src/features/recycling/hooks/useCameraCapture';
+import { useGalleryPicker } from '@/src/features/recycling/hooks/useGalleryPicker';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AppButton, AppScreen, AppText, theme } from '@/src/ui';
 
 export function CameraScreen() {
-  const cameraRef = useRef<CameraView | null>(null);
   const { setCapturedPhotoUri } = useRecycleFlow();
-
-  const capture = async () => {
-    if (!cameraRef.current) return;
-    const picture = await cameraRef.current.takePictureAsync({ quality: 0.6 });
-    if (!picture?.uri) {
-      Alert.alert('Error', 'No se pudo capturar la imagen.');
-      return;
-    }
-    setCapturedPhotoUri(picture.uri);
-    router.replace('/recycle/processing');
-  };
+  const { permission, requestPermission, cameraRef, flash, toggleFlash, capture } =
+    useCameraCapture();
+  const { pickImage } = useGalleryPicker();
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [capturing, setCapturing] = useState(false);
 
   if (Platform.OS === 'web') {
     return (
-      <AppScreen padded centered>
-        <AppText variant="title">Camara nativa</AppText>
-        <AppText muted style={styles.webGap}>
+      <AppScreen padded centered spacing="md">
+        <AppText variant="title">Cámara nativa</AppText>
+        <AppText muted style={styles.webBody}>
           Esta pantalla se usa en iOS/Android.
         </AppText>
         <AppButton
@@ -36,13 +37,73 @@ export function CameraScreen() {
     );
   }
 
-  return (
-    <View style={styles.root}>
-      <CameraView ref={cameraRef} style={styles.camera} facing="back" />
-      <View style={styles.actions}>
-        <AppButton label="Tomar foto" onPress={capture} />
+  async function handleCapture() {
+    setCapturing(true);
+    const uri = await capture();
+    setCapturing(false);
+    if (uri) setPreviewUri(uri);
+  }
+
+  async function handleGallery() {
+    const uri = await pickImage();
+    if (uri) setPreviewUri(uri);
+  }
+
+  function handleConfirm() {
+    if (!previewUri) return;
+    setCapturedPhotoUri(previewUri);
+    router.replace('/recycle/processing');
+  }
+
+  if (previewUri) {
+    return (
+      <View style={styles.root}>
+        <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
+        <View style={styles.previewActions}>
+          <AppButton
+            variant="outline"
+            label="Retomar"
+            onPress={() => setPreviewUri(null)}
+            style={styles.previewBtn}
+          />
+          <AppButton label="Usar foto" onPress={handleConfirm} style={styles.previewBtn} />
+        </View>
       </View>
-    </View>
+    );
+  }
+
+  return (
+    <CameraPermissionGate permission={permission} onRequest={requestPermission}>
+      <View style={styles.root}>
+        <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={flash} />
+
+        <View style={styles.topBar}>
+          <View style={styles.controlSpacer} />
+          <Pressable style={styles.controlButton}>
+            <Feather name="info" size={22} color="white" />
+          </Pressable>
+        </View>
+
+        <View style={styles.bottomBar}>
+          <CameraFlashToggle flash={flash} onToggle={toggleFlash} />
+
+          <CameraShutterButton onPress={handleCapture} disabled={capturing} />
+
+          <Pressable
+            onPress={handleGallery}
+            style={({ pressed }) => [styles.controlButton, pressed && styles.controlPressed]}
+          >
+            <Feather name="image" size={26} color="white" />
+          </Pressable>
+        </View>
+
+        {capturing && (
+          <View style={styles.capturingOverlay}>
+            <ActivityIndicator color="white" size="large" />
+          </View>
+        )}
+      </View>
+    </CameraPermissionGate>
   );
 }
 
@@ -51,15 +112,73 @@ export default CameraScreen;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: 'black',
   },
   camera: {
     flex: 1,
   },
-  actions: {
-    padding: theme.spacing.lg,
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: theme.spacing.s12,
+    paddingHorizontal: theme.spacing.s4,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  webGap: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: theme.spacing.s12,
+    paddingHorizontal: theme.spacing.s8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  controlButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  controlSpacer: {
+    flex: 1,
+  },
+  controlPressed: {
+    opacity: 0.6,
+  },
+  capturingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  preview: {
+    flex: 1,
+  },
+  previewActions: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    gap: theme.spacing.s3,
+    paddingHorizontal: theme.spacing.s4,
+    paddingBottom: theme.spacing.s12,
+    paddingTop: theme.spacing.s4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  previewBtn: {
+    flex: 1,
+  },
+  webBody: {
+    textAlign: 'center',
   },
 });
