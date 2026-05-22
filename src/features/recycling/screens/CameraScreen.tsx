@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView } from 'expo-camera';
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
@@ -12,7 +12,7 @@ import { CameraShutterButton } from '@/src/features/recycling/components/CameraS
 import { useCameraCapture } from '@/src/features/recycling/hooks/useCameraCapture';
 import { useGalleryPicker } from '@/src/features/recycling/hooks/useGalleryPicker';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { AppButton, AppScreen, AppText, theme } from '@/src/ui';
+import { AppButton, theme } from '@/src/ui';
 
 export function CameraScreen() {
   const { setCapturedPhotoUri } = useRecycleFlow();
@@ -20,27 +20,9 @@ export function CameraScreen() {
     useCameraCapture();
   const { pickImage } = useGalleryPicker();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
-  const [capturing, setCapturing] = useState(false);
-
-  if (Platform.OS === 'web') {
-    return (
-      <AppScreen padded centered spacing="md">
-        <AppText variant="title">Cámara nativa</AppText>
-        <AppText muted style={styles.webBody}>
-          Esta pantalla se usa en iOS/Android.
-        </AppText>
-        <AppButton
-          label="Continuar con mock"
-          onPress={() => router.replace('/recycle/processing')}
-        />
-      </AppScreen>
-    );
-  }
 
   async function handleCapture() {
-    setCapturing(true);
     const uri = await capture();
-    setCapturing(false);
     if (uri) setPreviewUri(uri);
   }
 
@@ -87,7 +69,7 @@ export function CameraScreen() {
         <View style={styles.bottomBar}>
           <CameraFlashToggle flash={flash} onToggle={toggleFlash} />
 
-          <CameraShutterButton onPress={handleCapture} disabled={capturing} />
+          <CameraShutterButton onPress={handleCapture} />
 
           <Pressable
             onPress={handleGallery}
@@ -97,11 +79,7 @@ export function CameraScreen() {
           </Pressable>
         </View>
 
-        {capturing && (
-          <View style={styles.capturingOverlay}>
-            <ActivityIndicator color="white" size="large" />
-          </View>
-        )}
+
       </View>
     </CameraPermissionGate>
   );
@@ -122,7 +100,8 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: theme.spacing.s12,
+    paddingTop: theme.spacing.s6,
+    paddingBottom: theme.spacing.s4,
     paddingHorizontal: theme.spacing.s4,
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -133,7 +112,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: theme.spacing.s12,
+    paddingTop: theme.spacing.s4,
+    paddingBottom: theme.spacing.s16 + theme.spacing.s4,
     paddingHorizontal: theme.spacing.s8,
     flexDirection: 'row',
     alignItems: 'center',
@@ -154,12 +134,6 @@ const styles = StyleSheet.create({
   controlPressed: {
     opacity: 0.6,
   },
-  capturingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   preview: {
     flex: 1,
   },
@@ -177,8 +151,5 @@ const styles = StyleSheet.create({
   },
   previewBtn: {
     flex: 1,
-  },
-  webBody: {
-    textAlign: 'center',
   },
 });
