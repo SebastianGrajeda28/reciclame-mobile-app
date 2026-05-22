@@ -39,7 +39,7 @@ const featureBoundaryConfigs = FEATURE_NAMES.map((featureName) => ({
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*', 'web-build/*'],
+    ignores: ['dist/*', 'web-build/*', '.history/**'],
   },
   {
     files: ['app/**/*.tsx'],
