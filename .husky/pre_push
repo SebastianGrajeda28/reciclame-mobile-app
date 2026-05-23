@@ -2,16 +2,16 @@
 
 local_branch_name=$(git rev-parse --abbrev-ref HEAD)
 
-valid_branch_regex="^(feature|fix|docs|refactor)\/[a-z0-9-]+$"
+valid_branch_regex="^(feature|fix|docs|refactor|test)\/[a-z0-9-]+$"
 
 if [[ ! $local_branch_name =~ $valid_branch_regex ]]; then
-    echo "---------------------------------------------------------------"
-    echo "Nombre de rama inválido: '$local_branch_name'"
-    echo "El formato obligatorio es: [tipo-de-rama]/[nombre-descriptivo]"
-    echo "Tipos permitidos: feature/, fix/, docs/, refactor/"
-    echo "Ejemplo: feature/foo-functionality"
-    echo "---------------------------------------------------------------"
-    exit 1
+  echo "---------------------------------------------------------------"
+  echo "Nombre de rama inválido: '$local_branch_name'"
+  echo "El formato obligatorio es: [tipo-de-rama]/[nombre-descriptivo]"
+  echo "Tipos permitidos: feature/, fix/, docs/, refactor/"
+  echo "Ejemplo: feature/foo-functionality"
+  echo "---------------------------------------------------------------"
+  exit 1
 fi
 
 exit 0
