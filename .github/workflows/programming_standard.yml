@@ -27,7 +27,7 @@ jobs:
 
       # 2. Verificación de Tests Unitarios
       - name: Ejecutar Tests Unitarios
-        run: bun run test
+        run: bun run test:coverage
         env:
           CI: true
 

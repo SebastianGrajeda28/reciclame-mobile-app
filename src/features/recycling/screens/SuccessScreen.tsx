@@ -5,7 +5,17 @@ import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
+import {
+  AppButton,
+  AppCard,
+  AppCardDescription,
+  AppCardEyebrow,
+  AppCardHeaderText,
+  AppCardTitle,
+  AppScreen,
+  AppText,
+  theme,
+} from '@/src/ui';
 
 export function SuccessScreen() {
   const { resetFlow } = useRecycleFlow();
@@ -17,21 +27,21 @@ export function SuccessScreen() {
   };
 
   return (
-    <AppScreen style={styles.root} padded>
+    <AppScreen padded centered>
       <AppCard style={styles.card}>
         <View style={styles.iconWrap}>
           <AppText style={styles.check}>✓</AppText>
         </View>
-        <AppText variant="title" style={styles.title}>
-          Reciclaje registrado
-        </AppText>
-        <AppText muted style={styles.topGap}>
-          Residuo: {finalWasteType?.label ?? 'No definido'}
-        </AppText>
-        <AppCard style={styles.fact}>
-          <AppText variant="caption" style={styles.factTitle}>
-            Dato curioso
-          </AppText>
+        <AppCardHeaderText style={styles.headerText}>
+          <AppCardTitle variant="title" style={styles.title}>
+            Reciclaje registrado
+          </AppCardTitle>
+          <AppCardDescription style={styles.topGap}>
+            Residuo: {finalWasteType?.label ?? 'No definido'}
+          </AppCardDescription>
+        </AppCardHeaderText>
+        <AppCard variant="info" padding="sm" style={styles.fact}>
+          <AppCardEyebrow style={styles.factTitle}>Dato curioso</AppCardEyebrow>
           <AppText muted>
             Reciclar una lata de aluminio ahorra suficiente energia para mantener un televisor
             durante tres horas.
@@ -46,10 +56,6 @@ export function SuccessScreen() {
 export default SuccessScreen;
 
 const styles = StyleSheet.create({
-  root: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   card: {
     width: '100%',
     maxWidth: theme.components.maxContentWidth,
@@ -67,19 +73,18 @@ const styles = StyleSheet.create({
   title: {
     textAlign: 'center',
   },
+  headerText: {
+    alignItems: 'center',
+  },
   topGap: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
     textAlign: 'center',
   },
   fact: {
+    marginTop: theme.spacing.md,
     marginBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.infoTintBackground,
-    borderColor: theme.colors.infoTintBorder,
   },
   factTitle: {
     color: theme.colors.info,
-    marginBottom: theme.spacing.xs,
     fontWeight: theme.fontWeights.bold,
   },
 });

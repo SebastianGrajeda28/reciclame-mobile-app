@@ -1,6 +1,3 @@
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import * as Location from 'expo-location';
@@ -14,7 +11,7 @@ import {
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
-import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
+import { AppButton, AppCard, AppIcon, AppIconButton, AppScreen, AppText, theme } from '@/src/ui';
 
 const pUCPRegion = {
   latitude: -12.0695,
@@ -96,13 +93,11 @@ export function MapScreen() {
     <AppScreen>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <AppButton
-            iconOnly
-            size="icon"
+          <AppIconButton
             variant="outline"
-            leftIcon={
-              <Ionicons
-                name="arrow-undo-outline"
+            icon={
+              <AppIcon
+                name="arrowUndo"
                 size={theme.iconSizes.md}
                 color={theme.colors.textPrimary}
               />
@@ -128,30 +123,22 @@ export function MapScreen() {
             selected={category === 'all'}
             onPress={() => setCategory('all')}
             icon={
-              <Ionicons
-                name="trash-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
+              <AppIcon name="trash" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
             }
           />
           <IconFilterButton
             selected={category === 'plastic_pet'}
             onPress={() => setCategory('plastic_pet')}
             icon={
-              <MaterialCommunityIcons
-                name="bottle-soda-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
+              <AppIcon name="bottle" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
             }
           />
           <IconFilterButton
             selected={category === 'paper_cardboard'}
             onPress={() => setCategory('paper_cardboard')}
             icon={
-              <Ionicons
-                name="briefcase-outline"
+              <AppIcon
+                name="briefcase"
                 size={theme.iconSizes.md}
                 color={theme.recycle.iconNeutral}
               />
@@ -161,52 +148,34 @@ export function MapScreen() {
             selected={category === 'glass'}
             onPress={() => setCategory('glass')}
             icon={
-              <MaterialCommunityIcons
-                name="flask-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
+              <AppIcon name="flask" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
             }
           />
           <IconFilterButton
             selected={category === 'non_recoverable'}
             onPress={() => setCategory('non_recoverable')}
             icon={
-              <MaterialCommunityIcons
-                name="delete-empty-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
+              <AppIcon name="delete" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
             }
           />
           <IconFilterButton
             selected={category === 'battery'}
             onPress={() => setCategory('battery')}
             icon={
-              <Ionicons
-                name="battery-half-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
+              <AppIcon name="battery" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
             }
           />
           <IconFilterButton
             selected={category === 'electronic_waste'}
             onPress={() => setCategory('electronic_waste')}
             icon={
-              <MaterialCommunityIcons
-                name="laptop"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
+              <AppIcon name="laptop" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
             }
           />
-          <AppButton
-            iconOnly
-            size="icon"
+          <AppIconButton
             variant="secondary"
-            leftIcon={
-              <Ionicons name="camera" size={theme.iconSizes.md} color={theme.colors.textInverse} />
+            icon={
+              <AppIcon name="camera" size={theme.iconSizes.md} color={theme.colors.textInverse} />
             }
             onPress={() => router.push('/recycle/camera')}
             style={styles.cameraButton}
@@ -237,11 +206,7 @@ export function MapScreen() {
             variant="outline"
             label="Mostrar instrucciones de reciclaje"
             rightIcon={
-              <FontAwesome6
-                name="book-open-reader"
-                size={theme.iconSizes.xs}
-                color={theme.colors.textPrimary}
-              />
+              <AppIcon name="book" size={theme.iconSizes.xs} color={theme.colors.textPrimary} />
             }
             style={styles.instructionsButton}
           />

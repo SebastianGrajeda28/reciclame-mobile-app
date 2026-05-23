@@ -3,7 +3,16 @@ import { ActivityIndicator, Alert, Linking, Platform, StyleSheet, View } from 'r
 import { PermissionStatus, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 
-import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
+import {
+  AppButton,
+  AppCard,
+  AppCardDescription,
+  AppCardFooter,
+  AppCardHeaderText,
+  AppCardTitle,
+  AppScreen,
+  theme,
+} from '@/src/ui';
 import { LoginScreen } from '@/src/features/auth/screens/LoginScreen';
 import { useAuth } from '@/src/hooks/useAuth';
 
@@ -100,18 +109,18 @@ function PermissionGate({ children }: PropsWithChildren) {
   return (
     <AppScreen style={styles.center} padded>
       <AppCard style={styles.gateCard}>
-        <AppText variant="title">Permisos obligatorios</AppText>
-        <AppText muted style={styles.gap}>
-          {statusText}
-        </AppText>
-        <View style={styles.rowGap}>
+        <AppCardHeaderText>
+          <AppCardTitle variant="title">Permisos obligatorios</AppCardTitle>
+          <AppCardDescription style={styles.gap}>{statusText}</AppCardDescription>
+        </AppCardHeaderText>
+        <AppCardFooter style={styles.rowGap}>
           <AppButton label="Conceder permisos" onPress={askPermissions} loading={loading} />
           <AppButton
             label="Abrir ajustes"
             variant="outline"
             onPress={() => Linking.openSettings()}
           />
-        </View>
+        </AppCardFooter>
       </AppCard>
     </AppScreen>
   );

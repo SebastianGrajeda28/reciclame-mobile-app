@@ -1,59 +1,138 @@
+// Full brand scales from the design system.
+// Use these when building primitives or when a specific step is explicitly required by design.
+const palette = {
+  green: {
+    50: '#ECFDF3',
+    100: '#D1FADF',
+    200: '#A6F4C5',
+    300: '#6CE9A6',
+    400: '#43DF8B',
+    500: '#12B76A',
+    600: '#039855',
+    700: '#027A48',
+    800: '#05603A',
+    900: '#054F31',
+    DEFAULT: '#43DF8B',
+  },
+  navy: {
+    50: '#F0F5F9',
+    100: '#DCE6EE',
+    200: '#B3C6D9',
+    300: '#7E9AB5',
+    400: '#4B6F9B',
+    500: '#1B4970',
+    600: '#0B2F4E',
+    700: '#00253D',
+    800: '#001A2D',
+    900: '#0B1B1C',
+    DEFAULT: '#0B2F4E',
+  },
+  cyan: {
+    100: '#D7F1F7',
+    300: '#7DD3E4',
+    500: '#26B0CF',
+    700: '#1A7A91',
+    DEFAULT: '#26B0CF',
+  },
+  neutral: {
+    0: '#FFFFFF',
+    50: '#F8FAFB',
+    100: '#EAEDEF',
+    200: '#D9DEE2',
+    300: '#BBC0C6',
+    400: '#8B9590',
+    500: '#6B757D',
+    600: '#4F585F',
+    700: '#353C42',
+    800: '#1F2428',
+    900: '#0E1114',
+    DEFAULT: '#EAEDEF',
+  },
+} as const;
+
+// Semantic aliases compose on top of the raw palette.
+// Prefer these for feedback/status UI instead of picking palette steps ad hoc in screens.
+const semantic = {
+  success: {
+    fg: palette.green[500],
+    bg: palette.green[50],
+  },
+  warning: {
+    fg: '#F59E0B',
+    bg: '#FEF3C7',
+  },
+  error: {
+    fg: '#DC2626',
+    bg: '#FEE2E2',
+  },
+  info: {
+    fg: palette.cyan[500],
+    bg: palette.cyan[100],
+    border: palette.cyan[300],
+  },
+} as const;
+
 export const theme = {
+  palette,
+  semantic,
+  // Product-facing aliases.
+  // Default app code should use theme.colors.* first.
+  // Reach for theme.palette.* only when creating DS primitives or implementing a design-specified tone.
   colors: {
     // Surfaces & backgrounds
-    background: '#F8FAFB',     // Neutral 50
-    surface: '#FFFFFF',
-    surfaceMuted: '#F8FAFB',
+    background: palette.neutral[50],
+    surface: palette.neutral[0],
+    surfaceMuted: palette.neutral[50],
 
     // Text
-    textPrimary: '#0E1114',    // Neutral 900
-    textSecondary: '#6B757D',  // Neutral 500
-    textInverse: '#FFFFFF',
+    textPrimary: palette.neutral[900],
+    textSecondary: palette.neutral[500],
+    textInverse: palette.neutral[0],
     textInverseSubtle: 'rgba(255,255,255,0.6)', // white 60% — inactive text on dark surfaces
 
     // Borders
-    border: '#D9DEE2',         // Neutral 200
-    borderStrong: '#BBC0C6',   // Neutral 300
+    border: palette.neutral[200],
+    borderStrong: palette.neutral[300],
 
     // Brand — Green (Primary)
-    primary: '#12B76A',        // Green 500 ●
-    primaryPressed: '#039855', // Green 600
-    primaryLight: '#ECFDF3',   // Green 50
-    primarySubtle: '#A6F4C5',  // Green 200
+    primary: palette.green.DEFAULT,
+    primaryPressed: palette.green[500],
+    primaryLight: palette.green[50],
+    primarySubtle: palette.green[200],
 
     // Brand — Navy (Secondary)
-    secondary: '#1B4970',      // Navy 500 ●
-    secondaryPressed: '#002F4E', // Navy 600
+    secondary: palette.navy.DEFAULT,
+    secondaryPressed: palette.navy[700],
 
     // Brand — Cyan (Accent)
-    accent: '#268BCF',         // Cyan 500 ●
-    accentPressed: '#1A7A91',  // Cyan 700
+    accent: palette.cyan.DEFAULT,
+    accentPressed: palette.cyan[700],
 
     // Outline button stroke
-    outline: '#BBC0C6',        // Neutral 300
+    outline: palette.neutral[300],
 
     // Semantic
-    success: '#12B76A',        // Green 500
-    successBg: '#ECFDF3',      // Green 50
-    warning: '#F59E0B',
-    warningBg: '#FEF3C7',
-    danger: '#DC2626',
-    dangerBg: '#FEE2E2',
-    info: '#268BCF',           // Cyan 500
-    infoBg: '#D7F1F7',         // Cyan 100
-    infoBorder: '#7DD3E4',     // Cyan 300
+    success: semantic.success.fg,
+    successBg: semantic.success.bg,
+    warning: semantic.warning.fg,
+    warningBg: semantic.warning.bg,
+    danger: semantic.error.fg,
+    dangerBg: semantic.error.bg,
+    info: semantic.info.fg,
+    infoBg: semantic.info.bg,
+    infoBorder: semantic.info.border,
 
     // Inputs
-    inputBackground: '#FFFFFF',
-    inputPlaceholder: '#BBC0C6', // Neutral 300
+    inputBackground: palette.neutral[0],
+    inputPlaceholder: palette.neutral[300],
 
     // Disabled
-    disabled: '#D9DEE2',       // Neutral 200
-    disabledText: '#BBC0C6',   // Neutral 300
+    disabled: palette.neutral[200],
+    disabledText: palette.neutral[300],
 
     // Legacy aliases kept for existing screens
-    infoTintBackground: '#D7F1F7',
-    infoTintBorder: '#7DD3E4',
+    infoTintBackground: semantic.info.bg,
+    infoTintBorder: semantic.info.border,
   },
 
   // Base 4 px grid — s1…s16
@@ -94,15 +173,15 @@ export const theme = {
   // DS typography scale — Manrope
   typography: {
     display: { fontSize: 34, lineHeight: 36, fontWeight: '800' as const },
-    h1:      { fontSize: 28, lineHeight: 31, fontWeight: '800' as const },
-    h2:      { fontSize: 22, lineHeight: 26, fontWeight: '700' as const },
-    h3:      { fontSize: 18, lineHeight: 23, fontWeight: '700' as const },
-    h4:      { fontSize: 15, lineHeight: 20, fontWeight: '700' as const },
-    bodyL:   { fontSize: 17, lineHeight: 27, fontWeight: '400' as const },
-    body:    { fontSize: 15, lineHeight: 24, fontWeight: '400' as const },
-    bodyS:   { fontSize: 13, lineHeight: 20, fontWeight: '400' as const },
+    h1: { fontSize: 28, lineHeight: 31, fontWeight: '800' as const },
+    h2: { fontSize: 22, lineHeight: 26, fontWeight: '700' as const },
+    h3: { fontSize: 18, lineHeight: 23, fontWeight: '700' as const },
+    h4: { fontSize: 15, lineHeight: 20, fontWeight: '700' as const },
+    bodyL: { fontSize: 17, lineHeight: 27, fontWeight: '400' as const },
+    body: { fontSize: 15, lineHeight: 24, fontWeight: '400' as const },
+    bodyS: { fontSize: 13, lineHeight: 20, fontWeight: '400' as const },
     caption: { fontSize: 12, lineHeight: 17, fontWeight: '500' as const },
-    overline:{ fontSize: 10, lineHeight: 13, fontWeight: '700' as const },
+    overline: { fontSize: 10, lineHeight: 13, fontWeight: '700' as const },
   },
 
   // Legacy fontSizes kept for existing screens
@@ -118,10 +197,10 @@ export const theme = {
 
   fontWeights: {
     regular: '400' as const,
-    medium:  '500' as const,
-    semibold:'600' as const,
-    bold:    '700' as const,
-    extrabold:'800' as const,
+    medium: '500' as const,
+    semibold: '600' as const,
+    bold: '700' as const,
+    extrabold: '800' as const,
   },
 
   // Elevation levels
@@ -162,7 +241,7 @@ export const theme = {
       elevation: 8,
     },
     focus: {
-      shadowColor: '#12B76A',
+      shadowColor: palette.green.DEFAULT,
       shadowOpacity: 0.4,
       shadowRadius: 0,
       shadowOffset: { width: 0, height: 0 },
@@ -204,14 +283,14 @@ export const theme = {
 
   // Feature-specific tokens
   recycle: {
-    headerScore: '#027A48',        // Green 700
-    headerSubtitle: '#268BCF',     // Cyan 500
-    iconNeutral: '#4F585F',        // Neutral 600
-    iconButtonBg: '#D9DEE2',       // Neutral 200
-    iconButtonSelectedBg: '#ECFDF3', // Green 50
-    iconButtonCameraBg: '#1B4970', // Navy 500
-    tabActive: '#12B76A',          // Green 500
-    tabInactive: '#6B757D',        // Neutral 500
+    headerScore: palette.green[700],
+    headerSubtitle: palette.cyan[500],
+    iconNeutral: palette.neutral[600],
+    iconButtonBg: palette.neutral[200],
+    iconButtonSelectedBg: palette.green[50],
+    iconButtonCameraBg: palette.navy[500],
+    tabActive: palette.green.DEFAULT,
+    tabInactive: palette.neutral[500],
   },
 } as const;
 

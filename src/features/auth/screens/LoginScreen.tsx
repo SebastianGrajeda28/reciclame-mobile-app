@@ -1,9 +1,8 @@
-import { AntDesign, Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppButton, AppText, theme } from '@/src/ui';
+import { AppButton, AppIcon, AppText, theme } from '@/src/ui';
 
 type LoginState = 'welcome' | 'loading' | 'error';
 
@@ -82,7 +81,7 @@ type InfoBannerProps = {
 function InfoBanner({ text, label }: InfoBannerProps) {
   return (
     <View style={bannerStyles.container}>
-      <Feather
+      <AppIcon
         name="info"
         size={theme.iconSizes.sm}
         color={theme.colors.info}
@@ -153,7 +152,7 @@ function WelcomeView({ onGooglePress }: WelcomeViewProps) {
             <AppButton
               variant="outline"
               label="Continuar con Google"
-              leftIcon={<AntDesign name="google" size={theme.iconSizes.md} color="#EA4335" />}
+              leftIcon={<AppIcon name="google" size={theme.iconSizes.md} color="#EA4335" />}
               onPress={onGooglePress}
               style={welcomeStyles.fullWidth}
             />
@@ -292,13 +291,13 @@ function ErrorView({ onDismiss, onContinueOffline }: ErrorViewProps) {
   return (
     <SafeAreaView style={errorStyles.safe}>
       <Pressable style={errorStyles.closeBtn} onPress={onDismiss} hitSlop={12}>
-        <Feather name="x" size={theme.iconSizes.lg} color={theme.colors.textSecondary} />
+        <AppIcon name="close" size={theme.iconSizes.lg} color={theme.colors.textSecondary} />
       </Pressable>
 
       <View style={errorStyles.outer}>
         <View style={errorStyles.inner}>
           <View style={errorStyles.iconWrap}>
-            <Feather name="wifi-off" size={theme.iconSizes.xl} color={theme.colors.danger} />
+            <AppIcon name="wifiOff" size={theme.iconSizes.xl} color={theme.colors.danger} />
           </View>
 
           <AppText variant="h2" style={errorStyles.title}>
