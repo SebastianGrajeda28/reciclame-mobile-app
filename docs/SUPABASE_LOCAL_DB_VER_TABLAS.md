@@ -87,7 +87,30 @@ El resultado es que las tablas se crean y luego se destruyen en el mismo reset.
 
 ## Verificar las tablas creadas
 
-### Opción 1 — pgAdmin (GUI, cualquier SO)
+### Opción 1 — Supabase Studio (web, cualquier SO)
+
+Es la opción más directa ya que viene incluida con Supabase. No requiere instalar nada adicional.
+
+Antes de abrirla, verificar que en `supabase/config.toml` el campo `enabled` esté en `true`:
+
+```toml
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+```
+
+Luego abrir en el navegador:
+
+```
+http://127.0.0.1:54323
+```
+
+Ir a **Table Editor** para ver las tablas y consultarlas visualmente, o al **SQL Editor** para ejecutar queries directamente.
+
+---
+
+### Opción 2 — pgAdmin (GUI, cualquier SO)
 
 Datos de conexión:
 
@@ -109,13 +132,13 @@ Si las tablas no aparecen, hacer clic derecho en `Tables` y seleccionar **Refres
 
 ---
 
-### Opción 2 — DBeaver / TablePlus (GUI, cualquier SO)
+### Opción 3 — DBeaver / TablePlus (GUI, cualquier SO)
 
 Usar los mismos datos de conexión que pgAdmin. El tipo de conexión debe ser **PostgreSQL**.
 
 ---
 
-### Opción 3 — Terminal con `psql` (Linux / macOS / Fedora)
+### Opción 4 — Terminal con `psql` (Linux / macOS / Fedora)
 
 Conectarse directamente a la instancia local:
 
@@ -140,27 +163,6 @@ Comandos útiles dentro de `psql`:
 -- Salir
 \q
 ```
-
----
-
-### Opción 4 — Supabase Studio (web, cualquier SO)
-
-Para que Studio esté disponible, verificar que en `supabase/config.toml` el campo `enabled` esté en `true`:
-
-```toml
-[studio]
-enabled = true
-port = 54323
-api_url = "http://127.0.0.1"
-```
-
-Luego abrir en el navegador:
-
-```
-http://127.0.0.1:54323
-```
-
-Ir a **Table Editor** para ver y consultar las tablas visualmente.
 
 ---
 
