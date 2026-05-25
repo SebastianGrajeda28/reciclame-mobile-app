@@ -18,6 +18,8 @@ type Props = {
     latitudeDelta: number;
     longitudeDelta: number;
   };
+  centerCoordinate: { latitude: number; longitude: number };
+  selectedMarkerId?: string;
   onMarkerPress: (id: string) => void;
 };
 

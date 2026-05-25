@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 
@@ -11,7 +11,7 @@ import {
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
-import { AppButton, AppCard, AppIcon, AppIconButton, AppScreen, AppText, theme } from '@/src/ui';
+import { AppButton, AppCard, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 const pUCPRegion = {
   latitude: -12.0695,
@@ -20,26 +20,21 @@ const pUCPRegion = {
   longitudeDelta: 0.01,
 };
 
+const defaultCenter = { latitude: pUCPRegion.latitude, longitude: pUCPRegion.longitude };
+
 export function MapScreen() {
   const [category, setCategory] = useState<'all' | string>('all');
-  const [location, setLocation] = useState({
-    latitude: pUCPRegion.latitude,
-    longitude: pUCPRegion.longitude,
-  });
+  const [location, setLocation] = useState(defaultCenter);
   const { state, setSelectedContainerId } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
   const filteredWasteTypes = useMemo(() => {
-    if (category === 'all') {
-      return wasteTypes;
-    }
+    if (category === 'all') return wasteTypes;
     return wasteTypes.filter((item) => item.categoryId === category);
   }, [category]);
 
   const nearby = useMemo(() => {
-    if (!filteredWasteTypes.length) {
-      return [];
-    }
+    if (!filteredWasteTypes.length) return [];
     const ids = new Set(filteredWasteTypes.map((item) => item.id));
     return containers
       .map((container) => ({
@@ -93,23 +88,9 @@ export function MapScreen() {
     <AppScreen>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <AppIconButton
-            variant="outline"
-            icon={
-              <AppIcon
-                name="arrowUndo"
-                size={theme.iconSizes.md}
-                color={theme.colors.textPrimary}
-              />
-            }
-            style={styles.headerIconButton}
-          />
           <AppText style={styles.title}>Reciclaje</AppText>
           <AppText style={styles.score}>4 🔥</AppText>
         </View>
-        <AppText variant="caption" style={styles.subtitle}>
-          ¿No sabes que contenedor? Escanea tu residuo
-        </AppText>
       </View>
 
       <View style={styles.filterRow}>
@@ -172,23 +153,24 @@ export function MapScreen() {
               <AppIcon name="laptop" size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
             }
           />
-          <AppIconButton
-            variant="secondary"
-            icon={
-              <AppIcon name="camera" size={theme.iconSizes.md} color={theme.colors.textInverse} />
-            }
-            onPress={() => router.push('/recycle/camera')}
-            style={styles.cameraButton}
-          />
         </ScrollView>
       </View>
 
       <View style={styles.mapContainer}>
-        <RecycleMap markers={markers} region={pUCPRegion} onMarkerPress={setSelectedContainerId} />
+        <RecycleMap
+          markers={markers}
+          region={pUCPRegion}
+          centerCoordinate={location}
+          selectedMarkerId={state.selectedContainerId}
+          onMarkerPress={setSelectedContainerId}
+        />
+        <Pressable style={styles.locationButton} onPress={() => {}}>
+          <AppIcon name="pin" size={theme.iconSizes.md} color={theme.colors.textPrimary} />
+        </Pressable>
       </View>
 
-      <View style={styles.bottomArea}>
-        {selectedContainer && finalWasteType ? (
+      {selectedContainer && finalWasteType ? (
+        <View style={styles.bottomArea}>
           <AppCard>
             <AppText variant="subtitle">{selectedContainer.name}</AppText>
             <AppText muted style={styles.cardGap}>
@@ -201,17 +183,26 @@ export function MapScreen() {
             ) : null}
             <AppButton label="Reciclar aqui" onPress={() => router.push('/recycle/instructions')} />
           </AppCard>
-        ) : (
+        </View>
+      ) : (
+        <View style={styles.bottomCta}>
+          <View style={styles.ctaTopRow}>
+            <View>
+              <AppText style={styles.ctaEyebrow}>EMPIEZA AHORA</AppText>
+              <AppText style={styles.ctaHeading}>¿No sabes qué contenedor?</AppText>
+            </View>
+            <Pressable style={styles.ctaCameraButton} onPress={() => router.push('/recycle/camera')}>
+              <AppIcon name="camera" size={theme.iconSizes.lg} color={theme.colors.textPrimary} />
+            </Pressable>
+          </View>
           <AppButton
-            variant="outline"
-            label="Mostrar instrucciones de reciclaje"
-            rightIcon={
-              <AppIcon name="book" size={theme.iconSizes.xs} color={theme.colors.textPrimary} />
-            }
-            style={styles.instructionsButton}
+            label="Escanear tu residuo"
+            onPress={() => router.push('/recycle/camera')}
+            style={styles.ctaButton}
           />
-        )}
-      </View>
+        </View>
+      )}
+
       {state.predictionConfidence !== undefined ? (
         <AppText variant="caption" muted style={styles.devNote}>
           Ultima confianza: {state.predictionConfidence}
@@ -252,12 +243,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  headerIconButton: {
-    width: theme.components.buttonHeights.icon,
-    height: theme.components.buttonHeights.icon,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 0,
+    paddingBottom: theme.spacing.sm,
   },
   title: {
     fontSize: theme.fontSizes.display,
@@ -267,12 +253,6 @@ const styles = StyleSheet.create({
   score: {
     color: theme.recycle.headerScore,
     fontWeight: theme.fontWeights.semibold,
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: theme.recycle.headerSubtitle,
-    marginTop: theme.spacing.xxs,
-    marginBottom: theme.spacing.sm,
   },
   filterRow: {
     paddingHorizontal: theme.spacing.lg,
@@ -299,16 +279,20 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
     backgroundColor: theme.recycle.iconButtonSelectedBg,
   },
-  cameraButton: {
-    width: theme.components.buttonHeights.icon,
-    height: theme.components.buttonHeights.icon,
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.recycle.iconButtonCameraBg,
-    marginLeft: theme.spacing.xs,
-    paddingHorizontal: 0,
-  },
   mapContainer: {
     flex: 1,
+  },
+  locationButton: {
+    position: 'absolute',
+    bottom: theme.spacing.lg,
+    right: theme.spacing.lg,
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.md,
   },
   bottomArea: {
     paddingHorizontal: theme.spacing.lg,
@@ -319,8 +303,40 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
-  instructionsButton: {
-    justifyContent: 'flex-end',
+  bottomCta: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    gap: theme.spacing.md,
+  },
+  ctaTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ctaEyebrow: {
+    fontSize: theme.fontSizes.xs,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.primary,
+    letterSpacing: 0.8,
+    marginBottom: theme.spacing.xxs,
+  },
+  ctaHeading: {
+    fontSize: theme.fontSizes.lg,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.textPrimary,
+  },
+  ctaCameraButton: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaButton: {
+    width: '100%',
   },
   devNote: {
     paddingHorizontal: theme.spacing.lg,
