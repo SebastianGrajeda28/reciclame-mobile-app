@@ -89,6 +89,8 @@ export function MapScreen() {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       });
+    }).catch(() => {
+      // keep defaultCenter if location unavailable
     });
   }, []);
 

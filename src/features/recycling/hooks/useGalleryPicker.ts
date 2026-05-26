@@ -22,7 +22,9 @@ export function useGalleryPicker() {
       mediaTypes: ['images'],
       quality: 0.8,
       allowsEditing: false,
-    });
+    }).catch(() => null);
+
+    if (!result) return null;
 
     if (result.canceled || !result.assets?.[0]?.uri) return null;
     return result.assets[0].uri;

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -7,10 +8,13 @@ import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 export function InstructionsScreen() {
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
-  if (!selectedContainer || !finalWasteType) {
-    router.replace('/(tabs)');
-    return null;
-  }
+  useEffect(() => {
+    if (!selectedContainer || !finalWasteType) {
+      router.replace('/(tabs)');
+    }
+  }, [selectedContainer, finalWasteType]);
+
+  if (!selectedContainer || !finalWasteType) return null;
 
   const steps = selectedContainer.instructionsByWasteTypeId[finalWasteType.id] ?? [
     'Deposita el residuo con cuidado en el contenedor seleccionado.',
