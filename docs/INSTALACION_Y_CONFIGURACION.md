@@ -10,6 +10,28 @@ Esta guía te ayudará a configurar el entorno de desarrollo para trabajar con *
 - Node.js V22.22.0
 - Bun instalado
 
+## Configurar Variables de Entorno
+
+Antes de instalar o ejecutar la app, crea un archivo `.env` en la raíz del proyecto con las variables que usa el código. Este archivo contiene secretos y no debe subirse al repositorio.
+
+Variables necesarias:
+
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_FIREBASE_API_KEY`
+- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `EXPO_PUBLIC_FIREBASE_APP_ID`
+
+Para el login con Google no hay variables extra en la app: usa las mismas credenciales de Supabase de la lista anterior. Además, el provider de Google debe estar habilitado en el panel de Supabase y tener configurados sus redirect URLs.
+
+Si vas a trabajar con Supabase local, también debes tener en tu `.env` las variables que usa `supabase/config.toml` para Google OAuth:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+
 ---
 
 ## Pasos de Configuración
