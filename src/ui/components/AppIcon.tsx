@@ -57,7 +57,8 @@ export type AppIconName =
   | 'delete'
   | 'battery'
   | 'laptop'
-  | 'fileDocument';
+  | 'fileDocument'
+  | 'locate';
 
 type AppIconProps = {
   name: AppIconName;
@@ -195,6 +196,8 @@ export function AppIcon({ name, size, color, style }: AppIconProps) {
           style={style}
         />
       );
+    case 'locate':
+      return <Feather name="crosshair" size={size} color={color} style={style} />;
     default:
       return null;
   }

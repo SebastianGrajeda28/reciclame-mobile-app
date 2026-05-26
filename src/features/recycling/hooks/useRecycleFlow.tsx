@@ -24,6 +24,7 @@ type RecycleFlowContextValue = {
   setPrediction: (wasteTypeId: string, confidence: number) => void;
   setFinalWasteTypeId: (wasteTypeId: string) => void;
   setSelectedContainerId: (containerId: string) => void;
+  clearSelectedContainer: () => void;
   resetFlow: () => void;
 };
 
@@ -59,6 +60,10 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     }));
   }, []);
 
+  const clearSelectedContainer = useCallback(() => {
+    setState((prev) => ({ ...prev, selectedContainerId: undefined }));
+  }, []);
+
   const resetFlow = useCallback(() => {
     setState({});
   }, []);
@@ -70,6 +75,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       setPrediction,
       setFinalWasteTypeId,
       setSelectedContainerId,
+      clearSelectedContainer,
       resetFlow,
     }),
     [
@@ -79,6 +85,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       setFinalWasteTypeId,
       setPrediction,
       setSelectedContainerId,
+      clearSelectedContainer,
     ],
   );
 
