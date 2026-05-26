@@ -39,11 +39,6 @@ export function AppScreen({
   style,
   contentContainerStyle,
 }: AppScreenProps) {
-  const edges = [
-    insetTop ? 'top' : null,
-    insetBottom ? 'bottom' : null,
-  ].filter(Boolean) as ('top' | 'bottom')[];
-
   const frameStyles = [
     padded ? styles.padded : null,
     insetTop ? styles.insetTop : null,
@@ -59,7 +54,7 @@ export function AppScreen({
 
   if (scroll) {
     return (
-      <SafeAreaView style={styles.safe} edges={edges}>
+      <SafeAreaView style={styles.safe}>
         <ScrollView
           contentContainerStyle={[styles.scrollContent, frameStyles, contentContainerStyle]}
           keyboardShouldPersistTaps="handled"
@@ -71,7 +66,7 @@ export function AppScreen({
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={edges}>
+    <SafeAreaView style={styles.safe}>
       <View style={[bodyStyles, frameStyles]}>{children}</View>
     </SafeAreaView>
   );

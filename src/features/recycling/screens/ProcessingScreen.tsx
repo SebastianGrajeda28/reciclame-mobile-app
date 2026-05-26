@@ -1,337 +1,121 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
-import { router, useNavigation } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
+import * as Location from 'expo-location';
+import { router } from 'expo-router';
 
-import { classifyWaste, getConfidenceThreshold } from '@/src/features/recycling/services/classification';
+import {
+  classifyWaste,
+  getConfidenceThreshold,
+} from '@/src/features/recycling/services/classification';
+import { getNearbyContainersMock } from '@/src/features/recycling/services/containers';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { containers } from '@/src/features/recycling/services/containers.mock';
-import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
-import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
-import type { AppIconName } from '@/src/ui/components/AppIcon';
-import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
-
-const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
-  plastic_pet: 'bottle',
-  paper_cardboard: 'briefcase',
-  glass: 'flask',
-  non_recoverable: 'delete',
-  battery: 'battery',
-  electronic_waste: 'laptop',
-};
+import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ProcessingScreen() {
-  const navigation = useNavigation();
-  const { state, setPrediction, clearPrediction, clearSelectedContainer } = useRecycleFlow();
-  const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
-  const loading = !state.finalWasteTypeId;
-  const navigatingForward = useRef(false);
+  const { state, setPrediction, setSelectedContainerId } = useRecycleFlow();
+  const { predictedWasteType } = useResolvedRecycleSelection();
+  const [loading, setLoading] = useState(true);
 
   const threshold = getConfidenceThreshold();
-  const confidence = state.predictionConfidence ?? 0;
+  const isLowConfidence = (state.predictionConfidence ?? 0) < threshold;
 
   useEffect(() => {
-    return navigation.addListener('beforeRemove', () => {
-      if (!navigatingForward.current) {
-        clearPrediction();
-      }
-    });
-  }, [navigation, clearPrediction]);
-
-  useEffect(() => {
-    if (state.finalWasteTypeId) {
-      return;
-    }
     let mounted = true;
-    classifyWaste(state.capturedPhotoUri ?? 'manual-seed').then((result) => {
+    const run = async () => {
+      setLoading(true);
+      const result = await classifyWaste(state.capturedPhotoUri ?? 'manual-seed');
       if (!mounted) return;
       setPrediction(result.wasteTypeId, result.confidence);
-    });
+      setLoading(false);
+    };
+    run();
     return () => {
       mounted = false;
     };
-  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId]);
+  }, [setPrediction, state.capturedPhotoUri]);
 
-  const containerMismatch = useMemo(() => {
-    if (!state.selectedContainerId || !state.finalWasteTypeId) return false;
-    const container = containers.find((c) => c.id === state.selectedContainerId);
-    return container ? !container.acceptedWasteTypeIds.includes(state.finalWasteTypeId) : false;
-  }, [state.selectedContainerId, state.finalWasteTypeId]);
+  const confidenceText = useMemo(() => {
+    if (state.predictionConfidence === undefined) return '--';
+    return `${Math.round(state.predictionConfidence * 100)}%`;
+  }, [state.predictionConfidence]);
 
-  const categoryConfig = useMemo(() => {
-    if (!finalWasteType) return null;
-    return wasteCategoryConfig[finalWasteType.categoryId as WasteCategoryId] ?? null;
-  }, [finalWasteType]);
+  const acceptPrediction = async () => {
+    if (!state.finalWasteTypeId) return;
+    const position = await Location.getCurrentPositionAsync();
+    const nearby = getNearbyContainersMock(
+      {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      },
+      state.finalWasteTypeId,
+      3,
+    );
 
-  const categoryIcon = finalWasteType
-    ? CATEGORY_ICON[finalWasteType.categoryId as WasteCategoryId]
-    : null;
+    if (nearby.length === 0) {
+      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
+        { text: 'Entendido', onPress: () => router.replace('/(tabs)') },
+      ]);
+      return;
+    }
+
+    setSelectedContainerId(nearby[0].id);
+    router.replace('/(tabs)');
+  };
 
   return (
-    <AppScreen style={styles.root}>
-      <View style={styles.imageSection}>
-        <View style={styles.imageWrapper}>
-          {state.capturedPhotoUri ? (
-            <Image source={{ uri: state.capturedPhotoUri }} style={styles.image} resizeMode="cover" />
-          ) : (
-            <View style={styles.imagePlaceholder} />
-          )}
-          {!loading && confidence >= threshold && (
-            <View style={styles.confidenceBadge}>
-              <AppText style={styles.confidenceText}>
-                ✓ {Math.round(confidence * 100)}% confianza
-              </AppText>
-            </View>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.content}>
-        <AppText style={styles.eyebrow}>
-          {loading ? 'Creemos que esto es...' : 'Creemos que esto es'}
-        </AppText>
-
+    <AppScreen padded centered>
+      <AppCard style={styles.card}>
+        <AppText variant="title">Procesando imagen...</AppText>
         {loading ? (
-          <>
-            <View style={styles.skeletonLong} />
-            <View style={styles.skeletonMed} />
-            <View style={styles.skeletonShort} />
-            <View style={styles.spinnerRow}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <AppText style={styles.loadingLabel}>Analizando con IA...</AppText>
-            </View>
-          </>
+          <AppText muted style={styles.topGap}>
+            Clasificando residuo...
+          </AppText>
         ) : (
           <>
-            <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
-              {finalWasteType?.categoryLabel ?? 'No identificado'}
+            <AppText muted style={styles.topGap}>
+              Creemos que esto es:
             </AppText>
-
-            {finalWasteType && (
-              <View style={styles.infoCard}>
-                <AppIcon name="info" size={theme.iconSizes.md} color={theme.colors.primary} />
-                <AppText style={styles.infoText}>{finalWasteType.label}</AppText>
-              </View>
-            )}
-
-            {finalWasteType && categoryConfig && categoryIcon && (
-              <View style={styles.suggestionSection}>
-                <AppText style={styles.suggestionLabel}>Contenedor sugerido:</AppText>
-                <View style={[styles.suggestionChip, { borderColor: categoryConfig.color }]}>
-                  <AppIcon name={categoryIcon} size={theme.iconSizes.sm} color={categoryConfig.color} />
-                  <AppText style={[styles.suggestionChipText, { color: categoryConfig.color }]}>
-                    {finalWasteType.categoryLabel}
-                  </AppText>
-                </View>
-              </View>
-            )}
-
-            {containerMismatch && selectedContainer && (
-              <View style={styles.mismatchCard}>
-                <AppIcon name="alertCircle" size={theme.iconSizes.md} color={theme.colors.danger} />
-                <AppText style={styles.mismatchText}>
-                  {selectedContainer.name} no acepta {finalWasteType?.categoryLabel ?? 'este residuo'}. Elige otro punto de reciclaje.
-                </AppText>
-              </View>
-            )}
-
-            {confidence < threshold && !containerMismatch && (
-              <AppText muted style={styles.lowConfidenceNote}>
-                Confianza baja — puedes corregir manualmente.
+            <AppText variant="subtitle">{predictedWasteType?.label ?? 'No identificado'}</AppText>
+            <AppText muted style={styles.topGap}>
+              Confianza: {confidenceText} (umbral: {Math.round(threshold * 100)}%)
+            </AppText>
+            {isLowConfidence ? (
+              <AppText muted style={styles.topGap}>
+                La confianza es baja. Puedes corregir manualmente.
               </AppText>
-            )}
-
+            ) : null}
             <View style={styles.actions}>
-              <AppButton
-                variant="outline"
-                label="Editar"
-                onPress={() => router.push('/recycle/manual')}
-                style={styles.actionBtn}
-              />
-              {containerMismatch ? (
+              {isLowConfidence ? (
                 <AppButton
-                  label="Buscar punto"
-                  onPress={() => {
-                    navigatingForward.current = true;
-                    clearSelectedContainer();
-                    router.replace('/recycle/map');
-                  }}
-                  style={[styles.actionBtn, styles.mismatchBtn]}
+                  label="Corregir manualmente"
+                  variant="outline"
+                  onPress={() => router.push('/recycle/manual')}
                 />
-              ) : (
-                <AppButton
-                  label="Aceptar"
-                  onPress={() => {
-                    const hasCompatibleContainer = !!state.selectedContainerId && !containerMismatch;
-                    if (hasCompatibleContainer) {
-                      router.push('/recycle/instructions');
-                    } else {
-                      router.push('/recycle/map');
-                    }
-                  }}
-                  style={styles.actionBtn}
-                />
-              )}
+              ) : null}
+              <AppButton label="Aceptar" onPress={acceptPrediction} />
             </View>
           </>
         )}
-      </View>
+      </AppCard>
     </AppScreen>
   );
 }
 
 export default ProcessingScreen;
 
-const SKELETON_RADIUS = theme.radius.sm;
-const SKELETON_COLOR = theme.colors.border;
-
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  imageSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
-  },
-  imageWrapper: {
-    height: 220,
-    borderRadius: theme.radius.lg,
-    overflow: 'hidden',
-    backgroundColor: theme.colors.border,
-  },
-  image: {
+  card: {
     width: '100%',
-    height: '100%',
+    maxWidth: theme.components.maxContentWidth,
   },
-  imagePlaceholder: {
-    flex: 1,
-    backgroundColor: theme.colors.border,
-  },
-  confidenceBadge: {
-    position: 'absolute',
-    top: theme.spacing.md,
-    left: theme.spacing.md,
-    backgroundColor: theme.colors.success,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.radius.pill,
-  },
-  confidenceText: {
-    color: '#fff',
-    fontSize: theme.fontSizes.sm,
-    fontWeight: theme.fontWeights.semibold,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    gap: theme.spacing.sm,
-  },
-  eyebrow: {
-    fontSize: theme.fontSizes.md,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
-  },
-  skeletonLong: {
-    height: 14,
-    borderRadius: SKELETON_RADIUS,
-    backgroundColor: SKELETON_COLOR,
-    width: '90%',
-  },
-  skeletonMed: {
-    height: 14,
-    borderRadius: SKELETON_RADIUS,
-    backgroundColor: SKELETON_COLOR,
-    width: '75%',
-  },
-  skeletonShort: {
-    height: 14,
-    borderRadius: SKELETON_RADIUS,
-    backgroundColor: SKELETON_COLOR,
-    width: '60%',
-  },
-  spinnerRow: {
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.xl,
-  },
-  loadingLabel: {
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
-  },
-  wasteLabel: {
-    fontSize: theme.fontSizes.xxl,
-    fontWeight: theme.fontWeights.bold,
-    color: theme.colors.primary,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
-  },
-  suggestionSection: {
-    gap: theme.spacing.xs,
-  },
-  suggestionLabel: {
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
-  },
-  suggestionChip: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    borderWidth: 1,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-  },
-  suggestionChipText: {
-    fontSize: theme.fontSizes.sm,
-    fontWeight: theme.fontWeights.semibold,
-  },
-  mismatchCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
-    backgroundColor: theme.colors.dangerBg,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.danger,
-  },
-  mismatchText: {
-    flex: 1,
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.danger,
-    fontWeight: theme.fontWeights.semibold,
-  },
-  mismatchBtn: {
-    backgroundColor: theme.colors.danger,
-    borderColor: theme.colors.danger,
-  },
-  lowConfidenceNote: {
-    fontSize: theme.fontSizes.sm,
+  topGap: {
+    marginTop: theme.spacing.sm,
   },
   actions: {
-    flexDirection: 'row',
+    marginTop: theme.spacing.lg,
     gap: theme.spacing.sm,
-    marginTop: 'auto',
-    paddingBottom: theme.spacing.md,
-  },
-  actionBtn: {
-    flex: 1,
   },
 });

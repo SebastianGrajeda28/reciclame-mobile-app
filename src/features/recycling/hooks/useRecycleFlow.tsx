@@ -25,8 +25,6 @@ type RecycleFlowContextValue = {
   setFinalWasteTypeId: (wasteTypeId: string) => void;
   setSelectedContainerId: (containerId: string) => void;
   clearSelectedContainer: () => void;
-  clearFinalWasteType: () => void;
-  clearPrediction: () => void;
   resetFlow: () => void;
 };
 
@@ -36,51 +34,37 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
   const [state, setState] = useState<RecycleFlowState>({});
 
   const setCapturedPhotoUri = useCallback((uri?: string) => {
-// console.log('[Flow] setCapturedPhotoUri:', uri?.slice(-30));
     setState((prev) => ({ ...prev, capturedPhotoUri: uri }));
   }, []);
 
   const setPrediction = useCallback((wasteTypeId: string, confidence: number) => {
-// console.log('[Flow] setPrediction:', wasteTypeId, confidence);
-    setState((prev) => {
-// console.log('[Flow] setPrediction — prev.selectedContainerId:', prev.selectedContainerId);
-      return { ...prev, predictedWasteTypeId: wasteTypeId, predictionConfidence: confidence, finalWasteTypeId: wasteTypeId };
-    });
-  }, []);
-
-  const setFinalWasteTypeId = useCallback((wasteTypeId: string) => {
-// console.log('[Flow] setFinalWasteTypeId:', wasteTypeId);
-    setState((prev) => ({ ...prev, finalWasteTypeId: wasteTypeId }));
-  }, []);
-
-  const setSelectedContainerId = useCallback((containerId: string) => {
-// console.log('[Flow] setSelectedContainerId:', containerId);
-    setState((prev) => ({ ...prev, selectedContainerId: containerId }));
-  }, []);
-
-  const clearSelectedContainer = useCallback(() => {
-// console.log('[Flow] clearSelectedContainer');
-    setState((prev) => ({ ...prev, selectedContainerId: undefined }));
-  }, []);
-
-  const clearFinalWasteType = useCallback(() => {
-// console.log('[Flow] clearFinalWasteType');
-    setState((prev) => ({ ...prev, finalWasteTypeId: undefined }));
-  }, []);
-
-  const clearPrediction = useCallback(() => {
-// console.log('[Flow] clearPrediction');
     setState((prev) => ({
       ...prev,
-      capturedPhotoUri: undefined,
-      predictedWasteTypeId: undefined,
-      predictionConfidence: undefined,
-      finalWasteTypeId: undefined,
+      predictedWasteTypeId: wasteTypeId,
+      predictionConfidence: confidence,
+      finalWasteTypeId: wasteTypeId,
     }));
   }, []);
 
+  const setFinalWasteTypeId = useCallback((wasteTypeId: string) => {
+    setState((prev) => ({
+      ...prev,
+      finalWasteTypeId: wasteTypeId,
+    }));
+  }, []);
+
+  const setSelectedContainerId = useCallback((containerId: string) => {
+    setState((prev) => ({
+      ...prev,
+      selectedContainerId: containerId,
+    }));
+  }, []);
+
+  const clearSelectedContainer = useCallback(() => {
+    setState((prev) => ({ ...prev, selectedContainerId: undefined }));
+  }, []);
+
   const resetFlow = useCallback(() => {
-// console.log('[Flow] resetFlow');
     setState({});
   }, []);
 
@@ -92,8 +76,6 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       setFinalWasteTypeId,
       setSelectedContainerId,
       clearSelectedContainer,
-      clearFinalWasteType,
-      clearPrediction,
       resetFlow,
     }),
     [
@@ -104,8 +86,6 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       setPrediction,
       setSelectedContainerId,
       clearSelectedContainer,
-      clearFinalWasteType,
-      clearPrediction,
     ],
   );
 
