@@ -1,14 +1,21 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ManualRecycleScreen() {
+  const navigation = useNavigation();
   const [selectedWasteTypeId, setSelectedWasteTypeId] = useState<string | undefined>();
-  const { setFinalWasteTypeId } = useRecycleFlow();
+  const { setFinalWasteTypeId, clearFinalWasteType } = useRecycleFlow();
+
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', () => {
+      clearFinalWasteType();
+    });
+  }, [navigation, clearFinalWasteType]);
 
   const grouped = useMemo(() => {
     const byCategory = new Map<string, typeof wasteTypes>();
@@ -23,7 +30,7 @@ export function ManualRecycleScreen() {
   const confirm = () => {
     if (!selectedWasteTypeId) return;
     setFinalWasteTypeId(selectedWasteTypeId);
-    router.replace('/recycle/map');
+    router.push('/recycle/map');
   };
 
   return (

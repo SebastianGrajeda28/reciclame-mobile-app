@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
@@ -36,10 +36,17 @@ const pUCPRegion = {
 const defaultCenter = { latitude: pUCPRegion.latitude, longitude: pUCPRegion.longitude };
 
 export function RecycleFlowMapScreen() {
+  const navigation = useNavigation();
   const [location, setLocation] = useState(defaultCenter);
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const autoSelected = useRef(false);
+
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', () => {
+      clearSelectedContainer();
+    });
+  }, [navigation, clearSelectedContainer]);
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
   useEffect(() => {

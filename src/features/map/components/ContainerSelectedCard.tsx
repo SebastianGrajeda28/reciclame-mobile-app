@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
@@ -36,6 +37,7 @@ export function ContainerSelectedCard({
   onRecycleHere,
   hideDismiss,
 }: Props) {
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const distanceKm = haversineDistanceKm(userLocation, {
     latitude: container.latitude,
     longitude: container.longitude,
@@ -59,7 +61,7 @@ export function ContainerSelectedCard({
   }
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { paddingBottom: theme.spacing.md + bottomInset }]}>
       {!hideDismiss && <Pressable style={styles.dismissButton} onPress={onDismiss}>
         <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
       </Pressable>}

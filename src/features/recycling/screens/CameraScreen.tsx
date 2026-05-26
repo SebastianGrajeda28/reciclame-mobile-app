@@ -1,53 +1,42 @@
-import { useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { CameraView } from 'expo-camera';
 import Feather from '@expo/vector-icons/Feather';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 
 import { CameraFlashToggle } from '@/src/features/recycling/components/CameraFlashToggle';
 import { CameraShutterButton } from '@/src/features/recycling/components/CameraShutterButton';
 import { useCameraCapture } from '@/src/features/recycling/hooks/useCameraCapture';
 import { useGalleryPicker } from '@/src/features/recycling/hooks/useGalleryPicker';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { AppButton, AppText, theme } from '@/src/ui';
+import { AppText, theme } from '@/src/ui';
 
 export function CameraScreen() {
-  const { setCapturedPhotoUri } = useRecycleFlow();
+  const navigation = useNavigation();
+  const { setCapturedPhotoUri, resetFlow } = useRecycleFlow();
+
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', () => {
+      resetFlow();
+    });
+  }, [navigation, resetFlow]);
   const { cameraRef, flash, toggleFlash, capture } = useCameraCapture();
   const { pickImage } = useGalleryPicker();
-  const [previewUri, setPreviewUri] = useState<string | null>(null);
 
   async function handleCapture() {
     const uri = await capture();
-if (uri) setPreviewUri(uri);
+    if (uri) {
+      setCapturedPhotoUri(uri);
+      router.push('/recycle/processing');
+    }
   }
 
   async function handleGallery() {
     const uri = await pickImage();
-    if (uri) setPreviewUri(uri);
-  }
-
-  function handleConfirm() {
-    if (!previewUri) return;
-    setCapturedPhotoUri(previewUri);
-    router.replace('/recycle/processing');
-  }
-
-  if (previewUri) {
-    return (
-      <View style={styles.root}>
-        <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
-        <View style={styles.previewActions}>
-          <AppButton
-            variant="outline"
-            label="Retomar"
-            onPress={() => setPreviewUri(null)}
-            style={styles.previewBtn}
-          />
-          <AppButton label="Usar foto" onPress={handleConfirm} style={styles.previewBtn} />
-        </View>
-      </View>
-    );
+    if (uri) {
+      setCapturedPhotoUri(uri);
+      router.push('/recycle/processing');
+    }
   }
 
   return (
@@ -136,24 +125,6 @@ const styles = StyleSheet.create({
   },
   controlPressed: {
     opacity: 0.6,
-  },
-  preview: {
-    flex: 1,
-  },
-  previewActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    gap: theme.spacing.s3,
-    paddingHorizontal: theme.spacing.s4,
-    paddingBottom: theme.spacing.s12,
-    paddingTop: theme.spacing.s4,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  previewBtn: {
-    flex: 1,
   },
   modeTabs: {
     position: 'absolute',

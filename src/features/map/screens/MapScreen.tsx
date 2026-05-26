@@ -217,7 +217,7 @@ export function MapScreen() {
           <AppButton
             label="Reciclar aquí"
             size="sm"
-            onPress={() => router.push('/recycle/instructions')}
+            onPress={() => router.push('/recycle/camera')}
           />
         </View>
       ) : (

@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 
-import { useResolvedRecycleSelection } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useRecycleFlow, useResolvedRecycleSelection } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function InstructionsScreen() {
+  const navigation = useNavigation();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
+  const { clearSelectedContainer } = useRecycleFlow();
   const [showAgain, setShowAgain] = useState(true);
+
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', () => {
+      clearSelectedContainer();
+    });
+  }, [navigation, clearSelectedContainer]);
 
   useEffect(() => {
     if (!selectedContainer || !finalWasteType) {
@@ -31,7 +39,7 @@ export function InstructionsScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.stepList} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.stepList} showsVerticalScrollIndicator={false} style={styles.scroll}>
         {steps.map((step, index) => {
           const imageFirst = index % 2 === 0;
           const textBlock = (
@@ -93,15 +101,19 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.sm,
     color: theme.colors.primary,
   },
+  scroll: {
+    flex: 1,
+  },
   stepList: {
+    flexGrow: 1,
     paddingHorizontal: theme.spacing.lg,
-    gap: theme.spacing.xl,
-    paddingBottom: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    justifyContent: 'space-evenly',
   },
   stepRow: {
     flexDirection: 'row',
     gap: theme.spacing.md,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   textBlock: {
     flex: 1,
@@ -110,8 +122,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   stepNumber: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
@@ -120,19 +132,18 @@ const styles = StyleSheet.create({
   },
   stepNumberText: {
     color: '#fff',
-    fontSize: theme.fontSizes.sm,
+    fontSize: theme.fontSizes.md,
     fontWeight: theme.fontWeights.bold,
   },
   stepText: {
     flex: 1,
-    fontSize: theme.fontSizes.md,
-    lineHeight: theme.fontSizes.md + theme.spacing.sm,
+    fontSize: theme.fontSizes.lg,
+    lineHeight: theme.fontSizes.lg + theme.spacing.sm,
     color: theme.colors.textPrimary,
-    paddingTop: theme.spacing.xxs,
   },
   stepImage: {
-    width: 120,
-    height: 120,
+    width: 150,
+    height: 150,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.border,
     flexShrink: 0,
