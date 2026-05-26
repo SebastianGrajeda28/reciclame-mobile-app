@@ -5,43 +5,50 @@ import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { AppButton, AppScreen, AppText, theme } from '@/src/ui';
+import {
+  AppButton,
+  AppCard,
+  AppCardDescription,
+  AppCardEyebrow,
+  AppCardHeaderText,
+  AppCardTitle,
+  AppScreen,
+  AppText,
+  theme,
+} from '@/src/ui';
 
 export function SuccessScreen() {
   const { resetFlow } = useRecycleFlow();
-  const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
+  const { finalWasteType } = useResolvedRecycleSelection();
 
-  function handleDone() {
+  const backToMap = () => {
     resetFlow();
     router.replace('/(tabs)');
-  }
-
-  function handleRecycleAnother() {
-    resetFlow();
-    router.replace('/recycle/camera');
-  }
+  };
 
   return (
-    <AppScreen padded centered style={styles.root}>
-      <View style={styles.iconWrap}>
-        <View style={styles.iconCircle}>
+    <AppScreen padded centered>
+      <AppCard style={styles.card}>
+        <View style={styles.iconWrap}>
           <AppText style={styles.check}>✓</AppText>
         </View>
-      </View>
-
-      <AppText style={styles.title}>¡Reciclaje registrado!</AppText>
-
-      {finalWasteType && (
-        <AppText muted style={styles.subtitle}>{finalWasteType.categoryLabel}</AppText>
-      )}
-      {selectedContainer && (
-        <AppText muted style={styles.subtitle}>{selectedContainer.name}</AppText>
-      )}
-
-      <View style={styles.actions}>
-        <AppButton label="Reciclar otro ítem" onPress={handleRecycleAnother} />
-        <AppButton variant="outline" label="Volver al mapa" onPress={handleDone} />
-      </View>
+        <AppCardHeaderText style={styles.headerText}>
+          <AppCardTitle variant="title" style={styles.title}>
+            Reciclaje registrado
+          </AppCardTitle>
+          <AppCardDescription style={styles.topGap}>
+            Residuo: {finalWasteType?.label ?? 'No definido'}
+          </AppCardDescription>
+        </AppCardHeaderText>
+        <AppCard variant="info" padding="sm" style={styles.fact}>
+          <AppCardEyebrow style={styles.factTitle}>Dato curioso</AppCardEyebrow>
+          <AppText muted>
+            Reciclar una lata de aluminio ahorra suficiente energia para mantener un televisor
+            durante tres horas.
+          </AppText>
+        </AppCard>
+        <AppButton label="Volver al mapa" onPress={backToMap} />
+      </AppCard>
     </AppScreen>
   );
 }
@@ -49,39 +56,35 @@ export function SuccessScreen() {
 export default SuccessScreen;
 
 const styles = StyleSheet.create({
-  root: {
-    gap: theme.spacing.sm,
+  card: {
+    width: '100%',
+    maxWidth: theme.components.maxContentWidth,
   },
   iconWrap: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: theme.spacing.md,
   },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   check: {
-    color: '#fff',
+    color: theme.colors.success,
     fontSize: theme.fontSizes.xxl,
     fontWeight: theme.fontWeights.bold,
   },
   title: {
-    fontSize: theme.fontSizes.xl,
+    textAlign: 'center',
+  },
+  headerText: {
+    alignItems: 'center',
+  },
+  topGap: {
+    textAlign: 'center',
+  },
+  fact: {
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  factTitle: {
+    color: theme.colors.info,
     fontWeight: theme.fontWeights.bold,
-    color: theme.colors.textPrimary,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: theme.fontSizes.md,
-    textAlign: 'center',
-  },
-  actions: {
-    width: '100%',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.lg,
   },
 });
