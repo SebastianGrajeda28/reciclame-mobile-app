@@ -9,7 +9,7 @@ import { CameraShutterButton } from '@/src/features/recycling/components/CameraS
 import { useCameraCapture } from '@/src/features/recycling/hooks/useCameraCapture';
 import { useGalleryPicker } from '@/src/features/recycling/hooks/useGalleryPicker';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { AppButton, theme } from '@/src/ui';
+import { AppButton, AppText, theme } from '@/src/ui';
 
 export function CameraScreen() {
   const { setCapturedPhotoUri } = useRecycleFlow();
@@ -71,6 +71,17 @@ if (uri) setPreviewUri(uri);
           style={({ pressed }) => [styles.controlButton, pressed && styles.controlPressed]}
         >
           <Feather name="image" size={26} color="white" />
+        </Pressable>
+      </View>
+
+      <View style={styles.modeTabs}>
+        <Pressable style={[styles.modeTab, styles.modeTabActive]}>
+          <Feather name="camera" size={14} color={theme.colors.primary} />
+          <AppText style={styles.modeTabLabelActive}>Escanear</AppText>
+        </Pressable>
+        <Pressable style={styles.modeTab} onPress={() => router.push('/recycle/manual')}>
+          <Feather name="list" size={14} color="rgba(255,255,255,0.6)" />
+          <AppText style={styles.modeTabLabel}>Manual</AppText>
         </Pressable>
       </View>
     </View>
@@ -143,5 +154,35 @@ const styles = StyleSheet.create({
   },
   previewBtn: {
     flex: 1,
+  },
+  modeTabs: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingBottom: theme.spacing.s4,
+  },
+  modeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+  },
+  modeTabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.primary,
+  },
+  modeTabLabel: {
+    fontSize: theme.fontSizes.sm,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  modeTabLabelActive: {
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeights.semibold,
   },
 });

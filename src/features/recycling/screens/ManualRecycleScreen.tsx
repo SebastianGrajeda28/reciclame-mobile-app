@@ -1,16 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import * as Location from 'expo-location';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
-import { getNearbyContainersMock } from '@/src/features/recycling/services/containers';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ManualRecycleScreen() {
   const [selectedWasteTypeId, setSelectedWasteTypeId] = useState<string | undefined>();
-  const { setFinalWasteTypeId, setSelectedContainerId } = useRecycleFlow();
+  const { setFinalWasteTypeId } = useRecycleFlow();
 
   const grouped = useMemo(() => {
     const byCategory = new Map<string, typeof wasteTypes>();
@@ -22,23 +20,10 @@ export function ManualRecycleScreen() {
     return Array.from(byCategory.entries());
   }, []);
 
-  const confirm = async () => {
+  const confirm = () => {
     if (!selectedWasteTypeId) return;
     setFinalWasteTypeId(selectedWasteTypeId);
-    const position = await Location.getCurrentPositionAsync();
-    const nearby = getNearbyContainersMock(
-      { latitude: position.coords.latitude, longitude: position.coords.longitude },
-      selectedWasteTypeId,
-      3,
-    );
-    if (nearby.length === 0) {
-      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
-        { text: 'Entendido', onPress: () => router.replace('/(tabs)') },
-      ]);
-      return;
-    }
-    setSelectedContainerId(nearby[0].id);
-    router.replace('/(tabs)');
+    router.replace('/recycle/map');
   };
 
   return (

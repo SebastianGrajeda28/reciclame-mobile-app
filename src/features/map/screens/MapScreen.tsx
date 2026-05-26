@@ -45,9 +45,9 @@ const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: Wast
 ];
 
 export function MapScreen() {
-  const [category, setCategory] = useState<string>('all');
   const [location, setLocation] = useState(defaultCenter);
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
+  const [category, setCategory] = useState<string>('all');
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
@@ -241,12 +241,6 @@ export function MapScreen() {
           />
         </View>
       )}
-
-        {state.predictionConfidence !== undefined ? (
-          <AppText variant="caption" muted style={styles.devNote}>
-            Ultima confianza: {state.predictionConfidence}
-          </AppText>
-        ) : null}
       </View>
     </AppScreen>
   );
@@ -260,12 +254,13 @@ type IconFilterButtonProps = {
   icon: ReactNode;
   label: string;
   activeColor?: string;
+  disabled?: boolean;
 };
 
-function IconFilterButton({ selected, onPress, icon, label, activeColor }: IconFilterButtonProps) {
+function IconFilterButton({ selected, onPress, icon, label, activeColor, disabled }: IconFilterButtonProps) {
   const activeBg = activeColor ?? theme.recycle.iconButtonSelectedBg;
   return (
-    <Pressable onPress={onPress} style={styles.iconFilterWrapper}>
+    <Pressable onPress={onPress} style={[styles.iconFilterWrapper, disabled && styles.iconFilterDisabled]}>
       <View style={[styles.iconFilter, selected && { backgroundColor: activeBg, borderColor: activeBg }]}>
         {icon}
       </View>
@@ -460,5 +455,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.xs,
     fontSize: theme.fontSizes.xs,
+  },
+  iconFilterDisabled: {
+    opacity: 0.35,
   },
 });

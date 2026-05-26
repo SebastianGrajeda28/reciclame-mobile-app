@@ -1,105 +1,98 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import * as Location from 'expo-location';
+import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
-import {
-  classifyWaste,
-  getConfidenceThreshold,
-} from '@/src/features/recycling/services/classification';
-import { getNearbyContainersMock } from '@/src/features/recycling/services/containers';
+import { classifyWaste, getConfidenceThreshold } from '@/src/features/recycling/services/classification';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
+import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
+import { AppButton, AppScreen, AppText, theme } from '@/src/ui';
+import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 export function ProcessingScreen() {
-  const { state, setPrediction, setSelectedContainerId } = useRecycleFlow();
-  const { predictedWasteType } = useResolvedRecycleSelection();
+  const { state, setPrediction } = useRecycleFlow();
+  const { finalWasteType } = useResolvedRecycleSelection();
   const [loading, setLoading] = useState(true);
 
   const threshold = getConfidenceThreshold();
-  const isLowConfidence = (state.predictionConfidence ?? 0) < threshold;
+  const confidence = state.predictionConfidence ?? 0;
 
   useEffect(() => {
     let mounted = true;
-    const run = async () => {
-      setLoading(true);
-      const result = await classifyWaste(state.capturedPhotoUri ?? 'manual-seed');
+    classifyWaste(state.capturedPhotoUri ?? 'manual-seed').then((result) => {
       if (!mounted) return;
       setPrediction(result.wasteTypeId, result.confidence);
       setLoading(false);
-    };
-    run();
-    return () => {
-      mounted = false;
-    };
+    });
+    return () => { mounted = false; };
   }, [setPrediction, state.capturedPhotoUri]);
 
-  const confidenceText = useMemo(() => {
-    if (state.predictionConfidence === undefined) return '--';
-    return `${Math.round(state.predictionConfidence * 100)}%`;
-  }, [state.predictionConfidence]);
-
-  const acceptPrediction = async () => {
-    if (!state.finalWasteTypeId) return;
-    const position = await Location.getCurrentPositionAsync();
-    const nearby = getNearbyContainersMock(
-      {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      },
-      state.finalWasteTypeId,
-      3,
-    );
-
-    if (nearby.length === 0) {
-      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
-        { text: 'Entendido', onPress: () => router.replace('/(tabs)') },
-      ]);
-      return;
-    }
-
-    setSelectedContainerId(nearby[0].id);
-    router.replace('/(tabs)');
-  };
+  const categoryConfig = useMemo(() => {
+    if (!finalWasteType) return null;
+    return wasteCategoryConfig[finalWasteType.categoryId as WasteCategoryId] ?? null;
+  }, [finalWasteType]);
 
   return (
-    <AppScreen padded centered>
-      <AppCard style={styles.card}>
-        <AppText variant="title">Procesando imagen...</AppText>
+    <AppScreen>
+      <View style={styles.imageContainer}>
+        {state.capturedPhotoUri ? (
+          <Image source={{ uri: state.capturedPhotoUri }} style={styles.image} resizeMode="cover" />
+        ) : (
+          <View style={styles.imagePlaceholder} />
+        )}
+        {!loading && confidence >= threshold && (
+          <View style={styles.confidenceBadge}>
+            <AppText style={styles.confidenceText}>
+              ✓ {Math.round(confidence * 100)}% confianza
+            </AppText>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.content}>
+        <AppText style={styles.eyebrow}>Creemos que esto es</AppText>
+
         {loading ? (
-          <AppText muted style={styles.topGap}>
-            Clasificando residuo...
-          </AppText>
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <AppText muted style={styles.loadingLabel}>Analizando con IA...</AppText>
+          </View>
         ) : (
           <>
-            <AppText muted style={styles.topGap}>
-              Creemos que esto es:
+            <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
+              {finalWasteType?.categoryLabel ?? 'No identificado'}
             </AppText>
-            <AppText variant="subtitle">{predictedWasteType?.label ?? 'No identificado'}</AppText>
-            <AppText muted style={styles.topGap}>
-              Confianza: {confidenceText} (umbral: {Math.round(threshold * 100)}%)
-            </AppText>
-            {isLowConfidence ? (
-              <AppText muted style={styles.topGap}>
-                La confianza es baja. Puedes corregir manualmente.
+
+            {finalWasteType && (
+              <View style={styles.infoCard}>
+                <AppText style={styles.infoText}>{finalWasteType.label}</AppText>
+              </View>
+            )}
+
+            {confidence < threshold && (
+              <AppText muted style={styles.lowConfidenceNote}>
+                Confianza baja — puedes corregir manualmente.
               </AppText>
-            ) : null}
+            )}
+
             <View style={styles.actions}>
-              {isLowConfidence ? (
-                <AppButton
-                  label="Corregir manualmente"
-                  variant="outline"
-                  onPress={() => router.push('/recycle/manual')}
-                />
-              ) : null}
-              <AppButton label="Aceptar" onPress={acceptPrediction} />
+              <AppButton
+                variant="outline"
+                label="Editar"
+                onPress={() => router.push('/recycle/manual')}
+                style={styles.actionBtn}
+              />
+              <AppButton
+                label="Aceptar"
+                onPress={() => router.replace('/recycle/map')}
+                style={styles.actionBtn}
+              />
             </View>
           </>
         )}
-      </AppCard>
+      </View>
     </AppScreen>
   );
 }
@@ -107,15 +100,72 @@ export function ProcessingScreen() {
 export default ProcessingScreen;
 
 const styles = StyleSheet.create({
-  card: {
-    width: '100%',
-    maxWidth: theme.components.maxContentWidth,
+  imageContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.border,
   },
-  topGap: {
-    marginTop: theme.spacing.sm,
+  image: {
+    flex: 1,
+  },
+  imagePlaceholder: {
+    flex: 1,
+    backgroundColor: theme.colors.border,
+  },
+  confidenceBadge: {
+    position: 'absolute',
+    top: theme.spacing.md,
+    left: theme.spacing.md,
+    backgroundColor: theme.colors.success,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radius.pill,
+  },
+  confidenceText: {
+    color: '#fff',
+    fontSize: theme.fontSizes.sm,
+    fontWeight: theme.fontWeights.semibold,
+  },
+  content: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  eyebrow: {
+    fontSize: theme.fontSizes.md,
+    color: theme.colors.textSecondary,
+  },
+  loadingRow: {
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.xl,
+  },
+  loadingLabel: {
+    fontSize: theme.fontSizes.sm,
+  },
+  wasteLabel: {
+    fontSize: theme.fontSizes.xxl,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.primary,
+  },
+  infoCard: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  infoText: {
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.textSecondary,
+  },
+  lowConfidenceNote: {
+    fontSize: theme.fontSizes.sm,
   },
   actions: {
-    marginTop: theme.spacing.lg,
+    flexDirection: 'row',
     gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  actionBtn: {
+    flex: 1,
   },
 });
