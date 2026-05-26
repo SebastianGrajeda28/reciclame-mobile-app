@@ -1,6 +1,6 @@
+import { useRef } from 'react';
 import MapView, { Circle, Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 
-import { MapMarker } from '@/src/features/map/components/MapMarker';
 import { theme } from '@/src/ui/theme';
 
 type MarkerData = {
@@ -16,11 +16,27 @@ type Props = {
   centerCoordinate: { latitude: number; longitude: number };
   selectedMarkerId?: string;
   onMarkerPress: (id: string) => void;
+  onMapReady?: (recenter: () => void) => void;
 };
 
-export function RecycleMap({ markers, region, centerCoordinate, selectedMarkerId, onMarkerPress }: Props) {
+export function RecycleMap({ markers, region, centerCoordinate, selectedMarkerId, onMarkerPress, onMapReady }: Props) {
+  const mapRef = useRef<MapView>(null);
+
+  function recenter() {
+    mapRef.current?.animateToRegion(
+      { ...centerCoordinate, latitudeDelta: region.latitudeDelta, longitudeDelta: region.longitudeDelta },
+      400,
+    );
+  }
+
   return (
-    <MapView provider={PROVIDER_GOOGLE} style={{ flex: 1 }} initialRegion={region}>
+    <MapView
+      ref={mapRef}
+      provider={PROVIDER_GOOGLE}
+      style={{ flex: 1 }}
+      initialRegion={region}
+      onMapReady={() => onMapReady?.(recenter)}
+    >
       <Circle
         center={centerCoordinate}
         radius={3000}
@@ -28,16 +44,14 @@ export function RecycleMap({ markers, region, centerCoordinate, selectedMarkerId
         strokeWidth={1.5}
         fillColor="rgba(67,223,139,0.08)"
       />
-      {markers.map((item, index) => (
+      {markers.map((item) => (
         <Marker
           key={item.id}
           identifier={item.id}
           coordinate={{ latitude: item.latitude, longitude: item.longitude }}
           onPress={() => onMarkerPress(item.id)}
-          anchor={{ x: 0.5, y: 0.5 }}
-        >
-          <MapMarker number={index + 1} selected={item.id === selectedMarkerId} />
-        </Marker>
+          pinColor={item.id === selectedMarkerId ? theme.palette.navy[500] : theme.palette.green[600]}
+        />
       ))}
     </MapView>
   );

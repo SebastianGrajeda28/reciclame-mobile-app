@@ -21,6 +21,7 @@ type Props = {
   centerCoordinate: { latitude: number; longitude: number };
   selectedMarkerId?: string;
   onMarkerPress: (id: string) => void;
+  onMapReady?: (recenter: () => void) => void;
 };
 
 export function RecycleMap(props: Props) {

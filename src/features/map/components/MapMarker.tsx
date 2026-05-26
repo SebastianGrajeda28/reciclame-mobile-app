@@ -1,51 +1,40 @@
-import { StyleSheet, View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
-import { AppText } from '@/src/ui/components/AppText';
 import { theme } from '@/src/ui/theme';
 
 type Props = {
-  number: number;
   selected?: boolean;
 };
 
-export function MapMarker({ number, selected }: Props) {
+export function MapMarker({ selected }: Props) {
+  const color = selected ? theme.palette.green[700] : theme.palette.green[600];
   return (
-    <View style={[styles.outer, selected && styles.outerSelected]}>
-      <View style={[styles.inner, selected && styles.innerSelected]}>
-        <AppText style={[styles.label, selected && styles.labelSelected]}>{number}</AppText>
-      </View>
+    <View style={styles.root}>
+      <View style={[styles.head, { backgroundColor: color }]} />
+      <View style={[styles.tail, { borderTopColor: color }]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.palette.green[100],
+  root: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  outerSelected: {
-    backgroundColor: theme.palette.green[200],
-  },
-  inner: {
-    width: 26,
-    height: 26,
+  head: {
+    width: 28,
+    height: 28,
     borderRadius: theme.radius.full,
-    backgroundColor: theme.palette.green[500],
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.surface,
+    ...theme.shadows.sm,
   },
-  innerSelected: {
-    backgroundColor: theme.palette.green[700],
+  tail: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
   },
-  label: {
-    color: theme.colors.textInverse,
-    fontSize: 12,
-    fontWeight: theme.fontWeights.bold,
-    lineHeight: 14,
-  },
-  labelSelected: {},
 });
