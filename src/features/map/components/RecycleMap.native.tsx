@@ -44,15 +44,18 @@ export function RecycleMap({ markers, region, centerCoordinate, selectedMarkerId
         strokeWidth={1.5}
         fillColor="rgba(67,223,139,0.08)"
       />
-      {markers.map((item) => (
-        <Marker
-          key={item.id}
-          identifier={item.id}
-          coordinate={{ latitude: item.latitude, longitude: item.longitude }}
-          onPress={() => onMarkerPress(item.id)}
-          pinColor={item.id === selectedMarkerId ? theme.palette.navy[500] : theme.palette.green[600]}
-        />
-      ))}
+      {markers.map((item) => {
+        const selected = item.id === selectedMarkerId;
+        return (
+          <Marker
+            key={`${item.id}-${selected ? 's' : 'u'}`}
+            identifier={item.id}
+            coordinate={{ latitude: item.latitude, longitude: item.longitude }}
+            onPress={() => onMarkerPress(item.id)}
+            pinColor={selected ? theme.palette.navy[500] : theme.palette.green[600]}
+          />
+        );
+      })}
     </MapView>
   );
 }

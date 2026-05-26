@@ -11,6 +11,7 @@ import {
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
+import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
@@ -33,14 +34,14 @@ const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
   electronic_waste: 'laptop',
 };
 
-const FILTERS: { id: string; icon: AppIconName; label: string }[] = [
+const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: WasteCategoryId }[] = [
   { id: 'all', icon: 'trash', label: 'Todos' },
-  { id: 'plastic_pet', icon: 'bottle', label: 'Plástico' },
-  { id: 'paper_cardboard', icon: 'briefcase', label: 'Papel' },
-  { id: 'glass', icon: 'flask', label: 'Vidrio' },
-  { id: 'non_recoverable', icon: 'delete', label: 'No rec.' },
-  { id: 'battery', icon: 'battery', label: 'Pilas' },
-  { id: 'electronic_waste', icon: 'laptop', label: 'RAEE' },
+  { id: 'plastic_pet', icon: 'bottle', label: 'Plástico', categoryId: 'plastic_pet' },
+  { id: 'paper_cardboard', icon: 'briefcase', label: 'Papel', categoryId: 'paper_cardboard' },
+  { id: 'glass', icon: 'flask', label: 'Vidrio', categoryId: 'glass' },
+  { id: 'non_recoverable', icon: 'delete', label: 'No rec.', categoryId: 'non_recoverable' },
+  { id: 'battery', icon: 'battery', label: 'Pilas', categoryId: 'battery' },
+  { id: 'electronic_waste', icon: 'laptop', label: 'RAEE', categoryId: 'electronic_waste' },
 ];
 
 export function MapScreen() {
@@ -111,8 +112,12 @@ export function MapScreen() {
     return selectedContainer.acceptedWasteTypeIds
       .map((id) => wasteTypes.find((wt) => wt.id === id))
       .filter(Boolean)
-      .map((wt) => CATEGORY_ICON[wt!.categoryId as WasteCategoryId])
-      .filter(Boolean) as AppIconName[];
+      .map((wt) => {
+        const categoryId = wt!.categoryId as WasteCategoryId;
+        const config = wasteCategoryConfig[categoryId];
+        return { icon: CATEGORY_ICON[categoryId], color: config.color, iconColor: config.iconColor };
+      })
+      .filter((item) => item.icon) as { icon: AppIconName; color: string; iconColor: string }[];
   }, [selectedContainer]);
 
   function openDirections() {
@@ -133,17 +138,26 @@ export function MapScreen() {
       <View style={styles.filterRow}>
         <AppText style={styles.filterTitle}>Filtrar por contenedores</AppText>
         <View style={styles.filterChips}>
-          {FILTERS.map((f) => (
-            <IconFilterButton
-              key={f.id}
-              selected={category === f.id}
-              onPress={() => setCategory(f.id)}
-              label={f.label}
-              icon={
-                <AppIcon name={f.icon} size={theme.iconSizes.md} color={theme.recycle.iconNeutral} />
-              }
-            />
-          ))}
+          {FILTERS.map((f) => {
+            const cfg = f.categoryId ? wasteCategoryConfig[f.categoryId] : null;
+            const isSelected = category === f.id;
+            return (
+              <IconFilterButton
+                key={f.id}
+                selected={isSelected}
+                onPress={() => setCategory(f.id)}
+                label={f.label}
+                activeColor={cfg?.color}
+                icon={
+                  <AppIcon
+                    name={f.icon}
+                    size={theme.iconSizes.md}
+                    color={isSelected && cfg ? cfg.iconColor : theme.recycle.iconNeutral}
+                  />
+                }
+              />
+            );
+          })}
         </View>
       </View>
 
@@ -157,7 +171,7 @@ export function MapScreen() {
           onMapReady={(fn) => setRecenter(() => fn)}
         />
         <Pressable style={styles.locationButton} onPress={() => recenter?.()}>
-          <AppIcon name="pin" size={theme.iconSizes.md} color={theme.colors.textPrimary} />
+          <AppIcon name="locate" size={theme.iconSizes.md} color={theme.colors.textPrimary} />
         </Pressable>
 
         {selectedContainer ? (
@@ -171,9 +185,9 @@ export function MapScreen() {
             </AppText>
             <View style={styles.availableRow}>
               <AppText style={styles.availableLabel}>Contenedores disponibles: </AppText>
-              {availableIcons.map((icon, i) => (
-                <View key={i} style={styles.availableIcon}>
-                  <AppIcon name={icon} size={theme.iconSizes.md} color={theme.colors.textSecondary} />
+              {availableIcons.map((item, i) => (
+                <View key={i} style={[styles.availableIcon, { backgroundColor: item.color }]}>
+                  <AppIcon name={item.icon} size={theme.iconSizes.md} color={item.iconColor} />
                 </View>
               ))}
             </View>
@@ -243,12 +257,16 @@ type IconFilterButtonProps = {
   onPress: () => void;
   icon: ReactNode;
   label: string;
+  activeColor?: string;
 };
 
-function IconFilterButton({ selected, onPress, icon, label }: IconFilterButtonProps) {
+function IconFilterButton({ selected, onPress, icon, label, activeColor }: IconFilterButtonProps) {
+  const activeBg = activeColor ?? theme.recycle.iconButtonSelectedBg;
   return (
     <Pressable onPress={onPress} style={styles.iconFilterWrapper}>
-      <View style={[styles.iconFilter, selected && styles.iconFilterSelected]}>{icon}</View>
+      <View style={[styles.iconFilter, selected && { backgroundColor: activeBg, borderColor: activeBg }]}>
+        {icon}
+      </View>
       <AppText style={[styles.iconFilterLabel, selected && styles.iconFilterLabelSelected]}>
         {label}
       </AppText>
@@ -301,11 +319,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.recycle.iconButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconFilterSelected: {
-    borderWidth: theme.spacing.xxs,
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.recycle.iconButtonSelectedBg,
   },
   iconFilterLabel: {
     fontSize: theme.fontSizes.xs,
