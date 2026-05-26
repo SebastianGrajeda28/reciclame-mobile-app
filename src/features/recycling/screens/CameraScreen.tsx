@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView } from 'expo-camera';
@@ -7,7 +5,6 @@ import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
 
 import { CameraFlashToggle } from '@/src/features/recycling/components/CameraFlashToggle';
-import { CameraPermissionGate } from '@/src/features/recycling/components/CameraPermissionGate';
 import { CameraShutterButton } from '@/src/features/recycling/components/CameraShutterButton';
 import { useCameraCapture } from '@/src/features/recycling/hooks/useCameraCapture';
 import { useGalleryPicker } from '@/src/features/recycling/hooks/useGalleryPicker';
@@ -16,14 +13,13 @@ import { AppButton, theme } from '@/src/ui';
 
 export function CameraScreen() {
   const { setCapturedPhotoUri } = useRecycleFlow();
-  const { permission, requestPermission, cameraRef, flash, toggleFlash, capture } =
-    useCameraCapture();
+  const { cameraRef, flash, toggleFlash, capture } = useCameraCapture();
   const { pickImage } = useGalleryPicker();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
 
   async function handleCapture() {
     const uri = await capture();
-    if (uri) setPreviewUri(uri);
+if (uri) setPreviewUri(uri);
   }
 
   async function handleGallery() {
@@ -55,33 +51,29 @@ export function CameraScreen() {
   }
 
   return (
-    <CameraPermissionGate permission={permission} onRequest={requestPermission}>
-      <View style={styles.root}>
-        <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={flash} />
+    <View style={styles.root}>
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={flash} />
 
-        <View style={styles.topBar}>
-          <View style={styles.controlSpacer} />
-          <Pressable style={styles.controlButton}>
-            <Feather name="info" size={22} color="white" />
-          </Pressable>
-        </View>
-
-        <View style={styles.bottomBar}>
-          <CameraFlashToggle flash={flash} onToggle={toggleFlash} />
-
-          <CameraShutterButton onPress={handleCapture} />
-
-          <Pressable
-            onPress={handleGallery}
-            style={({ pressed }) => [styles.controlButton, pressed && styles.controlPressed]}
-          >
-            <Feather name="image" size={26} color="white" />
-          </Pressable>
-        </View>
-
-
+      <View style={styles.topBar}>
+        <View style={styles.controlSpacer} />
+        <Pressable style={styles.controlButton}>
+          <Feather name="info" size={22} color="white" />
+        </Pressable>
       </View>
-    </CameraPermissionGate>
+
+      <View style={styles.bottomBar}>
+        <CameraFlashToggle flash={flash} onToggle={toggleFlash} />
+
+        <CameraShutterButton onPress={handleCapture} />
+
+        <Pressable
+          onPress={handleGallery}
+          style={({ pressed }) => [styles.controlButton, pressed && styles.controlPressed]}
+        >
+          <Feather name="image" size={26} color="white" />
+        </Pressable>
+      </View>
+    </View>
   );
 }
 

@@ -1,6 +1,4 @@
-'use client';
-
-import { Linking, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import { launchImageLibraryAsync, useMediaLibraryPermissions } from 'expo-image-picker';
 
 export function useGalleryPicker() {
@@ -22,7 +20,14 @@ export function useGalleryPicker() {
       mediaTypes: ['images'],
       quality: 0.8,
       allowsEditing: false,
-    }).catch(() => null);
+    }).catch(() => {
+      Alert.alert(
+        'No se pudo abrir la galería',
+        'Hubo un problema al intentar acceder a tus fotos. Intenta de nuevo o usa la cámara.',
+        [{ text: 'Entendido' }],
+      );
+      return null;
+    });
 
     if (!result) return null;
 
