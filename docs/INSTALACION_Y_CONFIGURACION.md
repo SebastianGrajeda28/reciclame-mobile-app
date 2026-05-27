@@ -13,6 +13,7 @@ Esta guía te ayudará a configurar el entorno de desarrollo para trabajar con *
 ## Configurar Variables de Entorno
 
 Antes de instalar o ejecutar la app, crea un archivo `.env` en la raíz del proyecto con las variables que usa el código. Este archivo contiene secretos y no debe subirse al repositorio.
+Si en tu proyecto todavía existe `.env.local`, elimínalo y migra todos los secretos al `.env` de la raíz.
 
 Variables necesarias:
 
@@ -31,6 +32,8 @@ Si vas a trabajar con Supabase local, también debes tener en tu `.env` las vari
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+
+Estas credenciales de Google se deben solicitar a Vladymir.
 
 ---
 
