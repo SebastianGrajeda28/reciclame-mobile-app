@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import * as Location from 'expo-location';
 import { router, useNavigation } from 'expo-router';
 
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
+import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
@@ -33,11 +33,9 @@ const pUCPRegion = {
   longitudeDelta: 0.01,
 };
 
-const defaultCenter = { latitude: pUCPRegion.latitude, longitude: pUCPRegion.longitude };
-
 export function RecycleFlowMapScreen() {
   const navigation = useNavigation();
-  const [location, setLocation] = useState(defaultCenter);
+  const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const autoSelected = useRef(false);
@@ -48,12 +46,6 @@ export function RecycleFlowMapScreen() {
     });
   }, [navigation, clearSelectedContainer]);
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
-
-  useEffect(() => {
-    Location.getCurrentPositionAsync()
-      .then((pos) => setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }))
-      .catch(() => {});
-  }, []);
 
   const filteredWasteTypes = useMemo(() => {
     if (!state.finalWasteTypeId) return wasteTypes;

@@ -1,9 +1,9 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
-import * as Location from 'expo-location';
 import { router } from 'expo-router';
 
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
+import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
@@ -23,7 +23,6 @@ const pUCPRegion = {
   longitudeDelta: 0.01,
 };
 
-const defaultCenter = { latitude: pUCPRegion.latitude, longitude: pUCPRegion.longitude };
 
 const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
   plastic_pet: 'bottle',
@@ -45,7 +44,7 @@ const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: Wast
 ];
 
 export function MapScreen() {
-  const [location, setLocation] = useState(defaultCenter);
+  const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const [category, setCategory] = useState<string>('all');
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
@@ -82,17 +81,6 @@ export function MapScreen() {
       })),
     [nearby],
   );
-
-  useEffect(() => {
-    Location.getCurrentPositionAsync().then((position) => {
-      setLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-    }).catch(() => {
-      // keep defaultCenter if location unavailable
-    });
-  }, []);
 
   useEffect(() => {
     if (nearby.length === 0 && category !== 'all') {
