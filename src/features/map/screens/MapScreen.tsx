@@ -102,6 +102,12 @@ export function MapScreen() {
     }
   }, [category, nearby.length]);
 
+  useEffect(() => {
+    if (state.selectedContainerId && !nearby.some((c) => c.id === state.selectedContainerId)) {
+      clearSelectedContainer();
+    }
+  }, [nearby, state.selectedContainerId, clearSelectedContainer]);
+
   const selectedDistanceKm = selectedContainer
     ? haversineDistanceKm(location, {
         latitude: selectedContainer.latitude,
@@ -154,7 +160,7 @@ export function MapScreen() {
                   <AppIcon
                     name={f.icon}
                     size={theme.iconSizes.md}
-                    color={isSelected && cfg ? cfg.iconColor : theme.recycle.iconNeutral}
+                    color={cfg ? (isSelected ? cfg.iconColor : cfg.color) : (isSelected ? theme.colors.textInverse : theme.colors.primary)}
                   />
                 }
               />
@@ -258,10 +264,15 @@ type IconFilterButtonProps = {
 };
 
 function IconFilterButton({ selected, onPress, icon, label, activeColor, disabled }: IconFilterButtonProps) {
-  const activeBg = activeColor ?? theme.recycle.iconButtonSelectedBg;
+  const categoryColor = activeColor ?? theme.colors.primary;
   return (
     <Pressable onPress={onPress} style={[styles.iconFilterWrapper, disabled && styles.iconFilterDisabled]}>
-      <View style={[styles.iconFilter, selected && { backgroundColor: activeBg, borderColor: activeBg }]}>
+      <View style={[
+        styles.iconFilter,
+        selected
+          ? { backgroundColor: categoryColor }
+          : { backgroundColor: categoryColor + '22' },
+      ]}>
         {icon}
       </View>
       <AppText style={[styles.iconFilterLabel, selected && styles.iconFilterLabelSelected]}>
