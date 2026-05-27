@@ -8,7 +8,7 @@ import { theme } from '@/src/ui/theme';
 export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, theme.spacing.s2);
-  const containerHeight = theme.components.navbarHeight + theme.spacing.s2 + bottomInset;
+  const containerHeight = theme.components.navbarHeight + bottomInset;
 
   const visibleRoutes = state.routes.filter((route) => {
     const options = descriptors[route.key]?.options as { href?: unknown } | undefined;
@@ -92,9 +92,8 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
 
 const styles = StyleSheet.create({
   outer: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: 'transparent',
     paddingHorizontal: theme.components.screenPaddingHorizontal,
-    paddingTop: theme.spacing.s2,
     justifyContent: 'flex-end',
   },
   inner: {

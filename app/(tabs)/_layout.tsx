@@ -8,6 +8,7 @@ export default function TabLayout() {
       tabBar={(props) => <AppTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        tabBarStyle: { backgroundColor: 'transparent', borderTopWidth: 0, elevation: 0 },
       }}
     >
       <Tabs.Screen
