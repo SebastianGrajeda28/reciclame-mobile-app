@@ -1,9 +1,9 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
-import * as Location from 'expo-location';
 import { router } from 'expo-router';
 
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
+import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
@@ -27,7 +27,6 @@ const pUCPRegion = {
   longitudeDelta: 0.01,
 };
 
-const defaultCenter = { latitude: pUCPRegion.latitude, longitude: pUCPRegion.longitude };
 
 const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
   plastic_pet: 'bottle',
@@ -49,7 +48,7 @@ const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: Wast
 ];
 
 export function MapScreen() {
-  const [location, setLocation] = useState(defaultCenter);
+  const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const [category, setCategory] = useState<string>('all');
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
@@ -77,23 +76,18 @@ export function MapScreen() {
   );
 
   useEffect(() => {
-    Location.getCurrentPositionAsync().then((position) => {
-      setLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-    }).catch(() => {
-      // keep defaultCenter if location unavailable
-    });
-  }, []);
-
-  useEffect(() => {
     if (nearby.length === 0 && category !== 'all') {
       Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
         { text: 'Entendido' },
       ]);
     }
   }, [category, nearby.length]);
+
+  useEffect(() => {
+    if (state.selectedContainerId && !nearby.some((c) => c.id === state.selectedContainerId)) {
+      clearSelectedContainer();
+    }
+  }, [nearby, state.selectedContainerId, clearSelectedContainer]);
 
   const selectedDistanceKm = selectedContainer
     ? haversineDistanceKm(location, {
@@ -147,7 +141,7 @@ export function MapScreen() {
                   <AppIcon
                     name={f.icon}
                     size={theme.iconSizes.md}
-                    color={isSelected && cfg ? cfg.iconColor : theme.recycle.iconNeutral}
+                    color={cfg ? (isSelected ? cfg.iconColor : cfg.color) : (isSelected ? theme.colors.textInverse : theme.colors.primary)}
                   />
                 }
               />
@@ -251,10 +245,15 @@ type IconFilterButtonProps = {
 };
 
 function IconFilterButton({ selected, onPress, icon, label, activeColor, disabled }: IconFilterButtonProps) {
-  const activeBg = activeColor ?? theme.recycle.iconButtonSelectedBg;
+  const categoryColor = activeColor ?? theme.colors.primary;
   return (
     <Pressable onPress={onPress} style={[styles.iconFilterWrapper, disabled && styles.iconFilterDisabled]}>
-      <View style={[styles.iconFilter, selected && { backgroundColor: activeBg, borderColor: activeBg }]}>
+      <View style={[
+        styles.iconFilter,
+        selected
+          ? { backgroundColor: categoryColor }
+          : { backgroundColor: categoryColor + '22' },
+      ]}>
         {icon}
       </View>
       <AppText style={[styles.iconFilterLabel, selected && styles.iconFilterLabelSelected]}>

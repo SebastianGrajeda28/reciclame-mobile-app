@@ -1,4 +1,4 @@
-/** @type {import('jest').Config} */
+/** @type {import('jest-expo').JestExpoConfig} */
 module.exports = {
   preset: 'jest-expo',
   testMatch: ['<rootDir>/tests/components/**/*.test.tsx'],

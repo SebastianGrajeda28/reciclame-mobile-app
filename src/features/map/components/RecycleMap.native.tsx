@@ -35,6 +35,7 @@ export function RecycleMap({ markers, region, centerCoordinate, selectedMarkerId
       provider={PROVIDER_GOOGLE}
       style={{ flex: 1 }}
       initialRegion={region}
+      showsUserLocation
       onMapReady={() => onMapReady?.(recenter)}
     >
       <Circle

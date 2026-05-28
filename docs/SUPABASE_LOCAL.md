@@ -8,12 +8,19 @@ Esta guía explica cómo levantar una base de datos Supabase en tu máquina para
 
 ## Archivo de variables de entorno
 
-El proyecto tiene **un solo archivo `.env.local`** en la raíz del proyecto con las variables de la app:
+El proyecto tiene **un solo archivo `.env`** en la raíz del proyecto con las variables de la app:
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<se llena en el Paso 5>
 ```
+
+El login con Google no necesita variables adicionales en el archivo `.env`; usa estas mismas credenciales de Supabase. Lo que sí debes configurar fuera del repo es el provider de Google dentro de Supabase y sus redirect URLs.
+
+Además, `supabase/config.toml` lee estas variables desde el entorno local para habilitar Google OAuth en Supabase CLI:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
 
 ---
 
@@ -120,11 +127,11 @@ service_role key: eyJh...
 
 ---
 
-## Paso 5 — Copiar el anon key a `.env.local`
+## Paso 5 — Copiar el anon key a `.env`
 
 Del output del paso anterior, copia el valor de **`anon key`** (empieza con `eyJh...`).
 
-Abre `.env.local` en la **raíz del proyecto** y pégalo:
+Abre `.env` en la **raíz del proyecto** y pégalo:
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
@@ -156,7 +163,7 @@ Si todo está correcto verás:
   ✓ Debería conectarse y leer la tabla health_check
 ```
 
-Si el test aparece como `skipped` significa que `.env.local` no tiene las variables cargadas — revisa el Paso 5.
+Si el test aparece como `skipped` significa que `.env` no tiene las variables cargadas — revisa el Paso 5.
 
 ---
 
@@ -184,7 +191,7 @@ Docker Desktop no está corriendo. Ábrelo desde el menú inicio y espera a que 
 ### El test aparece como `skipped`
 
 Las variables de entorno no se cargaron. Verifica que:
-1. El archivo `.env.local` existe en la raíz del proyecto
+1. El archivo `.env` existe en la raíz del proyecto
 2. Tiene el `EXPO_PUBLIC_SUPABASE_ANON_KEY` del Paso 5
 3. Supabase está corriendo (`npm run db:status`)
 
@@ -219,7 +226,7 @@ Al inicio del proyecto se creó un archivo `docker/docker-compose.yml` que levan
 
 **El problema:** ese setup solo levantaba PostgreSQL puro en el puerto `5432`, pero la app usa `@supabase/supabase-js` que se conecta a través de la **API REST de Supabase** (`http://localhost:54321`), no directamente a PostgreSQL. Sin la API, Auth y el resto del stack, la app no puede funcionar.
 
-**La confusión con los archivos `.env`:** se tenía `docker/.env.local` para las credenciales de PostgreSQL y `.env.local` en la raíz para la app. Esto generaba confusión porque eran dos archivos con propósitos distintos y era fácil editar el equivocado.
+**La confusión con los archivos `.env`:** se tenía `docker/.env.local` para las credenciales de PostgreSQL y `.env` en la raíz para la app. Esto generaba confusión porque eran dos archivos con propósitos distintos y era fácil editar el equivocado.
 
 **La decisión:** eliminar el `docker-compose.yml` y usar únicamente el CLI de Supabase (`npm run db:start`), que levanta el stack completo en un solo comando: PostgreSQL, API REST, Auth y Storage. La BD siempre se llama `postgres` y corre en el puerto `54322`.
 
