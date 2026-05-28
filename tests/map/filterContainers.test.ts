@@ -9,6 +9,12 @@ import type { RecyclingContainer, WasteType } from '../../src/features/recycling
 const PUCP = { latitude: -12.0695, longitude: -77.0793 };
 const FAR_AWAY = { latitude: -13.0, longitude: -77.0793 };
 
+const idByCategory = (category: string): string => {
+  const match = wasteTypes.find((wt) => wt.categoryId === category);
+  if (!match) throw new Error(`No waste type found for category ${category}`);
+  return match.id;
+};
+
 describe('filterWasteTypesByCategory', () => {
   it('returns all waste types when category is "all"', () => {
     const result = filterWasteTypesByCategory(wasteTypes, 'all');
@@ -59,9 +65,10 @@ describe('getNearbyCompatibleContainers', () => {
 
   it('excludes containers incompatible with given waste types', () => {
     const onlyBattery = wasteTypes.filter((wt) => wt.categoryId === 'battery');
+    const batteryId = idByCategory('battery');
     const result = getNearbyCompatibleContainers(PUCP, containers, onlyBattery);
     result.forEach((c) =>
-      expect(c.acceptedWasteTypeIds.some((id) => id === 'battery_bin')).toBe(true),
+      expect(c.acceptedWasteTypeIds.some((id) => id === batteryId)).toBe(true),
     );
   });
 
@@ -71,7 +78,7 @@ describe('getNearbyCompatibleContainers', () => {
       name: 'Boundary container',
       latitude: PUCP.latitude,
       longitude: PUCP.longitude,
-      acceptedWasteTypeIds: ['plastic_pet_bin'],
+      acceptedWasteTypeIds: [idByCategory('plastic_pet')],
       instructionsByWasteTypeId: {},
     };
     const result = getNearbyCompatibleContainers(PUCP, [containerAtBoundary], wasteTypes, 3);
