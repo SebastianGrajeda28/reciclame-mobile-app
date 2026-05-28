@@ -1,12 +1,9 @@
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import * as Location from 'expo-location';
+import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
+import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
@@ -14,7 +11,14 @@ import {
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
-import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
+import {
+  filterWasteTypesByCategory,
+  getNearbyCompatibleContainers,
+} from '@/src/features/recycling/services/filterContainers';
+import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
+import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import type { AppIconName } from '@/src/ui/components/AppIcon';
+import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 const pUCPRegion = {
   latitude: -12.0695,
@@ -23,39 +27,42 @@ const pUCPRegion = {
   longitudeDelta: 0.01,
 };
 
+
+const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
+  plastic_pet: 'bottle',
+  paper_cardboard: 'briefcase',
+  glass: 'flask',
+  non_recoverable: 'delete',
+  battery: 'battery',
+  electronic_waste: 'laptop',
+};
+
+const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: WasteCategoryId }[] = [
+  { id: 'all', icon: 'trash', label: 'Todos' },
+  { id: 'plastic_pet', icon: 'bottle', label: 'Plástico', categoryId: 'plastic_pet' },
+  { id: 'paper_cardboard', icon: 'briefcase', label: 'Papel', categoryId: 'paper_cardboard' },
+  { id: 'glass', icon: 'flask', label: 'Vidrio', categoryId: 'glass' },
+  { id: 'non_recoverable', icon: 'delete', label: 'No rec.', categoryId: 'non_recoverable' },
+  { id: 'battery', icon: 'battery', label: 'Pilas', categoryId: 'battery' },
+  { id: 'electronic_waste', icon: 'laptop', label: 'RAEE', categoryId: 'electronic_waste' },
+];
+
 export function MapScreen() {
-  const [category, setCategory] = useState<'all' | string>('all');
-  const [location, setLocation] = useState({
-    latitude: pUCPRegion.latitude,
-    longitude: pUCPRegion.longitude,
-  });
-  const { state, setSelectedContainerId } = useRecycleFlow();
+  const location = useStudentLocation();
+  const [recenter, setRecenter] = useState<(() => void) | null>(null);
+  const [category, setCategory] = useState<string>('all');
+  const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
-  const filteredWasteTypes = useMemo(() => {
-    if (category === 'all') {
-      return wasteTypes;
-    }
-    return wasteTypes.filter((item) => item.categoryId === category);
-  }, [category]);
+  const filteredWasteTypes = useMemo(
+    () => filterWasteTypesByCategory(wasteTypes, category),
+    [category],
+  );
 
-  const nearby = useMemo(() => {
-    if (!filteredWasteTypes.length) {
-      return [];
-    }
-    const ids = new Set(filteredWasteTypes.map((item) => item.id));
-    return containers
-      .map((container) => ({
-        ...container,
-        distanceKm: haversineDistanceKm(location, {
-          latitude: container.latitude,
-          longitude: container.longitude,
-        }),
-      }))
-      .filter((container) => container.distanceKm <= 3)
-      .filter((container) => container.acceptedWasteTypeIds.some((wasteId) => ids.has(wasteId)))
-      .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [filteredWasteTypes, location]);
+  const nearby = useMemo(
+    () => getNearbyCompatibleContainers(location, containers, filteredWasteTypes),
+    [filteredWasteTypes, location],
+  );
 
   const markers = useMemo(
     () =>
@@ -69,21 +76,18 @@ export function MapScreen() {
   );
 
   useEffect(() => {
-    Location.getCurrentPositionAsync().then((position) => {
-      setLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-    });
-  }, []);
-
-  useEffect(() => {
     if (nearby.length === 0 && category !== 'all') {
       Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
         { text: 'Entendido' },
       ]);
     }
   }, [category, nearby.length]);
+
+  useEffect(() => {
+    if (state.selectedContainerId && !nearby.some((c) => c.id === state.selectedContainerId)) {
+      clearSelectedContainer();
+    }
+  }, [nearby, state.selectedContainerId, clearSelectedContainer]);
 
   const selectedDistanceKm = selectedContainer
     ? haversineDistanceKm(location, {
@@ -92,166 +96,139 @@ export function MapScreen() {
       })
     : undefined;
 
+  const availableIcons = useMemo(() => {
+    if (!selectedContainer) return [];
+    return selectedContainer.acceptedWasteTypeIds
+      .map((id) => wasteTypes.find((wt) => wt.id === id))
+      .filter(Boolean)
+      .map((wt) => {
+        const categoryId = wt!.categoryId as WasteCategoryId;
+        const config = wasteCategoryConfig[categoryId];
+        return { icon: CATEGORY_ICON[categoryId], color: config.color, iconColor: config.iconColor };
+      })
+      .filter((item) => item.icon) as { icon: AppIconName; color: string; iconColor: string }[];
+  }, [selectedContainer]);
+
+  function openDirections() {
+    if (!selectedContainer) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedContainer.latitude},${selectedContainer.longitude}`;
+    Linking.openURL(url);
+  }
+
   return (
-    <AppScreen>
+    <AppScreen insetBottom={false}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <AppButton
-            iconOnly
-            size="icon"
-            variant="outline"
-            leftIcon={
-              <Ionicons
-                name="arrow-undo-outline"
-                size={theme.iconSizes.md}
-                color={theme.colors.textPrimary}
-              />
-            }
-            style={styles.headerIconButton}
-          />
           <AppText style={styles.title}>Reciclaje</AppText>
           <AppText style={styles.score}>4 🔥</AppText>
         </View>
-        <AppText variant="caption" style={styles.subtitle}>
-          ¿No sabes que contenedor? Escanea tu residuo
-        </AppText>
       </View>
 
       <View style={styles.filterRow}>
         <AppText style={styles.filterTitle}>Filtrar por contenedores</AppText>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterChips}
-        >
-          <IconFilterButton
-            selected={category === 'all'}
-            onPress={() => setCategory('all')}
-            icon={
-              <Ionicons
-                name="trash-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
+        <View style={styles.filterChips}>
+          {FILTERS.map((f) => {
+            const cfg = f.categoryId ? wasteCategoryConfig[f.categoryId] : null;
+            const isSelected = category === f.id;
+            return (
+              <IconFilterButton
+                key={f.id}
+                selected={isSelected}
+                onPress={() => setCategory(f.id)}
+                label={f.label}
+                activeColor={cfg?.color}
+                icon={
+                  <AppIcon
+                    name={f.icon}
+                    size={theme.iconSizes.md}
+                    color={cfg ? (isSelected ? cfg.iconColor : cfg.color) : (isSelected ? theme.colors.textInverse : theme.colors.primary)}
+                  />
+                }
               />
-            }
-          />
-          <IconFilterButton
-            selected={category === 'plastic_pet'}
-            onPress={() => setCategory('plastic_pet')}
-            icon={
-              <MaterialCommunityIcons
-                name="bottle-soda-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
-            }
-          />
-          <IconFilterButton
-            selected={category === 'paper_cardboard'}
-            onPress={() => setCategory('paper_cardboard')}
-            icon={
-              <Ionicons
-                name="briefcase-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
-            }
-          />
-          <IconFilterButton
-            selected={category === 'glass'}
-            onPress={() => setCategory('glass')}
-            icon={
-              <MaterialCommunityIcons
-                name="flask-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
-            }
-          />
-          <IconFilterButton
-            selected={category === 'non_recoverable'}
-            onPress={() => setCategory('non_recoverable')}
-            icon={
-              <MaterialCommunityIcons
-                name="delete-empty-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
-            }
-          />
-          <IconFilterButton
-            selected={category === 'battery'}
-            onPress={() => setCategory('battery')}
-            icon={
-              <Ionicons
-                name="battery-half-outline"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
-            }
-          />
-          <IconFilterButton
-            selected={category === 'electronic_waste'}
-            onPress={() => setCategory('electronic_waste')}
-            icon={
-              <MaterialCommunityIcons
-                name="laptop"
-                size={theme.iconSizes.md}
-                color={theme.recycle.iconNeutral}
-              />
-            }
-          />
-          <AppButton
-            iconOnly
-            size="icon"
-            variant="secondary"
-            leftIcon={
-              <Ionicons name="camera" size={theme.iconSizes.md} color={theme.colors.textInverse} />
-            }
-            onPress={() => router.push('/recycle/camera')}
-            style={styles.cameraButton}
-          />
-        </ScrollView>
+            );
+          })}
+        </View>
       </View>
 
       <View style={styles.mapContainer}>
-        <RecycleMap markers={markers} region={pUCPRegion} onMarkerPress={setSelectedContainerId} />
-      </View>
+        <RecycleMap
+          markers={markers}
+          region={pUCPRegion}
+          centerCoordinate={location}
+          selectedMarkerId={state.selectedContainerId}
+          onMarkerPress={setSelectedContainerId}
+          onMapReady={(fn) => setRecenter(() => fn)}
+        />
+        <Pressable style={styles.locationButton} onPress={() => recenter?.()}>
+          <AppIcon name="locate" size={theme.iconSizes.md} color={theme.colors.textPrimary} />
+        </Pressable>
 
-      <View style={styles.bottomArea}>
-        {selectedContainer && finalWasteType ? (
-          <AppCard>
-            <AppText variant="subtitle">{selectedContainer.name}</AppText>
-            <AppText muted style={styles.cardGap}>
-              Residuo seleccionado: {finalWasteType.label}
+        {selectedContainer ? (
+        <View style={styles.selectedCard}>
+          <Pressable style={styles.dismissButton} onPress={clearSelectedContainer}>
+            <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
+          </Pressable>
+          <View style={styles.selectedCardContent}>
+            <AppText style={styles.selectedTitle}>
+              Lugar de reciclaje: {selectedContainer.name}
             </AppText>
-            {selectedDistanceKm !== undefined ? (
-              <AppText muted style={styles.cardGap}>
-                Distancia: {selectedDistanceKm.toFixed(2)} km
-              </AppText>
+            <View style={styles.availableRow}>
+              <AppText style={styles.availableLabel}>Contenedores disponibles: </AppText>
+              {availableIcons.map((item, i) => (
+                <View key={i} style={[styles.availableIcon, { backgroundColor: item.color }]}>
+                  <AppIcon name={item.icon} size={theme.iconSizes.md} color={item.iconColor} />
+                </View>
+              ))}
+            </View>
+            {finalWasteType ? (
+              <>
+                <AppText style={styles.selectedMeta}>
+                  Contenedor elegido: {finalWasteType.categoryLabel}
+                </AppText>
+                <AppText style={styles.selectedMeta}>
+                  Tipo de residuo: {finalWasteType.label}
+                </AppText>
+              </>
             ) : null}
-            <AppButton label="Reciclar aqui" onPress={() => router.push('/recycle/instructions')} />
-          </AppCard>
-        ) : (
+            {selectedDistanceKm !== undefined ? (
+              <View style={styles.distanceRow}>
+                <AppText style={styles.selectedMeta}>
+                  Distancia: {selectedDistanceKm.toFixed(2)} km
+                </AppText>
+                <Pressable onPress={openDirections}>
+                  <AppText style={styles.directionsLink}>Direcciones</AppText>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
           <AppButton
-            variant="outline"
-            label="Mostrar instrucciones de reciclaje"
-            rightIcon={
-              <FontAwesome6
-                name="book-open-reader"
-                size={theme.iconSizes.xs}
-                color={theme.colors.textPrimary}
-              />
-            }
-            style={styles.instructionsButton}
+            label="Reciclar aquí"
+            size="sm"
+            onPress={() => router.push('/recycle/camera')}
           />
-        )}
+        </View>
+      ) : (
+        <View style={styles.bottomCta}>
+          <View style={styles.ctaTopRow}>
+            <View>
+              <AppText style={styles.ctaEyebrow}>EMPIEZA AHORA</AppText>
+              <AppText style={styles.ctaHeading}>¿No sabes qué contenedor?</AppText>
+            </View>
+            <Pressable
+              style={styles.ctaCameraButton}
+              onPress={() => router.push('/recycle/camera')}
+            >
+              <AppIcon name="camera" size={theme.iconSizes.lg} color={theme.colors.textPrimary} />
+            </Pressable>
+          </View>
+          <AppButton
+            label="Escanear tu residuo"
+            onPress={() => router.push('/recycle/camera')}
+            style={styles.ctaButton}
+          />
+        </View>
+      )}
       </View>
-      {state.predictionConfidence !== undefined ? (
-        <AppText variant="caption" muted style={styles.devNote}>
-          Ultima confianza: {state.predictionConfidence}
-        </AppText>
-      ) : null}
     </AppScreen>
   );
 }
@@ -262,18 +239,27 @@ type IconFilterButtonProps = {
   selected?: boolean;
   onPress: () => void;
   icon: ReactNode;
+  label: string;
+  activeColor?: string;
+  disabled?: boolean;
 };
 
-function IconFilterButton({ selected, onPress, icon }: IconFilterButtonProps) {
+function IconFilterButton({ selected, onPress, icon, label, activeColor, disabled }: IconFilterButtonProps) {
+  const categoryColor = activeColor ?? theme.colors.primary;
   return (
-    <AppButton
-      iconOnly
-      size="icon"
-      variant="outline"
-      leftIcon={icon}
-      onPress={onPress}
-      style={[styles.iconFilter, selected ? styles.iconFilterSelected : null]}
-    />
+    <Pressable onPress={onPress} style={[styles.iconFilterWrapper, disabled && styles.iconFilterDisabled]}>
+      <View style={[
+        styles.iconFilter,
+        selected
+          ? { backgroundColor: categoryColor }
+          : { backgroundColor: categoryColor + '22' },
+      ]}>
+        {icon}
+      </View>
+      <AppText style={[styles.iconFilterLabel, selected && styles.iconFilterLabelSelected]}>
+        {label}
+      </AppText>
+    </Pressable>
   );
 }
 
@@ -287,12 +273,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  headerIconButton: {
-    width: theme.components.buttonHeights.icon,
-    height: theme.components.buttonHeights.icon,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 0,
+    paddingBottom: theme.spacing.sm,
   },
   title: {
     fontSize: theme.fontSizes.display,
@@ -303,12 +284,6 @@ const styles = StyleSheet.create({
     color: theme.recycle.headerScore,
     fontWeight: theme.fontWeights.semibold,
   },
-  subtitle: {
-    textAlign: 'center',
-    color: theme.recycle.headerSubtitle,
-    marginTop: theme.spacing.xxs,
-    marginBottom: theme.spacing.sm,
-  },
   filterRow: {
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.sm,
@@ -318,48 +293,162 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   filterChips: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'flex-start',
+  },
+  iconFilterWrapper: {
     alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   iconFilter: {
     width: theme.components.buttonHeights.icon,
     height: theme.components.buttonHeights.icon,
     borderRadius: theme.radius.pill,
     backgroundColor: theme.recycle.iconButtonBg,
-    borderColor: theme.recycle.iconButtonBg,
-    marginRight: theme.spacing.sm,
-    paddingHorizontal: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  iconFilterSelected: {
-    borderWidth: theme.spacing.xxs,
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.recycle.iconButtonSelectedBg,
+  iconFilterLabel: {
+    fontSize: theme.fontSizes.xs,
+    color: theme.colors.textSecondary,
   },
-  cameraButton: {
-    width: theme.components.buttonHeights.icon,
-    height: theme.components.buttonHeights.icon,
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.recycle.iconButtonCameraBg,
-    marginLeft: theme.spacing.xs,
-    paddingHorizontal: 0,
+  iconFilterLabelSelected: {
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeights.semibold,
   },
   mapContainer: {
     flex: 1,
   },
-  bottomArea: {
+  locationButton: {
+    position: 'absolute',
+    bottom: 160,
+    right: theme.spacing.lg,
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.md,
+  },
+  selectedCard: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    gap: theme.spacing.md,
   },
-  cardGap: {
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
+  dismissButton: {
+    position: 'absolute',
+    top: theme.spacing.sm,
+    right: theme.spacing.sm,
+    padding: theme.spacing.xs,
   },
-  instructionsButton: {
-    justifyContent: 'flex-end',
+  selectedCardContent: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+  },
+  selectedTitle: {
+    fontSize: theme.fontSizes.md,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xxs,
+  },
+  availableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.xxs,
+  },
+  availableLabel: {
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.textSecondary,
+  },
+  availableIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedMeta: {
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.textSecondary,
+  },
+  distanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  directionsLink: {
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeights.semibold,
+  },
+  selectedCardAction: {
+    flexShrink: 0,
+  },
+  recycleButton: {
+    paddingHorizontal: theme.spacing.md,
+  },
+  recycleButtonLabel: {
+    fontSize: theme.fontSizes.xs,
+  },
+  bottomCta: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    gap: theme.spacing.md,
+  },
+  ctaTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ctaEyebrow: {
+    fontSize: theme.fontSizes.xs,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.primary,
+    letterSpacing: 0.8,
+    marginBottom: theme.spacing.xxs,
+  },
+  ctaHeading: {
+    fontSize: theme.fontSizes.lg,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.textPrimary,
+  },
+  ctaCameraButton: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaButton: {
+    width: '100%',
   },
   devNote: {
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.xs,
     fontSize: theme.fontSizes.xs,
+  },
+  iconFilterDisabled: {
+    opacity: 0.35,
   },
 });
