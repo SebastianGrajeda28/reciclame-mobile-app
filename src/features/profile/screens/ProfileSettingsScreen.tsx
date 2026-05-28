@@ -6,12 +6,13 @@ import { ProfileSectionLabel } from '@/src/features/profile/components/ProfileSe
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileSettingsRow } from '@/src/features/profile/components/ProfileSettingsRow';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
-import { supabase } from '@/src/services/supabase/client';
+import { useAuth } from '@/src/hooks/useAuth';
 import { AppButton, AppIcon, AppIconButton, AppSwitch, theme } from '@/src/ui';
 
 export function ProfileSettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+  const { signOut } = useAuth();
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -25,11 +26,7 @@ export function ProfileSettingsScreen() {
   async function handleSignOut() {
     try {
       setSigningOut(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        throw error;
-      }
-      router.replace('/');
+      await signOut();
     } catch {
       Alert.alert('No se pudo cerrar sesión', 'Intenta nuevamente en unos segundos.');
     } finally {
