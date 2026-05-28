@@ -11,6 +11,10 @@ import {
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
+import {
+  filterWasteTypesByCategory,
+  getNearbyCompatibleContainers,
+} from '@/src/features/recycling/services/filterContainers';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
@@ -50,26 +54,15 @@ export function MapScreen() {
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
-  const filteredWasteTypes = useMemo(() => {
-    if (category === 'all') return wasteTypes;
-    return wasteTypes.filter((item) => item.categoryId === category);
-  }, [category]);
+  const filteredWasteTypes = useMemo(
+    () => filterWasteTypesByCategory(wasteTypes, category),
+    [category],
+  );
 
-  const nearby = useMemo(() => {
-    if (!filteredWasteTypes.length) return [];
-    const ids = new Set(filteredWasteTypes.map((item) => item.id));
-    return containers
-      .map((container) => ({
-        ...container,
-        distanceKm: haversineDistanceKm(location, {
-          latitude: container.latitude,
-          longitude: container.longitude,
-        }),
-      }))
-      .filter((container) => container.distanceKm <= 3)
-      .filter((container) => container.acceptedWasteTypeIds.some((wasteId) => ids.has(wasteId)))
-      .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [filteredWasteTypes, location]);
+  const nearby = useMemo(
+    () => getNearbyCompatibleContainers(location, containers, filteredWasteTypes),
+    [filteredWasteTypes, location],
+  );
 
   const markers = useMemo(
     () =>
