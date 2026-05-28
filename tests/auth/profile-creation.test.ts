@@ -128,7 +128,7 @@ describe('Profile Creation on First Login', () => {
     });
 
     test('Should fallback to email prefix if no metadata', () => {
-      const metadata = {};
+      const metadata: { full_name?: string } = {};
       const email = 'user@example.com';
       const displayName =
         metadata.full_name ?? email?.split('@')[0] ?? 'Usuario';
