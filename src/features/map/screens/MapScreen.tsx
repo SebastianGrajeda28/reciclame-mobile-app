@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -51,7 +51,9 @@ export function MapScreen() {
   const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const [category, setCategory] = useState<string>('all');
+  const nearbyRef = useRef<typeof nearby>([]);
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
+  const selectedContainerIdRef = useRef(state.selectedContainerId);
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
   const filteredWasteTypes = useMemo(
@@ -63,6 +65,8 @@ export function MapScreen() {
     () => getNearbyCompatibleContainers(location, containers, filteredWasteTypes),
     [filteredWasteTypes, location],
   );
+  nearbyRef.current = nearby;
+  selectedContainerIdRef.current = state.selectedContainerId;
 
   const markers = useMemo(
     () =>
@@ -84,10 +88,10 @@ export function MapScreen() {
   }, [category, nearby.length]);
 
   useEffect(() => {
-    if (state.selectedContainerId && !nearby.some((c) => c.id === state.selectedContainerId)) {
+    if (selectedContainerIdRef.current && !nearbyRef.current.some((c) => c.id === selectedContainerIdRef.current)) {
       clearSelectedContainer();
     }
-  }, [nearby, state.selectedContainerId, clearSelectedContainer]);
+  }, [category, clearSelectedContainer]);
 
   const selectedDistanceKm = selectedContainer
     ? haversineDistanceKm(location, {
