@@ -49,11 +49,12 @@ export function RecycleMap({ markers, region, centerCoordinate, selectedMarkerId
         const selected = item.id === selectedMarkerId;
         return (
           <Marker
-            key={`${item.id}-${selected ? 's' : 'u'}`}
+            key={item.id}
             identifier={item.id}
             coordinate={{ latitude: item.latitude, longitude: item.longitude }}
             onPress={() => onMarkerPress(item.id)}
             pinColor={selected ? theme.palette.navy[500] : theme.palette.green[600]}
+            tracksViewChanges={selected}
           />
         );
       })}
