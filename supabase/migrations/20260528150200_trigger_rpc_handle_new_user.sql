@@ -101,3 +101,57 @@ BEGIN
   DELETE FROM auth.users WHERE id = test_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- Test 4: Verifica que NO se duplican datos en users o user_profiles en logins subsecuentes
+CREATE OR REPLACE FUNCTION test_no_duplicate_on_subsequent_login()
+RETURNS TABLE(
+  first_login_created_user boolean,
+  first_login_created_profile boolean,
+  second_login_users_count integer,
+  second_login_profiles_count integer,
+  no_duplication boolean
+) AS $$
+DECLARE
+  test_id uuid;
+  test_email text;
+  users_before integer;
+  users_after integer;
+  profiles_before integer;
+  profiles_after integer;
+BEGIN
+  -- Genera un UUID que no exista
+  LOOP
+    test_id := gen_random_uuid();
+    EXIT WHEN NOT EXISTS (SELECT 1 FROM auth.users WHERE id = test_id);
+  END LOOP;
+
+  test_email := 'test_' || test_id || '@test.com';
+
+  -- Primer login (INSERT dispara trigger)
+  INSERT INTO auth.users (id, email, raw_user_meta_data, created_at, updated_at)
+  VALUES (test_id, test_email, '{"full_name": "Test User Duplicate"}'::jsonb, now(), now());
+
+  -- Contar registros después del primer login
+  SELECT COUNT(*) INTO users_before FROM public.users WHERE id = test_id;
+  SELECT COUNT(*) INTO profiles_before FROM public.user_profiles WHERE user_id = test_id;
+
+  -- Segundo login (UPDATE dispara trigger nuevamente)
+  UPDATE auth.users SET last_sign_in_at = now() WHERE id = test_id;
+
+  -- Contar registros después del segundo login
+  SELECT COUNT(*) INTO users_after FROM public.users WHERE id = test_id;
+  SELECT COUNT(*) INTO profiles_after FROM public.user_profiles WHERE user_id = test_id;
+
+  RETURN QUERY
+  SELECT
+    users_before > 0,
+    profiles_before > 0,
+    users_after,
+    profiles_after,
+    (users_before = users_after AND profiles_before = profiles_after);
+
+  -- Limpieza
+  DELETE FROM auth.users WHERE id = test_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
