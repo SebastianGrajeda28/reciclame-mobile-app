@@ -1,9 +1,13 @@
-
+-- ============================================================
+-- USERS
+-- ============================================================
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
   email text not null unique,
   created_at timestamptz not null default now(),
-  last_login_at timestamptz
+  updated_at timestamptz,
+  last_login_at timestamptz,
+  is_active boolean not null default true
 );
 
 create table if not exists public.user_profiles (
@@ -14,7 +18,8 @@ create table if not exists public.user_profiles (
   university_id uuid,
   campus_id uuid,
   created_at timestamptz not null default now(),
-  updated_at timestamptz
+  updated_at timestamptz,
+  is_active boolean not null default true
 );
 
 create table if not exists public.user_settings (
@@ -23,13 +28,18 @@ create table if not exists public.user_settings (
   notifications_enabled boolean not null default true,
   profile_visibility text,
   language text,
-  updated_at timestamptz
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true
 );
 
 create table if not exists public.roles (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
-  description text
+  description text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true
 );
 
 create table if not exists public.user_roles (
@@ -37,13 +47,21 @@ create table if not exists public.user_roles (
   user_id uuid not null references public.users(id) on delete cascade,
   role_id uuid not null references public.roles(id) on delete cascade,
   assigned_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true,
   unique (user_id, role_id)
 );
 
+-- ============================================================
+-- UNIVERSITIES / LOCATIONS / BINS
+-- ============================================================
 create table if not exists public.universities (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  is_active boolean not null default true
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
 );
 
 create table if not exists public.campuses (
@@ -51,7 +69,9 @@ create table if not exists public.campuses (
   university_id uuid not null references public.universities(id) on delete cascade,
   name text not null,
   address text,
-  is_active boolean not null default true
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
 );
 
 create table if not exists public.bin_types (
@@ -59,7 +79,10 @@ create table if not exists public.bin_types (
   university_id uuid references public.universities(id) on delete set null,
   name text not null,
   color text,
-  description text
+  description text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
 );
 
 create table if not exists public.recycling_points (
@@ -70,6 +93,7 @@ create table if not exists public.recycling_points (
   longitude numeric(9,6) not null,
   description text,
   is_active boolean not null default true,
+  created_at timestamptz not null default now(),
   updated_at timestamptz
 );
 
@@ -77,15 +101,23 @@ create table if not exists public.recycling_point_bins (
   id uuid primary key default gen_random_uuid(),
   recycling_point_id uuid not null references public.recycling_points(id) on delete cascade,
   bin_type_id uuid not null references public.bin_types(id) on delete cascade,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
   unique (recycling_point_id, bin_type_id)
 );
 
+-- ============================================================
+-- WASTE / RECORDS
+-- ============================================================
 create table if not exists public.waste_types (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   description text,
   recommended_bin_type_id uuid references public.bin_types(id) on delete set null,
-  is_active boolean not null default true
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
 );
 
 create table if not exists public.recycling_records (
@@ -99,9 +131,37 @@ create table if not exists public.recycling_records (
   estimated_weight numeric,
   status text,
   created_at timestamptz not null default now(),
-  synced_at timestamptz
+  updated_at timestamptz,
+  synced_at timestamptz,
+  is_active boolean not null default true
 );
 
+-- ============================================================
+-- NEW: MAP (University + WasteType + BinType)
+-- ============================================================
+create table if not exists public.map_waste_type_bin_types (
+  id uuid primary key default gen_random_uuid(),
+  university_id uuid not null references public.universities(id) on delete cascade,
+  waste_type_id uuid not null references public.waste_types(id) on delete cascade,
+  bin_type_id uuid not null references public.bin_types(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true,
+  unique (university_id, waste_type_id, bin_type_id)
+);
+
+create index if not exists idx_map_waste_bin_university
+  on public.map_waste_type_bin_types (university_id);
+
+create index if not exists idx_map_waste_bin_waste_type
+  on public.map_waste_type_bin_types (waste_type_id);
+
+create index if not exists idx_map_waste_bin_bin_type
+  on public.map_waste_type_bin_types (bin_type_id);
+
+-- ============================================================
+-- GAMIFICATION
+-- ============================================================
 create table if not exists public.user_progress (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references public.users(id) on delete cascade,
@@ -110,7 +170,9 @@ create table if not exists public.user_progress (
   heat numeric,
   level int not null default 1,
   last_recycling_date date,
-  updated_at timestamptz
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true
 );
 
 create table if not exists public.rewards (
@@ -118,7 +180,10 @@ create table if not exists public.rewards (
   name text not null,
   description text,
   reward_type text,
-  asset_url text
+  asset_url text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true
 );
 
 create table if not exists public.achievements (
@@ -128,7 +193,9 @@ create table if not exists public.achievements (
   condition_type text,
   condition_value int,
   reward_id uuid references public.rewards(id) on delete set null,
-  is_active boolean not null default true
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
 );
 
 create table if not exists public.user_achievements (
@@ -136,6 +203,9 @@ create table if not exists public.user_achievements (
   user_id uuid not null references public.users(id) on delete cascade,
   achievement_id uuid not null references public.achievements(id) on delete cascade,
   unlocked_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true,
   unique (user_id, achievement_id)
 );
 
@@ -145,6 +215,9 @@ create table if not exists public.user_rewards (
   reward_id uuid not null references public.rewards(id) on delete cascade,
   unlocked_at timestamptz not null default now(),
   is_equipped boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true,
   unique (user_id, reward_id)
 );
 
@@ -154,9 +227,14 @@ create table if not exists public.avatars (
   base_style text,
   frame_reward_id uuid references public.rewards(id) on delete set null,
   accessory_reward_id uuid references public.rewards(id) on delete set null,
-  updated_at timestamptz
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true
 );
 
+-- ============================================================
+-- SOCIAL
+-- ============================================================
 create table if not exists public.friendships (
   id uuid primary key default gen_random_uuid(),
   requester_id uuid not null references public.users(id) on delete cascade,
@@ -164,6 +242,7 @@ create table if not exists public.friendships (
   status text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz,
+  is_active boolean not null default true,
   unique (requester_id, addressee_id),
   check (requester_id <> addressee_id)
 );
@@ -173,15 +252,19 @@ create table if not exists public.friend_codes (
   user_id uuid not null unique references public.users(id) on delete cascade,
   code text not null unique,
   is_active boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
 );
 
+-- ============================================================
+-- CONTENT
+-- ============================================================
 create table if not exists public.instructions (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   body text,
   image_url text,
-  waste_type_id uuid references public.waste_types(id) on delete set null, -- UML notes 1..1 with WasteType
+  waste_type_id uuid references public.waste_types(id) on delete set null,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz
@@ -201,13 +284,16 @@ create table if not exists public.fun_facts (
   text text not null,
   waste_type_id uuid references public.waste_types(id) on delete set null,
   is_active boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
 );
 
 create table if not exists public.system_config (
   id uuid primary key default gen_random_uuid(),
   key text not null unique,
   value text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
   updated_at timestamptz
 );
 
@@ -217,9 +303,14 @@ create table if not exists public.metric_snapshots (
   metric_value numeric not null,
   period_start date not null,
   period_end date not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true
 );
 
+-- ============================================================
+-- OFFLINE SYNC
+-- ============================================================
 create table if not exists public.pending_operations (
   local_id text primary key,
   user_id uuid references public.users(id) on delete set null, -- UML: User generates PendingOperation
@@ -229,11 +320,15 @@ create table if not exists public.pending_operations (
   retry_count int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz,
-  last_error text
+  last_error text,
+  is_active boolean not null default true
 );
 
 create table if not exists public.cached_resources (
   resource_name text primary key,
   last_synced_at timestamptz,
-  version text
+  version text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  is_active boolean not null default true
 );
