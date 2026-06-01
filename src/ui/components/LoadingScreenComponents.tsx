@@ -121,7 +121,7 @@ export function EducationalFactBanner({
         <View style={styles.bannerTextContainer}>
           <View style={styles.bannerHeader}>
             <AppText style={styles.bannerIcon}>{contentTypeIcons[contentType]}</AppText>
-            <AppText variant="h4" bold>
+            <AppText variant="h4" style={styles.bannerTitle}>
               {title}
             </AppText>
           </View>
@@ -210,7 +210,7 @@ export function RecognitionLoadingBanner({
       </Animated.View>
 
       <View style={styles.loadingText}>
-        <AppText variant="h4" bold>
+        <AppText variant="h4" style={styles.bannerTitle}>
           {title}
         </AppText>
         {subtitle && (
@@ -249,6 +249,7 @@ export function TransitionWidget({
   style,
 }: TransitionWidgetProps) {
   const [anim] = useState(new Animated.Value(visible ? 1 : 0));
+  const [isVisible, setIsVisible] = useState(visible);
 
   useEffect(() => {
     const targetValue = visible ? 1 : 0;
@@ -262,6 +263,7 @@ export function TransitionWidget({
         useNativeDriver: true,
       }),
     ]).start(() => {
+      setIsVisible(visible);
       if (onTransitionComplete) {
         onTransitionComplete();
       }
@@ -312,7 +314,7 @@ export function TransitionWidget({
     }
   };
 
-  if (!visible && anim._value === 0) {
+  if (!isVisible) {
     return null;
   }
 
@@ -424,6 +426,9 @@ const styles = StyleSheet.create({
   },
   bannerIcon: {
     fontSize: 20,
+  },
+  bannerTitle: {
+    fontWeight: '600' as const,
   },
   bannerBody: {
     marginTop: theme.spacing.s1,

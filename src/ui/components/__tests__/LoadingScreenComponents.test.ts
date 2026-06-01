@@ -61,13 +61,11 @@ describe('Loading Screen Components - Type Safety', () => {
         title: 'Test',
         body: 'Test body',
         contentType: 'fact',
-        description: 'Optional description',
         imageUrl: 'https://example.com/image.png',
         style: { marginTop: 10 },
         animated: true,
       };
 
-      expect(props.description).toBe('Optional description');
       expect(props.imageUrl).toBe('https://example.com/image.png');
       expect(props.animated).toBe(true);
     });
@@ -343,7 +341,6 @@ describe('Loading Screen Components - Type Safety', () => {
       const props: EducationalFactBannerProps = {
         title: 'Hecho Educativo',
         body: 'Descripción detallada',
-        description: 'Descripción adicional',
         contentType: 'fact',
         imageUrl: 'https://example.com/fact.png',
         style: { marginBottom: 16 },
@@ -352,7 +349,6 @@ describe('Loading Screen Components - Type Safety', () => {
 
       expect(props.title).toBe('Hecho Educativo');
       expect(props.body).toBe('Descripción detallada');
-      expect(props.description).toBe('Descripción adicional');
       expect(props.contentType).toBe('fact');
       expect(props.imageUrl).toBe('https://example.com/fact.png');
       expect(props.animated).toBe(true);
