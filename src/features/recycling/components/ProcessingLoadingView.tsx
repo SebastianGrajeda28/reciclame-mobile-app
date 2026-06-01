@@ -4,19 +4,10 @@ import { ActivityIndicator, Animated, StyleSheet, View } from 'react-native';
 import { AppText, theme } from '@/src/ui';
 
 type Props = {
-  /** Etiqueta mostrada debajo del spinner. Por defecto "Analizando con IA..." */
   label?: string;
-  /** Slot opcional para contenido adicional debajo del spinner (ej. datos curiosos). */
   slot?: ReactNode;
 };
 
-/**
- * Vista de carga reutilizable para el flujo de procesamiento de residuos.
- * Muestra skeletons animados con pulso de opacidad y un spinner de actividad.
- *
- * @param label - Texto descriptivo bajo el spinner.
- * @param slot  - Nodo React opcional inyectado tras el spinner (ej. datos curiosos).
- */
 export function ProcessingLoadingView({ label = 'Analizando con IA...', slot }: Props) {
   const pulse = useRef(new Animated.Value(0.4)).current;
 
