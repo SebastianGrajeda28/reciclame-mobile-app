@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 
+import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
 import { classifyWaste, getConfidenceThreshold } from '@/src/features/recycling/services/classification';
 import {
   useRecycleFlow,
@@ -94,15 +95,7 @@ export function ProcessingScreen() {
         </AppText>
 
         {loading ? (
-          <>
-            <View style={styles.skeletonLong} />
-            <View style={styles.skeletonMed} />
-            <View style={styles.skeletonShort} />
-            <View style={styles.spinnerRow}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <AppText style={styles.loadingLabel}>Analizando con IA...</AppText>
-            </View>
-          </>
+          <ProcessingLoadingView />
         ) : (
           <>
             <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
@@ -184,9 +177,6 @@ export function ProcessingScreen() {
 
 export default ProcessingScreen;
 
-const SKELETON_RADIUS = theme.radius.sm;
-const SKELETON_COLOR = theme.colors.border;
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -233,33 +223,6 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.md,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
-  },
-  skeletonLong: {
-    height: 14,
-    borderRadius: SKELETON_RADIUS,
-    backgroundColor: SKELETON_COLOR,
-    width: '90%',
-  },
-  skeletonMed: {
-    height: 14,
-    borderRadius: SKELETON_RADIUS,
-    backgroundColor: SKELETON_COLOR,
-    width: '75%',
-  },
-  skeletonShort: {
-    height: 14,
-    borderRadius: SKELETON_RADIUS,
-    backgroundColor: SKELETON_COLOR,
-    width: '60%',
-  },
-  spinnerRow: {
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.xl,
-  },
-  loadingLabel: {
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
   },
   wasteLabel: {
     fontSize: theme.fontSizes.xxl,
