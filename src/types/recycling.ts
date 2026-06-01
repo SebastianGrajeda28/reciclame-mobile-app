@@ -1,8 +1,14 @@
 export type RecyclingLogInput = {
   userId: string;
   wasteTypeId: string;
-  containerId: string;
-  timestamp: string;
+  recyclingPointId: string;
+  detectionType?: 'auto' | 'manual';
+  confidenceScore?: number;
+};
+
+export type RecyclingLog = RecyclingLogInput & {
+  id: string;
+  createdAt: string;
 };
 
 export type RecyclingPoint = {

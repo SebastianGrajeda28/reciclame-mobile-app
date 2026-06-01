@@ -4,6 +4,10 @@
 ### ReactNative ###
 # React Native Stack Base
 
+# Expo CNG — generated native folders (pure managed workflow)
+/android/
+/ios/
+
 .expo
 __generated__
 
