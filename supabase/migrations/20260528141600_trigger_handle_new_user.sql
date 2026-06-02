@@ -10,7 +10,10 @@ begin
   insert into public.users (id, email, last_login_at)
   values (new.id, new.email, now())
   on conflict (id) do update set
-    last_login_at = coalesce(new.last_sign_in_at, public.users.last_login_at);
+    last_login_at = case 
+      when new.last_sign_in_at is distinct from old.last_sign_in_at then now()
+      else public.users.last_login_at
+    end;
   
   -- 2. Extract display name from Google OAuth metadata
   user_name := coalesce(
