@@ -1,21 +1,5 @@
--- Seed mínimo para iteración 1 del flujo de segregación.
--- Crea una universidad, un campus, los 6 tipos de residuo y los 3 puntos de
--- reciclaje que el frontend usa como mocks. UUIDs fijos para que el cliente
--- pueda referenciarlos directamente.
-
-insert into public.universities (id, name, is_active)
-values ('00000000-0000-0000-0000-000000000001', 'Universidad de Ciencias y Humanidades', true)
-on conflict (id) do nothing;
-
-insert into public.campuses (id, university_id, name, address, is_active)
-values (
-  '00000000-0000-0000-0000-000000000010',
-  '00000000-0000-0000-0000-000000000001',
-  'Campus Central',
-  'Av. Universitaria',
-  true
-)
-on conflict (id) do nothing;
+alter table public.waste_types
+drop column if exists recommended_bin_type_id;
 
 insert into public.bin_types (id, university_id, name, color, description, is_active) values
   ('33333333-3333-3333-3333-000000000001', '00000000-0000-0000-0000-000000000001', 'Contenedor de plásticos',          '#2F80ED', 'Para plásticos PET y otros plásticos reciclables.', true),
@@ -35,16 +19,16 @@ on conflict (id) do update set
   updated_at = now();
 
 insert into public.waste_types (id, name, description, is_active) values
-  ('11111111-1111-1111-1111-000000000001', 'Cartón',               null,                                                                                                                   true),
-  ('11111111-1111-1111-1111-000000000002', 'Plásticos PET',        'Botellas',                                                                                                             true),
-  ('11111111-1111-1111-1111-000000000003', 'Residuos generales',   'Resto de comida: huesos, servilletas sucias, papeles sucias, residuos con grasa, empaques de golosinas.',              true),
-  ('11111111-1111-1111-1111-000000000004', 'Vidrio',               'Frascos de vidrio, botellas de diferente tonalidad: verde transparente, oscura, vidrio roto, etc.',                       true),
-  ('11111111-1111-1111-1111-000000000005', 'Pilas',                null,                                                                                                                   true),
-  ('11111111-1111-1111-1111-000000000006', 'RAEE',                 'Residuos de Aparatos Eléctricos y electrónicos: baterías, cables, cargadores, celulares, pantallas, etc.',                  true),
-  ('11111111-1111-1111-1111-000000000007', 'Otros Plásticos',      null,                                                                                                                   true),
-  ('11111111-1111-1111-1111-000000000008', 'Metales',              'latas',                                                                                                                true),
-  ('11111111-1111-1111-1111-000000000009', 'Papel',                'Hojas de papel, fotocopias, periódicos, revistas, folletos',                                                            true),
-  ('11111111-1111-1111-1111-000000000010', 'Residuos orgánicos',   'cáscaras de frutas o verduras',                                                                                       true)
+  ('11111111-1111-1111-1111-000000000001', 'Cartón',               null,                                                                                                      true),
+  ('11111111-1111-1111-1111-000000000002', 'Plásticos PET',        'Botellas',                                                                                                true),
+  ('11111111-1111-1111-1111-000000000003', 'Residuos generales',   'Resto de comida: huesos, servilletas sucias, papeles sucias, residuos con grasa, empaques de golosinas.', true),
+  ('11111111-1111-1111-1111-000000000004', 'Vidrio',               'Frascos de vidrio, botellas de diferente tonalidad: verde transparente, oscura, vidrio roto, etc.',          true),
+  ('11111111-1111-1111-1111-000000000005', 'Pilas',                null,                                                                                                      true),
+  ('11111111-1111-1111-1111-000000000006', 'RAEE',                 'Residuos de Aparatos Eléctricos y electrónicos: baterías, cables, cargadores, celulares, pantallas, etc.',     true),
+  ('11111111-1111-1111-1111-000000000007', 'Otros Plásticos',      null,                                                                                                      true),
+  ('11111111-1111-1111-1111-000000000008', 'Metales',              'latas',                                                                                                   true),
+  ('11111111-1111-1111-1111-000000000009', 'Papel',                'Hojas de papel, fotocopias, periódicos, revistas, folletos',                                               true),
+  ('11111111-1111-1111-1111-000000000010', 'Residuos orgánicos',   'cáscaras de frutas o verduras',                                                                          true)
 on conflict (id) do update set
   name = excluded.name,
   description = excluded.description,
@@ -52,9 +36,9 @@ on conflict (id) do update set
   updated_at = now();
 
 insert into public.recycling_points (id, campus_id, name, latitude, longitude, description, is_active) values
-  ('22222222-2222-2222-2222-000000000001', '00000000-0000-0000-0000-000000000010', 'Contenedor Biblioteca Central',  -12.069200, -77.079400, 'Acepta papel, cartón, plásticos y metales',  true),
+  ('22222222-2222-2222-2222-000000000001', '00000000-0000-0000-0000-000000000010', 'Contenedor Biblioteca Central',  -12.069200, -77.079400, 'Acepta papel, cartón, plásticos y metales',    true),
   ('22222222-2222-2222-2222-000000000002', '00000000-0000-0000-0000-000000000010', 'Contenedor Estudios Generales',  -12.070100, -77.080600, 'Acepta vidrio, residuos generales y orgánicos', true),
-  ('22222222-2222-2222-2222-000000000003', '00000000-0000-0000-0000-000000000010', 'Punto Verde Complejo MacGregor', -12.068300, -77.078400, 'Acepta pilas y RAEE',                        true)
+  ('22222222-2222-2222-2222-000000000003', '00000000-0000-0000-0000-000000000010', 'Punto Verde Complejo MacGregor', -12.068300, -77.078400, 'Acepta pilas y RAEE',                          true)
 on conflict (id) do update set
   campus_id = excluded.campus_id,
   name = excluded.name,
