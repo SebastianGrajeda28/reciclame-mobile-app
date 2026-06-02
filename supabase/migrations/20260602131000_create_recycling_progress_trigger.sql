@@ -1,4 +1,3 @@
--- 1. Crear la función del disparador
 CREATE OR REPLACE FUNCTION public.handle_post_segregation_progress()
 RETURNS TRIGGER
 LANGUAGE plpgsql
