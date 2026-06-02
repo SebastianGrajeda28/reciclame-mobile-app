@@ -71,6 +71,7 @@ $$;
 
 DROP TRIGGER IF EXISTS on_recycling_record_created ON public.recycling_records;
 
+
 CREATE TRIGGER on_recycling_record_created
 AFTER INSERT ON public.recycling_records
 FOR EACH ROW
