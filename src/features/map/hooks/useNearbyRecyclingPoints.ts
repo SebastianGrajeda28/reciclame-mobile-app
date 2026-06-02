@@ -10,19 +10,13 @@ import type { RecyclingContainer } from '@/src/features/recycling/types/recyclin
 type Params = {
   location: { latitude: number; longitude: number };
   wasteTypeIds?: string[];
-  radiusKm?: number;
 };
 
 /**
- * Carga los puntos de reciclaje, calcula distancias en cliente y filtra
- * por tipo de residuo y radio. Los resultados se ordenan ascendentemente por distancia.
- *
- * @param location - Coordenadas actuales del usuario.
- * @param wasteTypeIds - IDs de tipos de residuo a filtrar. Sin valor devuelve todos.
- * @param radiusKm - Radio máximo en km (default 3).
- * @returns data, loading, error, refetch.
+ * Carga puntos de reciclaje, calcula distancias en cliente y ordena por cercanía.
+ * @param wasteTypeIds - Sin valor devuelve todos los puntos.
  */
-export function useNearbyRecyclingPoints({ location, wasteTypeIds, radiusKm = 3 }: Params) {
+export function useNearbyRecyclingPoints({ location, wasteTypeIds }: Params) {
   const [allPoints, setAllPoints] = useState<RecyclingContainer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,10 +44,9 @@ export function useNearbyRecyclingPoints({ location, wasteTypeIds, radiusKm = 3 
         ...p,
         distanceKm: haversineDistanceKm(location, { latitude: p.latitude, longitude: p.longitude }),
       }))
-      .filter((p) => p.distanceKm <= radiusKm)
       .filter((p) => !wasteSet || p.acceptedWasteTypeIds.some((id) => wasteSet.has(id)))
       .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [allPoints, location, wasteTypeIds, radiusKm]);
+  }, [allPoints, location, wasteTypeIds]);
 
   return { data, loading, error, refetch: load };
 }

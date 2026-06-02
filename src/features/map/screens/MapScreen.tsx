@@ -88,7 +88,7 @@ export function MapScreen() {
 
   useEffect(() => {
     if (!loading && nearbyPoints.length === 0 && category !== 'all') {
-      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
+      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles con este filtro.', [
         { text: 'Entendido' },
       ]);
     }
