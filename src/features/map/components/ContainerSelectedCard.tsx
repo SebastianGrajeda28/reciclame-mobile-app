@@ -62,15 +62,18 @@ export function ContainerSelectedCard({
 
   return (
     <View style={[styles.card, { paddingBottom: theme.spacing.md + bottomInset }]}>
-      {!hideDismiss && <Pressable style={styles.dismissButton} onPress={onDismiss}>
-        <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
-      </Pressable>}
-      <View style={styles.content}>
-        <AppText style={styles.title}>Lugar de reciclaje: {container.name}</AppText>
-        <View style={styles.availableRow}>
-          <AppText style={styles.availableLabel}>Contenedores disponibles: </AppText>
+      {!hideDismiss && (
+        <Pressable style={styles.dismissButton} onPress={onDismiss}>
+          <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
+        </Pressable>
+      )}
+      <View style={styles.info}>
+        <AppText style={styles.eyebrow}>PUNTO DE RECICLAJE</AppText>
+        <AppText style={styles.title}>{container.name}</AppText>
+        <AppText style={styles.label}>Contenedores disponibles</AppText>
+        <View style={styles.iconsRow}>
           {availableIcons.map((item, i) => (
-            <View key={i} style={[styles.availableIcon, { backgroundColor: item.color }]}>
+            <View key={i} style={[styles.icon, { backgroundColor: item.color }]}>
               <AppIcon name={item.icon} size={theme.iconSizes.md} color={item.iconColor} />
             </View>
           ))}
@@ -99,14 +102,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingTop: theme.spacing.md,
     backgroundColor: theme.colors.surface,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   dismissButton: {
     position: 'absolute',
@@ -114,28 +115,30 @@ const styles = StyleSheet.create({
     right: theme.spacing.sm,
     padding: theme.spacing.xs,
   },
-  content: {
-    flex: 1,
-    gap: theme.spacing.xxs,
+  info: {
+    gap: theme.spacing.xs,
+  },
+  eyebrow: {
+    fontSize: theme.fontSizes.xs,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.primary,
+    letterSpacing: 0.8,
   },
   title: {
     fontSize: theme.fontSizes.md,
     fontWeight: theme.fontWeights.bold,
     color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xxs,
   },
-  availableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.xxs,
-  },
-  availableLabel: {
+  label: {
     fontSize: theme.fontSizes.sm,
     color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
   },
-  availableIcon: {
+  iconsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  icon: {
     width: 30,
     height: 30,
     borderRadius: theme.radius.sm,
