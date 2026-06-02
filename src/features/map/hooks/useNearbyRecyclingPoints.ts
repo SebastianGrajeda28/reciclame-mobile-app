@@ -14,7 +14,9 @@ type Params = {
 
 /**
  * Carga puntos de reciclaje, calcula distancias en cliente y ordena por cercanía.
- * @param wasteTypeIds - Sin valor devuelve todos los puntos.
+ * @param location - Coordenadas del usuario para calcular distancias.
+ * @param wasteTypeIds - Filtra por tipos de residuo. Sin valor devuelve todos.
+ * @returns `{ data, loading, error, refetch }`
  */
 export function useNearbyRecyclingPoints({ location, wasteTypeIds }: Params) {
   const [allPoints, setAllPoints] = useState<RecyclingContainer[]>([]);
