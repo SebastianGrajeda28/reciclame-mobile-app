@@ -7,12 +7,13 @@ import { ProfileScreenContainer } from '@/src/features/profile/components/Profil
 import { ProfileSettingsRow } from '@/src/features/profile/components/ProfileSettingsRow';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useUserSettings } from '@/src/hooks/useUserSettings';
 import { AppButton, AppIcon, AppIconButton, AppSwitch, theme } from '@/src/ui';
 
 export function ProfileSettingsScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
   const { signOut } = useAuth();
+  const { settings, updateSetting } = useUserSettings();
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -65,7 +66,26 @@ export function ProfileSettingsScreen() {
         <ProfileSettingsRow
           label="Notificaciones"
           trailing={
-            <AppSwitch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
+            <AppSwitch
+              value={settings?.notificationsEnabled ?? true}
+              onValueChange={(v) => updateSetting({ notificationsEnabled: v })}
+            />
+          }
+        />
+        <ProfileSettingsRow
+          label="Omitir instrucciones de reciclaje"
+          icon={
+            <AppIcon
+              name="eyeOff"
+              size={theme.iconSizes.md}
+              color={theme.colors.textSecondary}
+            />
+          }
+          trailing={
+            <AppSwitch
+              value={settings?.skipRecyclingInstructions ?? false}
+              onValueChange={(v) => updateSetting({ skipRecyclingInstructions: v })}
+            />
           }
         />
       </View>
