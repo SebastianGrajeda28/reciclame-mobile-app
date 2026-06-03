@@ -3,6 +3,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
+import { useRotatingFunFact } from '@/src/features/recycling/hooks/useFunFact';
 import { classifyWaste, getConfidenceThreshold } from '@/src/features/recycling/services/classification';
 import {
   useRecycleFlow,
@@ -10,7 +11,7 @@ import {
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
-import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import { AppButton, AppCard, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
@@ -27,6 +28,7 @@ export function ProcessingScreen() {
   const navigation = useNavigation();
   const { state, setPrediction, clearPrediction, clearSelectedContainer } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
+  const { fact } = useRotatingFunFact();
   const loading = !state.finalWasteTypeId;
   const navigatingForward = useRef(false);
 
@@ -95,7 +97,18 @@ export function ProcessingScreen() {
         </AppText>
 
         {loading ? (
-          <ProcessingLoadingView />
+          <ProcessingLoadingView
+            slot={
+              fact ? (
+                <AppCard variant="info" padding="sm" elevation="none">
+                  <View style={styles.funFactRow}>
+                    <AppIcon name="info" size={theme.iconSizes.sm} color={theme.colors.info} />
+                    <AppText style={styles.funFactText}>{fact.text}</AppText>
+                  </View>
+                </AppCard>
+              ) : null
+            }
+          />
         ) : (
           <>
             <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
@@ -296,5 +309,15 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
+  },
+  funFactRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+  },
+  funFactText: {
+    flex: 1,
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.textSecondary,
   },
 });

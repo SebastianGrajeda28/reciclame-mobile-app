@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { fetchRandomFunFact, fetchRandomFunFactByWasteTypeId } from '@/src/services/api/content';
+import { fetchFunFacts, fetchRandomFunFact, fetchRandomFunFactByWasteTypeId } from '@/src/services/api/content';
 import type { FunFact } from '@/src/types/funFact';
 
 type FunFactState = {
@@ -67,4 +67,51 @@ export function useRandomFunFact(): FunFactState {
   }, [refresh]);
 
   return { funFact, loading, error, refresh };
+}
+
+const ROTATION_INTERVAL_MS = 4000;
+
+/**
+ * Carga todos los datos curiosos activos y rota entre ellos cada 4 s.
+ * Una sola consulta por montaje; el intervalo se limpia al desmontar.
+ * @returns fact - Dato curioso actual, null mientras carga o si la BD está vacía.
+ * @returns loading - true durante la carga inicial.
+ * @returns error - Error si la consulta falla.
+ */
+export function useRotatingFunFact(): { fact: FunFact | null; loading: boolean; error: Error | null } {
+  const [facts, setFacts] = useState<FunFact[]>([]);
+  const [index, setIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchFunFacts()
+      .then((data) => {
+        if (!mounted) return;
+        setFacts(data);
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        setError(err instanceof Error ? err : new Error('No se pudieron cargar los datos curiosos.'));
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (facts.length === 0) return;
+    const timer = setInterval(() => {
+      indexRef.current = (indexRef.current + 1) % facts.length;
+      setIndex(indexRef.current);
+    }, ROTATION_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [facts]);
+
+  return { fact: facts[index] ?? null, loading, error };
 }
