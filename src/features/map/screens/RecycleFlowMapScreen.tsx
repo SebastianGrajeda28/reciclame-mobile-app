@@ -6,12 +6,12 @@ import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import { containers } from '@/src/features/recycling/services/containers.mock';
-import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
+import { getNearbyCompatibleContainersByBinType } from '@/src/features/recycling/services/filterContainers';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
 import { AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
@@ -39,6 +39,9 @@ export function RecycleFlowMapScreen() {
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const autoSelected = useRef(false);
+  const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
+    state.finalWasteTypeId,
+  );
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {
@@ -47,23 +50,25 @@ export function RecycleFlowMapScreen() {
   }, [navigation, clearSelectedContainer]);
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
-  const filteredWasteTypes = useMemo(() => {
-    if (!state.finalWasteTypeId) return wasteTypes;
-    return wasteTypes.filter((wt) => wt.id === state.finalWasteTypeId);
+  useEffect(() => {
+    autoSelected.current = false;
   }, [state.finalWasteTypeId]);
 
-  const markers = useMemo(() => {
-    const ids = new Set(filteredWasteTypes.map((wt) => wt.id));
-    return containers
-      .map((c) => ({
-        ...c,
-        distanceKm: haversineDistanceKm(location, { latitude: c.latitude, longitude: c.longitude }),
-      }))
-      .filter((c) => c.distanceKm <= 3)
-      .filter((c) => c.acceptedWasteTypeIds.some((id) => ids.has(id)))
-      .sort((a, b) => a.distanceKm - b.distanceKm)
-      .map((c) => ({ id: c.id, title: c.name, latitude: c.latitude, longitude: c.longitude }));
-  }, [filteredWasteTypes, location]);
+  const nearby = useMemo(
+    () => getNearbyCompatibleContainersByBinType(location, containers, resolvedBinType?.id),
+    [location, resolvedBinType],
+  );
+
+  const markers = useMemo(
+    () =>
+      nearby.map((container) => ({
+        id: container.id,
+        title: container.name,
+        latitude: container.latitude,
+        longitude: container.longitude,
+      })),
+    [nearby],
+  );
 
   useEffect(() => {
     if (!autoSelected.current && markers.length > 0 && !state.selectedContainerId) {
@@ -71,6 +76,16 @@ export function RecycleFlowMapScreen() {
       setSelectedContainerId(markers[0].id);
     }
   }, [markers, state.selectedContainerId, setSelectedContainerId]);
+
+  useEffect(() => {
+    if (
+      !resolvingBinType &&
+      state.selectedContainerId &&
+      !markers.some((marker) => marker.id === state.selectedContainerId)
+    ) {
+      clearSelectedContainer();
+    }
+  }, [clearSelectedContainer, markers, resolvingBinType, state.selectedContainerId]);
 
   return (
     <AppScreen insetBottom={false} insetTop={false}>
@@ -88,7 +103,7 @@ export function RecycleFlowMapScreen() {
             );
           })()}
           <AppText style={styles.wasteLabel}>
-            {finalWasteType?.categoryLabel ?? 'Residuo'}
+            {finalWasteType?.label ?? 'Residuo'}
           </AppText>
         </View>
       </View>
@@ -110,8 +125,8 @@ export function RecycleFlowMapScreen() {
           <ContainerSelectedCard
             container={selectedContainer}
             userLocation={location}
-            finalWasteTypeCategoryLabel={finalWasteType?.categoryLabel}
             finalWasteTypeLabel={finalWasteType?.label}
+            resolvedBinTypeName={resolvedBinType?.name}
             onDismiss={clearSelectedContainer}
             onRecycleHere={() => router.push('/recycle/instructions')}
             hideDismiss

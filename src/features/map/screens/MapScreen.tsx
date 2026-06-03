@@ -10,10 +10,13 @@ import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
+import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
   filterWasteTypesByCategory,
   getNearbyCompatibleContainers,
+  getNearbyCompatibleContainersByBinType,
 } from '@/src/features/recycling/services/filterContainers';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
@@ -27,15 +30,6 @@ const pUCPRegion = {
   longitudeDelta: 0.01,
 };
 
-
-const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
-  plastic_pet: 'bottle',
-  paper_cardboard: 'briefcase',
-  glass: 'flask',
-  non_recoverable: 'delete',
-  battery: 'battery',
-  electronic_waste: 'laptop',
-};
 
 const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: WasteCategoryId }[] = [
   { id: 'all', icon: 'trash', label: 'Todos' },
@@ -55,16 +49,22 @@ export function MapScreen() {
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const selectedContainerIdRef = useRef(state.selectedContainerId);
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
+  const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
+    state.finalWasteTypeId,
+  );
 
   const filteredWasteTypes = useMemo(
     () => filterWasteTypesByCategory(wasteTypes, category),
     [category],
   );
 
-  const nearby = useMemo(
-    () => getNearbyCompatibleContainers(location, containers, filteredWasteTypes),
-    [filteredWasteTypes, location],
-  );
+  const nearby = useMemo(() => {
+    if (state.finalWasteTypeId) {
+      return getNearbyCompatibleContainersByBinType(location, containers, resolvedBinType?.id);
+    }
+
+    return getNearbyCompatibleContainers(location, containers, filteredWasteTypes);
+  }, [filteredWasteTypes, location, resolvedBinType, state.finalWasteTypeId]);
   nearbyRef.current = nearby;
   selectedContainerIdRef.current = state.selectedContainerId;
 
@@ -80,18 +80,22 @@ export function MapScreen() {
   );
 
   useEffect(() => {
-    if (nearby.length === 0 && category !== 'all') {
+    if (!resolvingBinType && nearby.length === 0 && category !== 'all') {
       Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
         { text: 'Entendido' },
       ]);
     }
-  }, [category, nearby.length]);
+  }, [category, nearby.length, resolvingBinType]);
 
   useEffect(() => {
-    if (selectedContainerIdRef.current && !nearbyRef.current.some((c) => c.id === selectedContainerIdRef.current)) {
+    if (
+      !resolvingBinType &&
+      selectedContainerIdRef.current &&
+      !nearbyRef.current.some((c) => c.id === selectedContainerIdRef.current)
+    ) {
       clearSelectedContainer();
     }
-  }, [category, clearSelectedContainer]);
+  }, [category, clearSelectedContainer, resolvedBinType, resolvingBinType]);
 
   const selectedDistanceKm = selectedContainer
     ? haversineDistanceKm(location, {
@@ -102,14 +106,9 @@ export function MapScreen() {
 
   const availableIcons = useMemo(() => {
     if (!selectedContainer) return [];
-    return selectedContainer.acceptedWasteTypeIds
-      .map((id) => wasteTypes.find((wt) => wt.id === id))
+    return selectedContainer.availableBinTypeIds
+      .map((id) => binTypeConfig[id])
       .filter(Boolean)
-      .map((wt) => {
-        const categoryId = wt!.categoryId as WasteCategoryId;
-        const config = wasteCategoryConfig[categoryId];
-        return { icon: CATEGORY_ICON[categoryId], color: config.color, iconColor: config.iconColor };
-      })
       .filter((item) => item.icon) as { icon: AppIconName; color: string; iconColor: string }[];
   }, [selectedContainer]);
 
@@ -187,11 +186,13 @@ export function MapScreen() {
             {finalWasteType ? (
               <>
                 <AppText style={styles.selectedMeta}>
-                  Contenedor elegido: {finalWasteType.categoryLabel}
+                  Residuo detectado: {finalWasteType.label}
                 </AppText>
-                <AppText style={styles.selectedMeta}>
-                  Tipo de residuo: {finalWasteType.label}
-                </AppText>
+                {resolvedBinType ? (
+                  <AppText style={styles.selectedMeta}>
+                    Contenedor correspondiente: {resolvedBinType.name}
+                  </AppText>
+                ) : null}
               </>
             ) : null}
             {selectedDistanceKm !== undefined ? (

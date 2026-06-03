@@ -1,6 +1,7 @@
 export type RecyclingLogInput = {
   userId: string;
   wasteTypeId: string;
+  binTypeId: string;
   recyclingPointId: string;
   detectionType?: 'auto' | 'manual';
   confidenceScore?: number;

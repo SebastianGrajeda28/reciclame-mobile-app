@@ -1,4 +1,5 @@
 import { createRecyclingLog } from '@/src/services/api/recyclingLogs';
+import { supabase } from '@/src/services/supabase/client';
 
 jest.mock('@/src/services/supabase/client', () => {
   return {
@@ -7,8 +8,6 @@ jest.mock('@/src/services/supabase/client', () => {
     },
   };
 });
-
-import { supabase } from '@/src/services/supabase/client';
 
 const mockedFrom = supabase.from as jest.Mock;
 
@@ -29,6 +28,7 @@ describe('createRecyclingLog', () => {
       id: 'rec-1',
       user_id: 'user-1',
       waste_type_id: '11111111-1111-1111-1111-000000000002',
+      bin_type_id: '33333333-3333-3333-3333-000000000001',
       recycling_point_id: '22222222-2222-2222-2222-000000000001',
       detection_type: 'auto',
       confidence_score: 0.87,
@@ -40,6 +40,7 @@ describe('createRecyclingLog', () => {
     const result = await createRecyclingLog({
       userId: 'user-1',
       wasteTypeId: '11111111-1111-1111-1111-000000000002',
+      binTypeId: '33333333-3333-3333-3333-000000000001',
       recyclingPointId: '22222222-2222-2222-2222-000000000001',
       detectionType: 'auto',
       confidenceScore: 0.87,
@@ -49,6 +50,7 @@ describe('createRecyclingLog', () => {
     expect(chain.insert).toHaveBeenCalledWith({
       user_id: 'user-1',
       waste_type_id: '11111111-1111-1111-1111-000000000002',
+      bin_type_id: '33333333-3333-3333-3333-000000000001',
       recycling_point_id: '22222222-2222-2222-2222-000000000001',
       detection_type: 'auto',
       confidence_score: 0.87,
@@ -58,6 +60,7 @@ describe('createRecyclingLog', () => {
       id: 'rec-1',
       userId: 'user-1',
       wasteTypeId: '11111111-1111-1111-1111-000000000002',
+      binTypeId: '33333333-3333-3333-3333-000000000001',
       recyclingPointId: '22222222-2222-2222-2222-000000000001',
       detectionType: 'auto',
       confidenceScore: 0.87,
@@ -76,6 +79,7 @@ describe('createRecyclingLog', () => {
       createRecyclingLog({
         userId: 'user-1',
         wasteTypeId: 'no-existe',
+        binTypeId: '33333333-3333-3333-3333-000000000001',
         recyclingPointId: '22222222-2222-2222-2222-000000000001',
       }),
     ).rejects.toThrow('foreign key violation on waste_type_id');
@@ -87,6 +91,7 @@ describe('createRecyclingLog', () => {
         id: 'rec-2',
         user_id: 'user-1',
         waste_type_id: '11111111-1111-1111-1111-000000000004',
+        bin_type_id: '33333333-3333-3333-3333-000000000003',
         recycling_point_id: '22222222-2222-2222-2222-000000000002',
         detection_type: null,
         confidence_score: null,
@@ -99,6 +104,7 @@ describe('createRecyclingLog', () => {
     await createRecyclingLog({
       userId: 'user-1',
       wasteTypeId: '11111111-1111-1111-1111-000000000004',
+      binTypeId: '33333333-3333-3333-3333-000000000003',
       recyclingPointId: '22222222-2222-2222-2222-000000000002',
     });
 

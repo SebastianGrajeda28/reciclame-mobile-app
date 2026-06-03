@@ -28,3 +28,24 @@ export function getNearbyCompatibleContainers(
     .filter((c) => c.acceptedWasteTypeIds.some((id) => ids.has(id)))
     .sort((a, b) => a.distanceKm - b.distanceKm);
 }
+
+export function getNearbyCompatibleContainersByBinType(
+  location: { latitude: number; longitude: number },
+  containers: RecyclingContainer[],
+  binTypeId?: string | null,
+  maxDistanceKm = 3,
+): ContainerWithDistance[] {
+  if (!binTypeId) return [];
+
+  return containers
+    .map((container) => ({
+      ...container,
+      distanceKm: haversineDistanceKm(location, {
+        latitude: container.latitude,
+        longitude: container.longitude,
+      }),
+    }))
+    .filter((container) => container.distanceKm <= maxDistanceKm)
+    .filter((container) => container.availableBinTypeIds.includes(binTypeId))
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+}

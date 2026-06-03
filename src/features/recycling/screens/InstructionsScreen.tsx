@@ -1,8 +1,12 @@
+import { router, useNavigation } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { router, useNavigation } from 'expo-router';
 
-import { useRecycleFlow, useResolvedRecycleSelection } from '@/src/features/recycling/hooks/useRecycleFlow';
+import {
+  useRecycleFlow,
+  useResolvedRecycleSelection,
+} from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { createRecyclingLog } from '@/src/services/api/recyclingLogs';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
@@ -11,6 +15,9 @@ export function InstructionsScreen() {
   const navigation = useNavigation();
   const { state, clearSelectedContainer } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
+  const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
+    state.finalWasteTypeId,
+  );
   const { session } = useAuth();
   const [showAgain, setShowAgain] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +50,11 @@ export function InstructionsScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.stepList} showsVerticalScrollIndicator={false} style={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.stepList}
+        showsVerticalScrollIndicator={false}
+        style={styles.scroll}
+      >
         {steps.map((step, index) => {
           const imageFirst = index % 2 === 0;
           const textBlock = (
@@ -67,9 +78,7 @@ export function InstructionsScreen() {
       <View style={styles.footer}>
         <Pressable style={styles.checkRow} onPress={() => setShowAgain((v) => !v)}>
           <View style={[styles.checkbox, showAgain && styles.checkboxChecked]}>
-            {showAgain && (
-              <AppIcon name="check" size={theme.iconSizes.sm} color="#fff" />
-            )}
+            {showAgain && <AppIcon name="check" size={theme.iconSizes.sm} color="#fff" />}
           </View>
           <AppText style={styles.checkLabel}>Seguir mostrando instrucciones</AppText>
         </Pressable>
@@ -80,7 +89,6 @@ export function InstructionsScreen() {
           onPress={async () => {
             const notify = (title: string, message: string) => {
               if (Platform.OS === 'web') {
-                // eslint-disable-next-line no-alert
                 window.alert(`${title}\n\n${message}`);
               } else {
                 Alert.alert(title, message);
@@ -98,15 +106,30 @@ export function InstructionsScreen() {
               notify('Datos incompletos', 'Falta categoría o contenedor seleccionado.');
               return;
             }
+            if (resolvingBinType || !resolvedBinType) {
+              notify(
+                'Datos incompletos',
+                'Aún no se pudo determinar el contenedor correspondiente.',
+              );
+              return;
+            }
+            if (!selectedContainer.availableBinTypeIds.includes(resolvedBinType.id)) {
+              notify(
+                'Contenedor no compatible',
+                'El punto seleccionado no cuenta con el contenedor correspondiente.',
+              );
+              return;
+            }
 
             setSubmitting(true);
             try {
               const usedManual =
-                state.predictedWasteTypeId !== undefined &&
+                state.predictedWasteTypeId === undefined ||
                 state.predictedWasteTypeId !== state.finalWasteTypeId;
               await createRecyclingLog({
                 userId: session.user.id,
                 wasteTypeId: finalWasteType.id,
+                binTypeId: resolvedBinType.id,
                 recyclingPointId: selectedContainer.id,
                 detectionType: usedManual ? 'manual' : 'auto',
                 confidenceScore: state.predictionConfidence,

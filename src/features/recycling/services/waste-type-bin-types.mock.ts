@@ -1,0 +1,75 @@
+import { WasteTypeBinTypeMapping } from '@/src/features/recycling/types/recycling.types';
+import {
+  BATTERIES_BIN_TYPE_ID,
+  GLASS_BIN_TYPE_ID,
+  NON_RECOVERABLE_BIN_TYPE_ID,
+  PAPER_CARDBOARD_BIN_TYPE_ID,
+  PLASTICS_BIN_TYPE_ID,
+  RAEE_BIN_TYPE_ID,
+} from '@/src/features/recycling/services/bin-types.mock';
+
+export const PUCP_UNIVERSITY_ID = '00000000-0000-0000-0000-000000000001';
+
+export const CARTON_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000001';
+export const PLASTICS_PET_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000002';
+export const GENERAL_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000003';
+export const GLASS_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000004';
+export const BATTERIES_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000005';
+export const RAEE_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000006';
+export const OTHER_PLASTICS_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000007';
+export const METALS_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000008';
+export const PAPER_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000009';
+export const ORGANIC_WASTE_TYPE_ID = '11111111-1111-1111-1111-000000000010';
+
+export const wasteTypeBinTypeMappings: WasteTypeBinTypeMapping[] = [
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: CARTON_WASTE_TYPE_ID,
+    binTypeId: PAPER_CARDBOARD_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: PLASTICS_PET_WASTE_TYPE_ID,
+    binTypeId: PLASTICS_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: GENERAL_WASTE_TYPE_ID,
+    binTypeId: NON_RECOVERABLE_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: GLASS_WASTE_TYPE_ID,
+    binTypeId: GLASS_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: BATTERIES_WASTE_TYPE_ID,
+    binTypeId: BATTERIES_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: RAEE_WASTE_TYPE_ID,
+    binTypeId: RAEE_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: OTHER_PLASTICS_WASTE_TYPE_ID,
+    binTypeId: PLASTICS_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: METALS_WASTE_TYPE_ID,
+    binTypeId: RAEE_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: PAPER_WASTE_TYPE_ID,
+    binTypeId: PAPER_CARDBOARD_BIN_TYPE_ID,
+  },
+  {
+    universityId: PUCP_UNIVERSITY_ID,
+    wasteTypeId: ORGANIC_WASTE_TYPE_ID,
+    binTypeId: NON_RECOVERABLE_BIN_TYPE_ID,
+  },
+];

@@ -1,4 +1,5 @@
 export const RECYCLE_CONFIDENCE_THRESHOLD = 0.8;
+export const BIN_TYPE_RESOLUTION_USE_MOCKS = true;
 
 /**
  * Switch central for service implementations.

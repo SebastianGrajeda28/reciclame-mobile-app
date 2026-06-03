@@ -7,11 +7,12 @@ import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { containers } from '@/src/features/recycling/services/containers.mock';
 
 jest.mock('expo-location', () => ({
-  getCurrentPositionAsync: jest.fn().mockResolvedValue({
-    coords: { latitude: -12.0695, longitude: -77.0793 },
-  }),
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  watchPositionAsync: jest.fn().mockResolvedValue({ remove: jest.fn() }),
 }));
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
@@ -28,6 +29,7 @@ jest.mock('@/src/features/map/components/RecycleMap', () => ({
 jest.mock('@/src/features/recycling/hooks/useRecycleFlow');
 
 const mockClearSelectedContainer = jest.fn();
+const libraryContainerId = containers[0].id;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -54,9 +56,8 @@ describe('MapScreen filter chips', () => {
   });
 
   it('clears selected container when active filter excludes it', async () => {
-    // container-1 accepts paper_cardboard_bin + plastic_pet_bin only
     (useRecycleFlow as jest.Mock).mockReturnValue({
-      state: { selectedContainerId: 'container-1' },
+      state: { selectedContainerId: libraryContainerId },
       setSelectedContainerId: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
@@ -72,9 +73,8 @@ describe('MapScreen filter chips', () => {
   });
 
   it('does not clear container when filter still includes it', async () => {
-    // container-1 accepts plastic_pet_bin
     (useRecycleFlow as jest.Mock).mockReturnValue({
-      state: { selectedContainerId: 'container-1' },
+      state: { selectedContainerId: libraryContainerId },
       setSelectedContainerId: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
@@ -91,7 +91,7 @@ describe('MapScreen filter chips', () => {
 
   it('does not clear container when filter is all', async () => {
     (useRecycleFlow as jest.Mock).mockReturnValue({
-      state: { selectedContainerId: 'container-1' },
+      state: { selectedContainerId: libraryContainerId },
       setSelectedContainerId: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
