@@ -235,26 +235,60 @@ create table if not exists public.avatars (
 -- ============================================================
 -- SOCIAL
 -- ============================================================
+-- Amistades bilaterales: una sola fila representa la relación
+-- entre dos usuarios. 'status' controla el ciclo de vida:
+--   pending  -> solicitud enviada, esperando aceptación
+--   accepted -> amistad activa y bilateral
+--   declined -> solicitud rechazada
+--   blocked  -> uno bloqueó al otro
+-- requester_id = quien envió la solicitud (vía QR u otro medio)
+-- addressee_id = quien la recibe
 create table if not exists public.friendships (
   id uuid primary key default gen_random_uuid(),
   requester_id uuid not null references public.users(id) on delete cascade,
   addressee_id uuid not null references public.users(id) on delete cascade,
-  status text not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'accepted', 'declined', 'blocked')),
+  -- Par canónico (menor, mayor) para detectar duplicados invertidos.
+  user_low uuid generated always as (least(requester_id, addressee_id)) stored,
+  user_high uuid generated always as (greatest(requester_id, addressee_id)) stored,
+  responded_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz,
   is_active boolean not null default true,
-  unique (requester_id, addressee_id),
   check (requester_id <> addressee_id)
 );
-
+ 
+-- Unicidad bilateral: una sola relación por par de usuarios,
+-- sin importar quién envió la solicitud (A->B y B->A colisionan).
+create unique index if not exists uq_friendships_pair
+  on public.friendships (user_low, user_high);
+ 
+-- Búsquedas frecuentes: "mis amigos / mis solicitudes".
+create index if not exists idx_friendships_requester
+  on public.friendships (requester_id);
+ 
+create index if not exists idx_friendships_addressee
+  on public.friendships (addressee_id);
+ 
+create index if not exists idx_friendships_status
+  on public.friendships (status);
+ 
+-- Códigos / tokens QR para agregar amigos. Cada usuario tiene un
+-- 'code' (lo que se codifica en el QR). Al escanear el QR de otro
+-- usuario se crea una fila en friendships (requester = quien escanea).
 create table if not exists public.friend_codes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references public.users(id) on delete cascade,
   code text not null unique,
+  expires_at timestamptz,            -- null = permanente; usar para QR temporales
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz
 );
+ 
+create index if not exists idx_friend_codes_code
+  on public.friend_codes (code);
 
 -- ============================================================
 -- CONTENT
