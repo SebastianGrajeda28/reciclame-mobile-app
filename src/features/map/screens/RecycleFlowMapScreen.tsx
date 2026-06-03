@@ -1,21 +1,21 @@
+import { router, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { router, useNavigation } from 'expo-router';
 
-import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
+import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
-import { containers } from '@/src/features/recycling/services/containers.mock';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
+import { containers } from '@/src/features/recycling/services/containers.mock';
 import { getNearbyCompatibleContainersByBinType } from '@/src/features/recycling/services/filterContainers';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
+import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 import { AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
-import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
   plastic_pet: 'bottle',
@@ -38,6 +38,7 @@ export function RecycleFlowMapScreen() {
   const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
+  const { finalWasteType } = useResolvedRecycleSelection();
   const autoSelected = useRef(false);
   const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
     state.finalWasteTypeId,
@@ -48,7 +49,6 @@ export function RecycleFlowMapScreen() {
       clearSelectedContainer();
     });
   }, [navigation, clearSelectedContainer]);
-  const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
 
   useEffect(() => {
     autoSelected.current = false;
@@ -92,19 +92,18 @@ export function RecycleFlowMapScreen() {
       <View style={styles.header}>
         <AppText style={styles.eyebrow}>BUSCAR PUNTO DE RECICLAJE</AppText>
         <View style={styles.headerLabelRow}>
-          {finalWasteType && (() => {
-            const catId = finalWasteType.categoryId as WasteCategoryId;
-            const cfg = wasteCategoryConfig[catId];
-            const icon = CATEGORY_ICON[catId];
-            return (
-              <View style={[styles.categoryIcon, { backgroundColor: cfg.color }]}>
-                <AppIcon name={icon} size={theme.iconSizes.sm} color={cfg.iconColor} />
-              </View>
-            );
-          })()}
-          <AppText style={styles.wasteLabel}>
-            {finalWasteType?.label ?? 'Residuo'}
-          </AppText>
+          {finalWasteType &&
+            (() => {
+              const catId = finalWasteType.categoryId as WasteCategoryId;
+              const cfg = wasteCategoryConfig[catId];
+              const icon = CATEGORY_ICON[catId];
+              return (
+                <View style={[styles.categoryIcon, { backgroundColor: cfg.color }]}>
+                  <AppIcon name={icon} size={theme.iconSizes.sm} color={cfg.iconColor} />
+                </View>
+              );
+            })()}
+          <AppText style={styles.wasteLabel}>{finalWasteType?.label ?? 'Residuo'}</AppText>
         </View>
       </View>
 
@@ -115,7 +114,10 @@ export function RecycleFlowMapScreen() {
           centerCoordinate={location}
           selectedMarkerId={state.selectedContainerId}
           onMarkerPress={setSelectedContainerId}
-          onMapReady={(fn) => { setRecenter(() => fn); fn(); }}
+          onMapReady={(fn) => {
+            setRecenter(() => fn);
+            fn();
+          }}
         />
         <Pressable style={styles.locationButton} onPress={() => recenter?.()}>
           <AppIcon name="locate" size={theme.iconSizes.md} color={theme.colors.textPrimary} />

@@ -1,24 +1,40 @@
+import { router, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
-import { router, useNavigation } from 'expo-router';
 
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
-import { classifyWaste, getConfidenceThreshold } from '@/src/features/recycling/services/classification';
+import { useRotatingFunFact } from '@/src/features/recycling/hooks/useFunFact';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
-import { containers } from '@/src/features/recycling/services/containers.mock';
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
+import {
+  classifyWaste,
+  getConfidenceThreshold,
+} from '@/src/features/recycling/services/classification';
+import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
-import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
+import {
+  AppButton,
+  AppCard,
+  AppCardDescription,
+  AppCardEyebrow,
+  AppCardHeader,
+  AppCardHeaderText,
+  AppIcon,
+  AppScreen,
+  AppText,
+  theme,
+} from '@/src/ui';
 
 export function ProcessingScreen() {
   const navigation = useNavigation();
   const { state, setPrediction, clearPrediction, clearSelectedContainer } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
+  const { fact } = useRotatingFunFact();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
   const loading = !state.finalWasteTypeId;
   const navigatingForward = useRef(false);
@@ -66,7 +82,11 @@ export function ProcessingScreen() {
       <View style={styles.imageSection}>
         <View style={styles.imageWrapper}>
           {state.capturedPhotoUri ? (
-            <Image source={{ uri: state.capturedPhotoUri }} style={styles.image} resizeMode="cover" />
+            <Image
+              source={{ uri: state.capturedPhotoUri }}
+              style={styles.image}
+              resizeMode="cover"
+            />
           ) : (
             <View style={styles.imagePlaceholder} />
           )}
@@ -86,7 +106,24 @@ export function ProcessingScreen() {
         </AppText>
 
         {loading ? (
-          <ProcessingLoadingView />
+          <ProcessingLoadingView
+            slot={
+              fact ? (
+                <AppCard variant="info" padding="md" elevation="xs" style={styles.funFactCard}>
+                  <AppCardHeader
+                    leading={
+                      <AppIcon name="info" size={theme.iconSizes.md} color={theme.colors.info} />
+                    }
+                  >
+                    <AppCardHeaderText>
+                      <AppCardEyebrow style={styles.funFactEyebrow}>¿Sabías que...?</AppCardEyebrow>
+                      <AppCardDescription>{fact.text}</AppCardDescription>
+                    </AppCardHeaderText>
+                  </AppCardHeader>
+                </AppCard>
+              ) : null
+            }
+          />
         ) : (
           <>
             <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
@@ -122,7 +159,9 @@ export function ProcessingScreen() {
               <View style={styles.mismatchCard}>
                 <AppIcon name="alertCircle" size={theme.iconSizes.md} color={theme.colors.danger} />
                 <AppText style={styles.mismatchText}>
-                  {selectedContainer.name} no cuenta con {resolvedBinType?.name ?? 'el contenedor correspondiente'}. Elige otro punto de reciclaje.
+                  {selectedContainer.name} no cuenta con{' '}
+                  {resolvedBinType?.name ?? 'el contenedor correspondiente'}. Elige otro punto de
+                  reciclaje.
                 </AppText>
               </View>
             )}
@@ -154,7 +193,8 @@ export function ProcessingScreen() {
                 <AppButton
                   label="Aceptar"
                   onPress={() => {
-                    const hasCompatibleContainer = !!state.selectedContainerId && !containerMismatch;
+                    const hasCompatibleContainer =
+                      !!state.selectedContainerId && !containerMismatch;
                     if (hasCompatibleContainer) {
                       router.push('/recycle/instructions');
                     } else {
@@ -293,5 +333,11 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
+  },
+  funFactCard: {
+    marginTop: theme.spacing.lg,
+  },
+  funFactEyebrow: {
+    color: theme.colors.info,
   },
 });

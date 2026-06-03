@@ -126,3 +126,22 @@ export async function fetchRandomFunFact(): Promise<FunFact | null> {
   const row = pickRandom(data ?? []);
   return row ? mapFunFact(row) : null;
 }
+
+/**
+ * Obtiene todos los datos curiosos activos para rotar en memoria.
+ * @returns Lista de datos curiosos activos (puede estar vacía si la BD no tiene datos).
+ * @throws Error si la consulta a Supabase falla.
+ */
+export async function fetchFunFacts(): Promise<FunFact[]> {
+  const { data, error } = await supabase
+    .from('fun_facts')
+    .select('id,text,waste_type_id,is_active,created_at')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map(mapFunFact);
+}
