@@ -3,6 +3,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
+import { useRotatingFunFact } from '@/src/features/recycling/hooks/useFunFact';
 import { classifyWaste, getConfidenceThreshold } from '@/src/features/recycling/services/classification';
 import {
   useRecycleFlow,
@@ -10,7 +11,18 @@ import {
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
-import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import {
+  AppButton,
+  AppCard,
+  AppCardDescription,
+  AppCardEyebrow,
+  AppCardHeader,
+  AppCardHeaderText,
+  AppIcon,
+  AppScreen,
+  AppText,
+  theme,
+} from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
@@ -27,6 +39,7 @@ export function ProcessingScreen() {
   const navigation = useNavigation();
   const { state, setPrediction, clearPrediction, clearSelectedContainer } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
+  const { fact } = useRotatingFunFact();
   const loading = !state.finalWasteTypeId;
   const navigatingForward = useRef(false);
 
@@ -95,7 +108,24 @@ export function ProcessingScreen() {
         </AppText>
 
         {loading ? (
-          <ProcessingLoadingView />
+          <ProcessingLoadingView
+            slot={
+              fact ? (
+                <AppCard variant="info" padding="md" elevation="xs" style={styles.funFactCard}>
+                  <AppCardHeader
+                    leading={
+                      <AppIcon name="info" size={theme.iconSizes.md} color={theme.colors.info} />
+                    }
+                  >
+                    <AppCardHeaderText>
+                      <AppCardEyebrow style={styles.funFactEyebrow}>¿Sabías que...?</AppCardEyebrow>
+                      <AppCardDescription>{fact.text}</AppCardDescription>
+                    </AppCardHeaderText>
+                  </AppCardHeader>
+                </AppCard>
+              ) : null
+            }
+          />
         ) : (
           <>
             <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
@@ -296,5 +326,11 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
+  },
+  funFactCard: {
+    marginTop: theme.spacing.lg,
+  },
+  funFactEyebrow: {
+    color: theme.colors.info,
   },
 });
