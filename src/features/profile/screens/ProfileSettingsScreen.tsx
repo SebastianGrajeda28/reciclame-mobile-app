@@ -2,8 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
-import { ProfileSectionLabel } from '@/src/features/profile/components/ProfileSectionLabel';
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
+import { ProfileSectionLabel } from '@/src/features/profile/components/ProfileSectionLabel';
 import { ProfileSettingsRow } from '@/src/features/profile/components/ProfileSettingsRow';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { supabase } from '@/src/services/supabase/client';
@@ -29,7 +29,6 @@ export function ProfileSettingsScreen() {
       if (error) {
         throw error;
       }
-      router.replace('/');
     } catch {
       Alert.alert('No se pudo cerrar sesión', 'Intenta nuevamente en unos segundos.');
     } finally {
