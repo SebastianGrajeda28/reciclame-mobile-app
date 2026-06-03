@@ -11,7 +11,18 @@ import {
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
-import { AppButton, AppCard, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import {
+  AppButton,
+  AppCard,
+  AppCardDescription,
+  AppCardEyebrow,
+  AppCardHeader,
+  AppCardHeaderText,
+  AppIcon,
+  AppScreen,
+  AppText,
+  theme,
+} from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
@@ -100,11 +111,17 @@ export function ProcessingScreen() {
           <ProcessingLoadingView
             slot={
               fact ? (
-                <AppCard variant="info" padding="sm" elevation="none">
-                  <View style={styles.funFactRow}>
-                    <AppIcon name="info" size={theme.iconSizes.sm} color={theme.colors.info} />
-                    <AppText style={styles.funFactText}>{fact.text}</AppText>
-                  </View>
+                <AppCard variant="info" padding="md" elevation="xs" style={styles.funFactCard}>
+                  <AppCardHeader
+                    leading={
+                      <AppIcon name="info" size={theme.iconSizes.md} color={theme.colors.info} />
+                    }
+                  >
+                    <AppCardHeaderText>
+                      <AppCardEyebrow style={styles.funFactEyebrow}>¿Sabías que...?</AppCardEyebrow>
+                      <AppCardDescription>{fact.text}</AppCardDescription>
+                    </AppCardHeaderText>
+                  </AppCardHeader>
                 </AppCard>
               ) : null
             }
@@ -310,14 +327,10 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
   },
-  funFactRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
+  funFactCard: {
+    marginTop: theme.spacing.lg,
   },
-  funFactText: {
-    flex: 1,
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
+  funFactEyebrow: {
+    color: theme.colors.info,
   },
 });
