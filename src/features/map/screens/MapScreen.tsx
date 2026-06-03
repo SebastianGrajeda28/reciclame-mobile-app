@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import { containers } from '@/src/features/recycling/services/containers.mock';
-import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
@@ -14,14 +13,19 @@ import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBi
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
-  filterWasteTypesByCategory,
-  getNearbyCompatibleContainers,
+  getNearbyContainers,
   getNearbyCompatibleContainersByBinType,
 } from '@/src/features/recycling/services/filterContainers';
-import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
+import {
+  BATTERIES_BIN_TYPE_ID,
+  GLASS_BIN_TYPE_ID,
+  NON_RECOVERABLE_BIN_TYPE_ID,
+  PAPER_CARDBOARD_BIN_TYPE_ID,
+  PLASTICS_BIN_TYPE_ID,
+  RAEE_BIN_TYPE_ID,
+} from '@/src/features/recycling/services/bin-types.mock';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
-import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 const pUCPRegion = {
   latitude: -12.0695,
@@ -31,14 +35,50 @@ const pUCPRegion = {
 };
 
 
-const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: WasteCategoryId }[] = [
+const FILTERS: { id: string; icon: AppIconName; label: string; activeColor?: string; iconColor?: string }[] = [
   { id: 'all', icon: 'trash', label: 'Todos' },
-  { id: 'plastic_pet', icon: 'bottle', label: 'Plástico', categoryId: 'plastic_pet' },
-  { id: 'paper_cardboard', icon: 'briefcase', label: 'Papel', categoryId: 'paper_cardboard' },
-  { id: 'glass', icon: 'flask', label: 'Vidrio', categoryId: 'glass' },
-  { id: 'non_recoverable', icon: 'delete', label: 'No rec.', categoryId: 'non_recoverable' },
-  { id: 'battery', icon: 'battery', label: 'Pilas', categoryId: 'battery' },
-  { id: 'electronic_waste', icon: 'laptop', label: 'RAEE', categoryId: 'electronic_waste' },
+  {
+    id: PLASTICS_BIN_TYPE_ID,
+    icon: binTypeConfig[PLASTICS_BIN_TYPE_ID].icon,
+    label: 'Plástico',
+    activeColor: binTypeConfig[PLASTICS_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[PLASTICS_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: PAPER_CARDBOARD_BIN_TYPE_ID,
+    icon: binTypeConfig[PAPER_CARDBOARD_BIN_TYPE_ID].icon,
+    label: 'Papel',
+    activeColor: binTypeConfig[PAPER_CARDBOARD_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[PAPER_CARDBOARD_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: GLASS_BIN_TYPE_ID,
+    icon: binTypeConfig[GLASS_BIN_TYPE_ID].icon,
+    label: 'Vidrio',
+    activeColor: binTypeConfig[GLASS_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[GLASS_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: NON_RECOVERABLE_BIN_TYPE_ID,
+    icon: binTypeConfig[NON_RECOVERABLE_BIN_TYPE_ID].icon,
+    label: 'No rec.',
+    activeColor: binTypeConfig[NON_RECOVERABLE_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[NON_RECOVERABLE_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: BATTERIES_BIN_TYPE_ID,
+    icon: binTypeConfig[BATTERIES_BIN_TYPE_ID].icon,
+    label: 'Pilas',
+    activeColor: binTypeConfig[BATTERIES_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[BATTERIES_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: RAEE_BIN_TYPE_ID,
+    icon: binTypeConfig[RAEE_BIN_TYPE_ID].icon,
+    label: 'RAEE',
+    activeColor: binTypeConfig[RAEE_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[RAEE_BIN_TYPE_ID].iconColor,
+  },
 ];
 
 export function MapScreen() {
@@ -53,18 +93,17 @@ export function MapScreen() {
     state.finalWasteTypeId,
   );
 
-  const filteredWasteTypes = useMemo(
-    () => filterWasteTypesByCategory(wasteTypes, category),
-    [category],
-  );
-
   const nearby = useMemo(() => {
     if (state.finalWasteTypeId) {
       return getNearbyCompatibleContainersByBinType(location, containers, resolvedBinType?.id);
     }
 
-    return getNearbyCompatibleContainers(location, containers, filteredWasteTypes);
-  }, [filteredWasteTypes, location, resolvedBinType, state.finalWasteTypeId]);
+    if (category === 'all') {
+      return getNearbyContainers(location, containers);
+    }
+
+    return getNearbyCompatibleContainersByBinType(location, containers, category);
+  }, [category, location, resolvedBinType, state.finalWasteTypeId]);
   nearbyRef.current = nearby;
   selectedContainerIdRef.current = state.selectedContainerId;
 
@@ -131,20 +170,21 @@ export function MapScreen() {
         <AppText style={styles.filterTitle}>Filtrar por contenedores</AppText>
         <View style={styles.filterChips}>
           {FILTERS.map((f) => {
-            const cfg = f.categoryId ? wasteCategoryConfig[f.categoryId] : null;
             const isSelected = category === f.id;
+            const activeColor = f.activeColor ?? theme.colors.primary;
+            const iconColor = f.iconColor ?? theme.colors.textInverse;
             return (
               <IconFilterButton
                 key={f.id}
                 selected={isSelected}
                 onPress={() => setCategory(f.id)}
                 label={f.label}
-                activeColor={cfg?.color}
+                activeColor={activeColor}
                 icon={
                   <AppIcon
                     name={f.icon}
                     size={theme.iconSizes.md}
-                    color={cfg ? (isSelected ? cfg.iconColor : cfg.color) : (isSelected ? theme.colors.textInverse : theme.colors.primary)}
+                    color={isSelected ? iconColor : activeColor}
                   />
                 }
               />

@@ -297,3 +297,7 @@ buck-out/
 .ionide
 expo-env.d.ts
 # End of https://www.toptal.com/developers/gitignore/api/reactnative
+
+
+# supabase snippets
+supabase/snippets
