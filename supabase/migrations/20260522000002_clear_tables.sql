@@ -18,6 +18,7 @@ truncate table
   public.avatars,
   public.achievements,
   public.rewards,
+  public.map_waste_type_bin_types,
   public.waste_types,
   public.bin_types,
   public.recycling_points,

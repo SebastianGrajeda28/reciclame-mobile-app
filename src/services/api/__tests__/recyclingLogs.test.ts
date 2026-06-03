@@ -1,0 +1,112 @@
+import { createRecyclingLog } from '@/src/services/api/recyclingLogs';
+
+jest.mock('@/src/services/supabase/client', () => {
+  return {
+    supabase: {
+      from: jest.fn(),
+    },
+  };
+});
+
+import { supabase } from '@/src/services/supabase/client';
+
+const mockedFrom = supabase.from as jest.Mock;
+
+function buildQueryChain(response: { data: unknown; error: unknown }) {
+  const single = jest.fn().mockResolvedValue(response);
+  const select = jest.fn(() => ({ single }));
+  const insert = jest.fn(() => ({ select }));
+  return { insert, select, single };
+}
+
+describe('createRecyclingLog', () => {
+  beforeEach(() => {
+    mockedFrom.mockReset();
+  });
+
+  test('Debería insertar en recycling_records y devolver el registro creado cuando la respuesta es exitosa', async () => {
+    const dbRow = {
+      id: 'rec-1',
+      user_id: 'user-1',
+      waste_type_id: '11111111-1111-1111-1111-000000000002',
+      recycling_point_id: '22222222-2222-2222-2222-000000000001',
+      detection_type: 'auto',
+      confidence_score: 0.87,
+      created_at: '2026-05-28T01:00:00Z',
+    };
+    const chain = buildQueryChain({ data: dbRow, error: null });
+    mockedFrom.mockReturnValue({ insert: chain.insert });
+
+    const result = await createRecyclingLog({
+      userId: 'user-1',
+      wasteTypeId: '11111111-1111-1111-1111-000000000002',
+      recyclingPointId: '22222222-2222-2222-2222-000000000001',
+      detectionType: 'auto',
+      confidenceScore: 0.87,
+    });
+
+    expect(mockedFrom).toHaveBeenCalledWith('recycling_records');
+    expect(chain.insert).toHaveBeenCalledWith({
+      user_id: 'user-1',
+      waste_type_id: '11111111-1111-1111-1111-000000000002',
+      recycling_point_id: '22222222-2222-2222-2222-000000000001',
+      detection_type: 'auto',
+      confidence_score: 0.87,
+      status: 'confirmed',
+    });
+    expect(result).toEqual({
+      id: 'rec-1',
+      userId: 'user-1',
+      wasteTypeId: '11111111-1111-1111-1111-000000000002',
+      recyclingPointId: '22222222-2222-2222-2222-000000000001',
+      detectionType: 'auto',
+      confidenceScore: 0.87,
+      createdAt: '2026-05-28T01:00:00Z',
+    });
+  });
+
+  test('Debería lanzar Error con el mensaje de Supabase cuando la inserción falla', async () => {
+    const chain = buildQueryChain({
+      data: null,
+      error: { message: 'foreign key violation on waste_type_id' },
+    });
+    mockedFrom.mockReturnValue({ insert: chain.insert });
+
+    await expect(
+      createRecyclingLog({
+        userId: 'user-1',
+        wasteTypeId: 'no-existe',
+        recyclingPointId: '22222222-2222-2222-2222-000000000001',
+      }),
+    ).rejects.toThrow('foreign key violation on waste_type_id');
+  });
+
+  test('Debería enviar null en detection_type y confidence_score cuando no se proveen', async () => {
+    const chain = buildQueryChain({
+      data: {
+        id: 'rec-2',
+        user_id: 'user-1',
+        waste_type_id: '11111111-1111-1111-1111-000000000004',
+        recycling_point_id: '22222222-2222-2222-2222-000000000002',
+        detection_type: null,
+        confidence_score: null,
+        created_at: '2026-05-28T01:05:00Z',
+      },
+      error: null,
+    });
+    mockedFrom.mockReturnValue({ insert: chain.insert });
+
+    await createRecyclingLog({
+      userId: 'user-1',
+      wasteTypeId: '11111111-1111-1111-1111-000000000004',
+      recyclingPointId: '22222222-2222-2222-2222-000000000002',
+    });
+
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detection_type: null,
+        confidence_score: null,
+      }),
+    );
+  });
+});

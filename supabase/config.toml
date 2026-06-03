@@ -46,3 +46,6 @@ enable_confirmations = false
 enabled = true
 client_id = "env(GOOGLE_CLIENT_ID)"
 secret = "env(GOOGLE_CLIENT_SECRET)"
+
+[analytics]
+enabled = false

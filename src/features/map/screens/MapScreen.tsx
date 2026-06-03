@@ -1,19 +1,23 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
-import * as Location from 'expo-location';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
-import { containers } from '@/src/features/recycling/services/containers.mock';
+import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
+import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
+import {
+  filterWasteTypesByCategory,
+} from '@/src/features/recycling/services/filterContainers';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
+import type { NearbyRecyclingPoint } from '@/src/features/recycling/services/recycling-points';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 const pUCPRegion = {
@@ -22,8 +26,6 @@ const pUCPRegion = {
   latitudeDelta: 0.01,
   longitudeDelta: 0.01,
 };
-
-const defaultCenter = { latitude: pUCPRegion.latitude, longitude: pUCPRegion.longitude };
 
 const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
   plastic_pet: 'bottle',
@@ -45,88 +47,61 @@ const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: Wast
 ];
 
 export function MapScreen() {
-  const [location, setLocation] = useState(defaultCenter);
+  const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const [category, setCategory] = useState<string>('all');
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
-  const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
+  const { finalWasteType } = useResolvedRecycleSelection();
+  const nearbyRef = useRef<NearbyRecyclingPoint[]>([]);
+  const selectedContainerIdRef = useRef(state.selectedContainerId);
 
-  const filteredWasteTypes = useMemo(() => {
-    if (category === 'all') return wasteTypes;
-    return wasteTypes.filter((item) => item.categoryId === category);
-  }, [category]);
+  const filteredWasteTypes = useMemo(
+    () => filterWasteTypesByCategory(wasteTypes, category),
+    [category],
+  );
 
-  const nearby = useMemo(() => {
-    if (!filteredWasteTypes.length) return [];
-    const ids = new Set(filteredWasteTypes.map((item) => item.id));
-    return containers
-      .map((container) => ({
-        ...container,
-        distanceKm: haversineDistanceKm(location, {
-          latitude: container.latitude,
-          longitude: container.longitude,
-        }),
-      }))
-      .filter((container) => container.distanceKm <= 3)
-      .filter((container) => container.acceptedWasteTypeIds.some((wasteId) => ids.has(wasteId)))
-      .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [filteredWasteTypes, location]);
+  const wasteTypeIds = useMemo(
+    () => (category === 'all' ? undefined : filteredWasteTypes.map((wt) => wt.id)),
+    [category, filteredWasteTypes],
+  );
+
+  const { data: nearbyPoints, loading } = useNearbyRecyclingPoints({ location, wasteTypeIds });
+
+  nearbyRef.current = nearbyPoints;
+  selectedContainerIdRef.current = state.selectedContainerId;
+
+  const selectedContainer = useMemo(
+    () => nearbyPoints.find((p) => p.id === state.selectedContainerId) ?? null,
+    [nearbyPoints, state.selectedContainerId],
+  );
 
   const markers = useMemo(
     () =>
-      nearby.map((container) => ({
-        id: container.id,
-        title: container.name,
-        latitude: container.latitude,
-        longitude: container.longitude,
+      nearbyPoints.map((p) => ({
+        id: p.id,
+        title: p.name,
+        latitude: p.latitude,
+        longitude: p.longitude,
       })),
-    [nearby],
+    [nearbyPoints],
   );
 
   useEffect(() => {
-    Location.getCurrentPositionAsync().then((position) => {
-      setLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-    }).catch(() => {
-      // keep defaultCenter if location unavailable
-    });
-  }, []);
-
-  useEffect(() => {
-    if (nearby.length === 0 && category !== 'all') {
-      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles en 3 km.', [
+    if (!loading && nearbyPoints.length === 0 && category !== 'all') {
+      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles con este filtro.', [
         { text: 'Entendido' },
       ]);
     }
-  }, [category, nearby.length]);
+  }, [category, loading, nearbyPoints.length]);
 
-  const selectedDistanceKm = selectedContainer
-    ? haversineDistanceKm(location, {
-        latitude: selectedContainer.latitude,
-        longitude: selectedContainer.longitude,
-      })
-    : undefined;
-
-  const availableIcons = useMemo(() => {
-    if (!selectedContainer) return [];
-    return selectedContainer.acceptedWasteTypeIds
-      .map((id) => wasteTypes.find((wt) => wt.id === id))
-      .filter(Boolean)
-      .map((wt) => {
-        const categoryId = wt!.categoryId as WasteCategoryId;
-        const config = wasteCategoryConfig[categoryId];
-        return { icon: CATEGORY_ICON[categoryId], color: config.color, iconColor: config.iconColor };
-      })
-      .filter((item) => item.icon) as { icon: AppIconName; color: string; iconColor: string }[];
-  }, [selectedContainer]);
-
-  function openDirections() {
-    if (!selectedContainer) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedContainer.latitude},${selectedContainer.longitude}`;
-    Linking.openURL(url);
-  }
+  useEffect(() => {
+    if (
+      selectedContainerIdRef.current &&
+      !nearbyRef.current.some((c) => c.id === selectedContainerIdRef.current)
+    ) {
+      clearSelectedContainer();
+    }
+  }, [category, clearSelectedContainer]);
 
   return (
     <AppScreen insetBottom={false}>
@@ -154,7 +129,15 @@ export function MapScreen() {
                   <AppIcon
                     name={f.icon}
                     size={theme.iconSizes.md}
-                    color={isSelected && cfg ? cfg.iconColor : theme.recycle.iconNeutral}
+                    color={
+                      cfg
+                        ? isSelected
+                          ? cfg.iconColor
+                          : cfg.color
+                        : isSelected
+                          ? theme.colors.textInverse
+                          : theme.colors.primary
+                    }
                   />
                 }
               />
@@ -177,70 +160,35 @@ export function MapScreen() {
         </Pressable>
 
         {selectedContainer ? (
-        <View style={styles.selectedCard}>
-          <Pressable style={styles.dismissButton} onPress={clearSelectedContainer}>
-            <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
-          </Pressable>
-          <View style={styles.selectedCardContent}>
-            <AppText style={styles.selectedTitle}>
-              Lugar de reciclaje: {selectedContainer.name}
-            </AppText>
-            <View style={styles.availableRow}>
-              <AppText style={styles.availableLabel}>Contenedores disponibles: </AppText>
-              {availableIcons.map((item, i) => (
-                <View key={i} style={[styles.availableIcon, { backgroundColor: item.color }]}>
-                  <AppIcon name={item.icon} size={theme.iconSizes.md} color={item.iconColor} />
-                </View>
-              ))}
-            </View>
-            {finalWasteType ? (
-              <>
-                <AppText style={styles.selectedMeta}>
-                  Contenedor elegido: {finalWasteType.categoryLabel}
-                </AppText>
-                <AppText style={styles.selectedMeta}>
-                  Tipo de residuo: {finalWasteType.label}
-                </AppText>
-              </>
-            ) : null}
-            {selectedDistanceKm !== undefined ? (
-              <View style={styles.distanceRow}>
-                <AppText style={styles.selectedMeta}>
-                  Distancia: {selectedDistanceKm.toFixed(2)} km
-                </AppText>
-                <Pressable onPress={openDirections}>
-                  <AppText style={styles.directionsLink}>Direcciones</AppText>
-                </Pressable>
+          <ContainerSelectedCard
+            container={selectedContainer}
+            userLocation={location}
+            finalWasteTypeCategoryLabel={finalWasteType?.categoryLabel}
+            finalWasteTypeLabel={finalWasteType?.label}
+            onDismiss={clearSelectedContainer}
+            onRecycleHere={() => router.push('/recycle/camera')}
+          />
+        ) : (
+          <View style={styles.bottomCta}>
+            <View style={styles.ctaTopRow}>
+              <View>
+                <AppText style={styles.ctaEyebrow}>EMPIEZA AHORA</AppText>
+                <AppText style={styles.ctaHeading}>¿No sabes qué contenedor?</AppText>
               </View>
-            ) : null}
-          </View>
-          <AppButton
-            label="Reciclar aquí"
-            size="sm"
-            onPress={() => router.push('/recycle/camera')}
-          />
-        </View>
-      ) : (
-        <View style={styles.bottomCta}>
-          <View style={styles.ctaTopRow}>
-            <View>
-              <AppText style={styles.ctaEyebrow}>EMPIEZA AHORA</AppText>
-              <AppText style={styles.ctaHeading}>¿No sabes qué contenedor?</AppText>
+              <Pressable
+                style={styles.ctaCameraButton}
+                onPress={() => router.push('/recycle/camera')}
+              >
+                <AppIcon name="camera" size={theme.iconSizes.lg} color={theme.colors.textPrimary} />
+              </Pressable>
             </View>
-            <Pressable
-              style={styles.ctaCameraButton}
+            <AppButton
+              label="Escanear tu residuo"
               onPress={() => router.push('/recycle/camera')}
-            >
-              <AppIcon name="camera" size={theme.iconSizes.lg} color={theme.colors.textPrimary} />
-            </Pressable>
+              style={styles.ctaButton}
+            />
           </View>
-          <AppButton
-            label="Escanear tu residuo"
-            onPress={() => router.push('/recycle/camera')}
-            style={styles.ctaButton}
-          />
-        </View>
-      )}
+        )}
       </View>
     </AppScreen>
   );
@@ -258,10 +206,17 @@ type IconFilterButtonProps = {
 };
 
 function IconFilterButton({ selected, onPress, icon, label, activeColor, disabled }: IconFilterButtonProps) {
-  const activeBg = activeColor ?? theme.recycle.iconButtonSelectedBg;
+  const categoryColor = activeColor ?? theme.colors.primary;
   return (
     <Pressable onPress={onPress} style={[styles.iconFilterWrapper, disabled && styles.iconFilterDisabled]}>
-      <View style={[styles.iconFilter, selected && { backgroundColor: activeBg, borderColor: activeBg }]}>
+      <View
+        style={[
+          styles.iconFilter,
+          selected
+            ? { backgroundColor: categoryColor }
+            : { backgroundColor: categoryColor + '22' },
+        ]}
+      >
         {icon}
       </View>
       <AppText style={[styles.iconFilterLabel, selected && styles.iconFilterLabelSelected]}>
@@ -340,78 +295,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...theme.shadows.md,
   },
-  selectedCard: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    gap: theme.spacing.md,
-  },
-  dismissButton: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
-    padding: theme.spacing.xs,
-  },
-  selectedCardContent: {
-    flex: 1,
-    gap: theme.spacing.xxs,
-  },
-  selectedTitle: {
-    fontSize: theme.fontSizes.md,
-    fontWeight: theme.fontWeights.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xxs,
-  },
-  availableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.xxs,
-  },
-  availableLabel: {
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
-  },
-  availableIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedMeta: {
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
-  },
-  distanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  directionsLink: {
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.primary,
-    fontWeight: theme.fontWeights.semibold,
-  },
-  selectedCardAction: {
-    flexShrink: 0,
-  },
-  recycleButton: {
-    paddingHorizontal: theme.spacing.md,
-  },
-  recycleButtonLabel: {
-    fontSize: theme.fontSizes.xs,
-  },
   bottomCta: {
     position: 'absolute',
     bottom: 0,
@@ -450,11 +333,6 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     width: '100%',
-  },
-  devNote: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xs,
-    fontSize: theme.fontSizes.xs,
   },
   iconFilterDisabled: {
     opacity: 0.35,

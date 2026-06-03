@@ -16,7 +16,8 @@
     "check": "npm run lint && npm run format:check",
     "prepare": "husky install",
     "test:watch": "bun test --env-file .env --watch",
-    "test:coverage": "bun test --env-file .env --coverage",
+    "test:coverage": "bun test --env-file .env --coverage tests/utils tests/map tests/supabase-connection.test.ts tests/supabase.test.ts",
+    "test:components": "jest --config jest.components.config.js",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
@@ -49,6 +50,7 @@
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
     "isomorphic-ws": "^5.0.0",
+    "jest-expo": "~54.0.17",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -61,6 +63,7 @@
     "react-native-svg": "15.12.1",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
+    "react-test-renderer": "19.1.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {

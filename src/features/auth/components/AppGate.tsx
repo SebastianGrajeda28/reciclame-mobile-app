@@ -17,8 +17,7 @@ import { LoginScreen } from '@/src/features/auth/screens/LoginScreen';
 import { useAuth } from '@/src/hooks/useAuth';
 
 function AuthGate({ children }: PropsWithChildren) {
-  const { session, loading } = useAuth();
-  const [offlineMode, setOfflineMode] = useState(false);
+  const { session, loading, offlineMode, setOfflineMode } = useAuth();
 
   if (loading) {
     return (
