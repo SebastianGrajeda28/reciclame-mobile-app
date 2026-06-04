@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { router, useNavigation } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
@@ -65,6 +65,7 @@ export function InstructionsScreen() {
       await createRecyclingLog({
         userId: session.user.id,
         wasteTypeId: finalWasteType.id,
+        binTypeId: selectedContainer?.id ?? '',//esto es un parche, se deberia ver que datos se pone realmente en este log.
         recyclingPointId: selectedContainer.id,
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,
@@ -79,7 +80,7 @@ export function InstructionsScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [session, finalWasteType, selectedContainer, state, notify]);
+  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType]);
 
   useEffect(() => {
     if (
