@@ -306,3 +306,6 @@ bun.lock
 bun.lock
 bun.lockb
 .metro-health-check
+
+# supabase snippets
+supabase/snippets

@@ -1,4 +1,5 @@
 import {
+    fetchFunFacts,
     fetchInstructionWithStepsByWasteTypeId,
     fetchRandomFunFact,
     fetchRandomFunFactByWasteTypeId,
@@ -167,5 +168,34 @@ describe('content api', () => {
     mockedFrom.mockReturnValue({ select });
 
     await expect(fetchRandomFunFact()).rejects.toThrow('Error FunFact');
+  });
+
+  test('Debería devolver la lista de datos curiosos activos', async () => {
+    const dbRows = [
+      { id: 'ff-1', text: 'Dato 1', waste_type_id: null, is_active: true, created_at: '2026-05-30T01:00:00Z' },
+      { id: 'ff-2', text: 'Dato 2', waste_type_id: null, is_active: true, created_at: '2026-05-30T01:01:00Z' },
+    ];
+
+    const order = jest.fn().mockResolvedValue({ data: dbRows, error: null });
+    const eq = jest.fn(() => ({ order }));
+    const select = jest.fn(() => ({ eq }));
+
+    mockedFrom.mockReturnValue({ select });
+
+    const result = await fetchFunFacts();
+
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe('ff-1');
+    expect(result[1].id).toBe('ff-2');
+  });
+
+  test('Debería lanzar Error cuando la consulta de fetchFunFacts falla', async () => {
+    const order = jest.fn().mockResolvedValue({ data: null, error: { message: 'Error lista' } });
+    const eq = jest.fn(() => ({ order }));
+    const select = jest.fn(() => ({ eq }));
+
+    mockedFrom.mockReturnValue({ select });
+
+    await expect(fetchFunFacts()).rejects.toThrow('Error lista');
   });
 });

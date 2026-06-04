@@ -11,7 +11,7 @@ begin
   values (new.id, new.email, now())
   on conflict (id) do update set
     last_login_at = case 
-      when new.last_sign_in_at is distinct from old.last_sign_in_at then now()
+      when new.last_sign_in_at is distinct from old.last_sign_in_at then clock_timestamp()
       else public.users.last_login_at
     end;
   
