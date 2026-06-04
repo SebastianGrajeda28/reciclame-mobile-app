@@ -297,3 +297,15 @@ buck-out/
 .ionide
 expo-env.d.ts
 # End of https://www.toptal.com/developers/gitignore/api/reactnative
+
+bun.lock
+
+
+.history
+.ionide
+bun.lock
+bun.lockb
+.metro-health-check
+
+# supabase snippets
+supabase/snippets

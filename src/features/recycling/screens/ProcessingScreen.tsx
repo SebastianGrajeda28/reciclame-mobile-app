@@ -1,16 +1,22 @@
+import { router, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
-import { router, useNavigation } from 'expo-router';
 
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
 import { useRotatingFunFact } from '@/src/features/recycling/hooks/useFunFact';
-import { classifyWaste, getConfidenceThreshold } from '@/src/features/recycling/services/classification';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
+import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
+import {
+  classifyWaste,
+  getConfidenceThreshold,
+} from '@/src/features/recycling/services/classification';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
+import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 import {
   AppButton,
   AppCard,
@@ -23,23 +29,13 @@ import {
   AppText,
   theme,
 } from '@/src/ui';
-import type { AppIconName } from '@/src/ui/components/AppIcon';
-import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
-
-const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
-  plastic_pet: 'bottle',
-  paper_cardboard: 'briefcase',
-  glass: 'flask',
-  non_recoverable: 'delete',
-  battery: 'battery',
-  electronic_waste: 'laptop',
-};
 
 export function ProcessingScreen() {
   const navigation = useNavigation();
   const { state, setPrediction, clearPrediction, clearSelectedContainer } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { fact } = useRotatingFunFact();
+  const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
   const loading = !state.finalWasteTypeId;
   const navigatingForward = useRef(false);
 
@@ -69,26 +65,28 @@ export function ProcessingScreen() {
   }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId]);
 
   const containerMismatch = useMemo(() => {
-    if (!state.selectedContainerId || !state.finalWasteTypeId) return false;
+    if (!state.selectedContainerId || !resolvedBinType) return false;
     const container = containers.find((c) => c.id === state.selectedContainerId);
-    return container ? !container.acceptedWasteTypeIds.includes(state.finalWasteTypeId) : false;
-  }, [state.selectedContainerId, state.finalWasteTypeId]);
+    return container ? !container.availableBinTypeIds.includes(resolvedBinType.id) : false;
+  }, [resolvedBinType, state.selectedContainerId]);
 
   const categoryConfig = useMemo(() => {
     if (!finalWasteType) return null;
     return wasteCategoryConfig[finalWasteType.categoryId as WasteCategoryId] ?? null;
   }, [finalWasteType]);
 
-  const categoryIcon = finalWasteType
-    ? CATEGORY_ICON[finalWasteType.categoryId as WasteCategoryId]
-    : null;
+  const binTypeUiConfig = resolvedBinType ? binTypeConfig[resolvedBinType.id] : null;
 
   return (
     <AppScreen style={styles.root}>
       <View style={styles.imageSection}>
         <View style={styles.imageWrapper}>
           {state.capturedPhotoUri ? (
-            <Image source={{ uri: state.capturedPhotoUri }} style={styles.image} resizeMode="cover" />
+            <Image
+              source={{ uri: state.capturedPhotoUri }}
+              style={styles.image}
+              resizeMode="cover"
+            />
           ) : (
             <View style={styles.imagePlaceholder} />
           )}
@@ -129,23 +127,20 @@ export function ProcessingScreen() {
         ) : (
           <>
             <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
-              {finalWasteType?.categoryLabel ?? 'No identificado'}
+              {finalWasteType?.label ?? 'No identificado'}
             </AppText>
 
-            {finalWasteType && (
-              <View style={styles.infoCard}>
-                <AppIcon name="info" size={theme.iconSizes.md} color={theme.colors.primary} />
-                <AppText style={styles.infoText}>{finalWasteType.label}</AppText>
-              </View>
-            )}
-
-            {finalWasteType && categoryConfig && categoryIcon && (
+            {resolvedBinType && binTypeUiConfig && (
               <View style={styles.suggestionSection}>
-                <AppText style={styles.suggestionLabel}>Contenedor sugerido:</AppText>
-                <View style={[styles.suggestionChip, { borderColor: categoryConfig.color }]}>
-                  <AppIcon name={categoryIcon} size={theme.iconSizes.sm} color={categoryConfig.color} />
-                  <AppText style={[styles.suggestionChipText, { color: categoryConfig.color }]}>
-                    {finalWasteType.categoryLabel}
+                <AppText style={styles.suggestionLabel}>Contenedor correspondiente:</AppText>
+                <View style={[styles.suggestionChip, { borderColor: binTypeUiConfig.color }]}>
+                  <AppIcon
+                    name={binTypeUiConfig.icon}
+                    size={theme.iconSizes.sm}
+                    color={binTypeUiConfig.color}
+                  />
+                  <AppText style={[styles.suggestionChipText, { color: binTypeUiConfig.color }]}>
+                    {resolvedBinType.name}
                   </AppText>
                 </View>
               </View>
@@ -155,7 +150,9 @@ export function ProcessingScreen() {
               <View style={styles.mismatchCard}>
                 <AppIcon name="alertCircle" size={theme.iconSizes.md} color={theme.colors.danger} />
                 <AppText style={styles.mismatchText}>
-                  {selectedContainer.name} no acepta {finalWasteType?.categoryLabel ?? 'este residuo'}. Elige otro punto de reciclaje.
+                  {selectedContainer.name} no cuenta con{' '}
+                  {resolvedBinType?.name ?? 'el contenedor correspondiente'}. Elige otro punto de
+                  reciclaje.
                 </AppText>
               </View>
             )}
@@ -187,7 +184,8 @@ export function ProcessingScreen() {
                 <AppButton
                   label="Aceptar"
                   onPress={() => {
-                    const hasCompatibleContainer = !!state.selectedContainerId && !containerMismatch;
+                    const hasCompatibleContainer =
+                      !!state.selectedContainerId && !containerMismatch;
                     if (hasCompatibleContainer) {
                       router.push('/recycle/instructions');
                     } else {

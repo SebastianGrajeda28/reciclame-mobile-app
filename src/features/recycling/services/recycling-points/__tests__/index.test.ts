@@ -15,6 +15,7 @@ describe('getRecyclingPoints', () => {
     expect(points[0]).toHaveProperty('latitude');
     expect(points[0]).toHaveProperty('longitude');
     expect(points[0]).toHaveProperty('acceptedWasteTypeIds');
+    expect(points[0]).toHaveProperty('availableBinTypeIds');
   });
 
   test('Debería incluir los tres puntos del campus definidos en el mock', async () => {

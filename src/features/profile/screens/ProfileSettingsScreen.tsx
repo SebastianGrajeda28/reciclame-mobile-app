@@ -2,12 +2,13 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
-import { ProfileSectionLabel } from '@/src/features/profile/components/ProfileSectionLabel';
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
+import { ProfileSectionLabel } from '@/src/features/profile/components/ProfileSectionLabel';
 import { ProfileSettingsRow } from '@/src/features/profile/components/ProfileSettingsRow';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
+import { supabase } from '@/src/services/supabase/client';
 import { AppButton, AppIcon, AppIconButton, AppSwitch, theme } from '@/src/ui';
 
 export function ProfileSettingsScreen() {
@@ -27,7 +28,10 @@ export function ProfileSettingsScreen() {
   async function handleSignOut() {
     try {
       setSigningOut(true);
-      await signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
     } catch {
       Alert.alert('No se pudo cerrar sesión', 'Intenta nuevamente en unos segundos.');
     } finally {

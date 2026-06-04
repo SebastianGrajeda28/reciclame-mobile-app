@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { useRecycleFlow, useResolvedRecycleSelection } from '@/src/features/recycling/hooks/useRecycleFlow';
+import {
+  useRecycleFlow,
+  useResolvedRecycleSelection,
+} from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
 import { createRecyclingLog } from '@/src/services/api/recyclingLogs';
@@ -12,6 +16,9 @@ export function InstructionsScreen() {
   const navigation = useNavigation();
   const { state, clearSelectedContainer } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
+  const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
+    state.finalWasteTypeId,
+  );
   const { session } = useAuth();
   const { settings, updateSetting } = useUserSettings();
   const [submitting, setSubmitting] = useState(false);
@@ -108,7 +115,11 @@ export function InstructionsScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.stepList} showsVerticalScrollIndicator={false} style={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.stepList}
+        showsVerticalScrollIndicator={false}
+        style={styles.scroll}
+      >
         {steps.map((step, index) => {
           const imageFirst = index % 2 === 0;
           const textBlock = (
@@ -132,9 +143,7 @@ export function InstructionsScreen() {
       <View style={styles.footer}>
         <Pressable style={styles.checkRow} onPress={handleToggleShowAgain}>
           <View style={[styles.checkbox, showAgain && styles.checkboxChecked]}>
-            {showAgain && (
-              <AppIcon name="check" size={theme.iconSizes.sm} color="#fff" />
-            )}
+            {showAgain && <AppIcon name="check" size={theme.iconSizes.sm} color="#fff" />}
           </View>
           <AppText style={styles.checkLabel}>Seguir mostrando instrucciones</AppText>
         </Pressable>

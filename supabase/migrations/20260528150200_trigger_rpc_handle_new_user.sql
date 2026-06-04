@@ -50,6 +50,12 @@ BEGIN
   INSERT INTO auth.users (id, email, raw_user_meta_data, created_at, updated_at)
   VALUES (test_id, test_email, '{"full_name": "Test User"}'::jsonb, now(), now());
 
+  -- el trigger setea en now(), pero es el mismo now() de esta transacción, por ello
+  -- , al menos en local, este test falla. Por ello se pone una fecha antigua
+  UPDATE public.users
+  SET last_login_at = '2000-01-01 00:00:00+00'::timestamptz
+  WHERE id = test_id;
+
   SELECT last_login_at INTO login_before FROM public.users WHERE id = test_id;
 
   -- Simula login real (UPDATE last_sign_in_at dispara trigger)
