@@ -13,6 +13,7 @@ const mockContainer: RecyclingContainer = {
   latitude: -12.0692,
   longitude: -77.0794,
   acceptedWasteTypeIds: ['paper_cardboard_bin', 'plastic_pet_bin'],
+  availableBinTypeIds: ['paper_cardboard_container', 'plastic_container'],
   instructionsByWasteTypeId: {},
 };
 
@@ -88,14 +89,14 @@ describe('ContainerSelectedCard', () => {
       <ContainerSelectedCard
         container={mockContainer}
         userLocation={userLocation}
-        finalWasteTypeCategoryLabel="Plástico (PET)"
-        finalWasteTypeLabel="Contenedor de plástico (PET)"
+        finalWasteTypeLabel="Plásticos PET"
+        resolvedBinTypeName="Contenedor de plásticos"
         onDismiss={jest.fn()}
         onRecycleHere={jest.fn()}
       />,
     );
-    expect(screen.getByText(/Plástico \(PET\)/)).toBeTruthy();
-    expect(screen.getByText(/Contenedor de plástico \(PET\)/)).toBeTruthy();
+    expect(screen.getByText(/Residuo detectado: Plásticos PET/)).toBeTruthy();
+    expect(screen.getByText(/Contenedor correspondiente: Contenedor de plásticos/)).toBeTruthy();
   });
 
   it('does not render waste type section when not provided', () => {
@@ -107,7 +108,7 @@ describe('ContainerSelectedCard', () => {
         onRecycleHere={jest.fn()}
       />,
     );
-    expect(screen.queryByText(/Contenedor elegido:/)).toBeNull();
-    expect(screen.queryByText(/Tipo de residuo:/)).toBeNull();
+    expect(screen.queryByText(/Residuo detectado:/)).toBeNull();
+    expect(screen.queryByText(/Contenedor correspondiente:/)).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppGate } from '@/src/features/auth/components/AppGate';
 import { RecycleFlowProvider } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AuthProvider } from '@/src/hooks/useAuth';
+import { UserSettingsProvider } from '@/src/hooks/useUserSettings';
 
 export default function RootLayout() {
   return (
@@ -11,7 +12,7 @@ export default function RootLayout() {
       <AuthProvider>
         <RecycleFlowProvider>
           <AppGate>
-            <Stack>
+            <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="profile/achievements" options={{ headerShown: false }} />
               <Stack.Screen name="profile/avatar" options={{ headerShown: false }} />

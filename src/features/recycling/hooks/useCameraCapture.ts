@@ -1,7 +1,14 @@
 import { useRef, useState } from 'react';
 import { CameraView, FlashMode, useCameraPermissions } from 'expo-camera';
 
+import { validateImage } from '@/src/features/recycling/services/image-validation';
+
 export type CameraFlashMode = Exclude<FlashMode, 'torch'>;
+
+export type CaptureResult =
+  | { status: 'ok'; uri: string }
+  | { status: 'invalid'; error: string }
+  | { status: 'cancelled' };
 
 export function useCameraCapture() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -16,17 +23,27 @@ export function useCameraCapture() {
     });
   }
 
-  async function capture(): Promise<string | null> {
-    if (!cameraRef.current) return null;
+  async function capture(): Promise<CaptureResult> {
+    if (!cameraRef.current) return { status: 'cancelled' };
+
     const picture = await cameraRef.current.takePictureAsync({
       quality: 0.6,
       base64: true,
     });
-    if (!picture) return null;
-    if (picture.base64) {
-      return `data:image/jpeg;base64,${picture.base64}`;
+    if (!picture?.uri) return { status: 'cancelled' };
+
+    const validation = validateImage({
+      uri: picture.uri,
+      width: picture.width,
+      height: picture.height,
+    });
+
+    if (!validation.valid) {
+      return { status: 'invalid', error: validation.message };
     }
-    return picture.uri;
+
+    const uri = picture.base64 ? `data:image/jpeg;base64,${picture.base64}` : picture.uri;
+    return { status: 'ok', uri };
   }
 
   return { permission, requestPermission, cameraRef, flash, toggleFlash, capture };

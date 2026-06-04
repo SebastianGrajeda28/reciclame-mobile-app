@@ -2,31 +2,17 @@ import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
-import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
+import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
 import { AppButton, AppIcon, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
-import type { RecyclingContainer, WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
-
-const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
-  paper: 'fileDocument',
-  cardboard: 'briefcase',
-  plastic_bottle: 'bottle',
-  plastic: 'bottle',
-  metal: 'flask',
-  glass: 'flask',
-  non_recoverable: 'delete',
-  organic: 'leaf',
-  battery: 'battery',
-  electronic_waste: 'laptop',
-};
+import type { RecyclingContainer } from '@/src/features/recycling/types/recycling.types';
 
 type Props = {
   container: RecyclingContainer;
   userLocation: { latitude: number; longitude: number };
-  finalWasteTypeCategoryLabel?: string;
   finalWasteTypeLabel?: string;
+  resolvedBinTypeName?: string;
   onDismiss: () => void;
   onRecycleHere: () => void;
   hideDismiss?: boolean;
@@ -35,8 +21,8 @@ type Props = {
 export function ContainerSelectedCard({
   container,
   userLocation,
-  finalWasteTypeCategoryLabel,
   finalWasteTypeLabel,
+  resolvedBinTypeName,
   onDismiss,
   onRecycleHere,
   hideDismiss,
@@ -48,14 +34,9 @@ export function ContainerSelectedCard({
   });
 
   const availableIcons = useMemo(() => {
-    return container.acceptedWasteTypeIds
-      .map((id) => wasteTypes.find((wt) => wt.id === id))
+    return container.availableBinTypeIds
+      .map((id) => binTypeConfig[id])
       .filter(Boolean)
-      .map((wt) => {
-        const categoryId = wt!.categoryId as WasteCategoryId;
-        const config = wasteCategoryConfig[categoryId];
-        return { icon: CATEGORY_ICON[categoryId], color: config.color, iconColor: config.iconColor };
-      })
       .filter((item) => item.icon) as { icon: AppIconName; color: string; iconColor: string }[];
   }, [container]);
 
@@ -82,11 +63,11 @@ export function ContainerSelectedCard({
             </View>
           ))}
         </View>
-        {finalWasteTypeCategoryLabel && (
-          <AppText style={styles.meta}>Contenedor elegido: {finalWasteTypeCategoryLabel}</AppText>
-        )}
         {finalWasteTypeLabel && (
-          <AppText style={styles.meta}>Tipo de residuo: {finalWasteTypeLabel}</AppText>
+          <AppText style={styles.meta}>Residuo detectado: {finalWasteTypeLabel}</AppText>
+        )}
+        {resolvedBinTypeName && (
+          <AppText style={styles.meta}>Contenedor correspondiente: {resolvedBinTypeName}</AppText>
         )}
         <View style={styles.distanceRow}>
           <AppText style={styles.meta}>Distancia: {distanceKm.toFixed(2)} km</AppText>

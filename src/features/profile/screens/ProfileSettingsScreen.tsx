@@ -2,17 +2,19 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
-import { ProfileSectionLabel } from '@/src/features/profile/components/ProfileSectionLabel';
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
+import { ProfileSectionLabel } from '@/src/features/profile/components/ProfileSectionLabel';
 import { ProfileSettingsRow } from '@/src/features/profile/components/ProfileSettingsRow';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useUserSettings } from '@/src/hooks/useUserSettings';
+import { supabase } from '@/src/services/supabase/client';
 import { AppButton, AppIcon, AppIconButton, AppSwitch, theme } from '@/src/ui';
 
 export function ProfileSettingsScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
   const { signOut } = useAuth();
+  const { settings, updateSetting } = useUserSettings();
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -26,7 +28,10 @@ export function ProfileSettingsScreen() {
   async function handleSignOut() {
     try {
       setSigningOut(true);
-      await signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
     } catch {
       Alert.alert('No se pudo cerrar sesión', 'Intenta nuevamente en unos segundos.');
     } finally {
@@ -65,7 +70,26 @@ export function ProfileSettingsScreen() {
         <ProfileSettingsRow
           label="Notificaciones"
           trailing={
-            <AppSwitch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
+            <AppSwitch
+              value={settings?.notificationsEnabled ?? true}
+              onValueChange={(v) => updateSetting({ notificationsEnabled: v })}
+            />
+          }
+        />
+        <ProfileSettingsRow
+          label="Omitir instrucciones de reciclaje"
+          icon={
+            <AppIcon
+              name="eyeOff"
+              size={theme.iconSizes.md}
+              color={theme.colors.textSecondary}
+            />
+          }
+          trailing={
+            <AppSwitch
+              value={settings?.skipRecyclingInstructions ?? false}
+              onValueChange={(v) => updateSetting({ skipRecyclingInstructions: v })}
+            />
           }
         />
       </View>

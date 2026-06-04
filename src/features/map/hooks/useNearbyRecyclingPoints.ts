@@ -9,16 +9,16 @@ import type { RecyclingContainer } from '@/src/features/recycling/types/recyclin
 
 type Params = {
   location: { latitude: number; longitude: number };
-  wasteTypeIds?: string[];
+  binTypeIds?: string[];
 };
 
 /**
  * Carga puntos de reciclaje, calcula distancias en cliente y ordena por cercanía.
  * @param location - Coordenadas del usuario para calcular distancias.
- * @param wasteTypeIds - Filtra por tipos de residuo. Sin valor devuelve todos.
+ * @param binTypeIds - Filtra por tipos de contenedor. Sin valor devuelve todos.
  * @returns `{ data, loading, error, refetch }`
  */
-export function useNearbyRecyclingPoints({ location, wasteTypeIds }: Params) {
+export function useNearbyRecyclingPoints({ location, binTypeIds }: Params) {
   const [allPoints, setAllPoints] = useState<RecyclingContainer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,15 +40,15 @@ export function useNearbyRecyclingPoints({ location, wasteTypeIds }: Params) {
   }, [load]);
 
   const data = useMemo<NearbyRecyclingPoint[]>(() => {
-    const wasteSet = wasteTypeIds?.length ? new Set(wasteTypeIds) : null;
+    const binSet = binTypeIds?.length ? new Set(binTypeIds) : null;
     return allPoints
       .map((p) => ({
         ...p,
         distanceKm: haversineDistanceKm(location, { latitude: p.latitude, longitude: p.longitude }),
       }))
-      .filter((p) => !wasteSet || p.acceptedWasteTypeIds.some((id) => wasteSet.has(id)))
+      .filter((p) => !binSet || p.availableBinTypeIds.some((id) => binSet.has(id)))
       .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [allPoints, location, wasteTypeIds]);
+  }, [allPoints, location, binTypeIds]);
 
   return { data, loading, error, refetch: load };
 }

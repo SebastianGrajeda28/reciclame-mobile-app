@@ -1,20 +1,20 @@
+import { router, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { router, useNavigation } from 'expo-router';
 
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
 import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
-import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
+import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 import { AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
-import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
   paper: 'fileDocument',
@@ -43,6 +43,9 @@ export function RecycleFlowMapScreen() {
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const { finalWasteType } = useResolvedRecycleSelection();
   const autoSelected = useRef(false);
+  const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
+    state.finalWasteTypeId,
+  );
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {
@@ -50,27 +53,27 @@ export function RecycleFlowMapScreen() {
     });
   }, [navigation, clearSelectedContainer]);
 
-  const wasteTypeIds = useMemo(() => {
-    if (!state.finalWasteTypeId) return wasteTypes.map((wt) => wt.id);
-    return [state.finalWasteTypeId];
+  useEffect(() => {
+    autoSelected.current = false;
   }, [state.finalWasteTypeId]);
 
-  const { data: nearbyPoints } = useNearbyRecyclingPoints({ location, wasteTypeIds });
+  const binTypeIds = useMemo(() => (resolvedBinType ? [resolvedBinType.id] : []), [resolvedBinType]);
+  const { data: nearby } = useNearbyRecyclingPoints({ location, binTypeIds });
 
   const selectedContainer = useMemo(
-    () => nearbyPoints.find((p) => p.id === state.selectedContainerId) ?? null,
-    [nearbyPoints, state.selectedContainerId],
+    () => nearby.find((container) => container.id === state.selectedContainerId) ?? null,
+    [nearby, state.selectedContainerId],
   );
 
   const markers = useMemo(
     () =>
-      nearbyPoints.map((p) => ({
-        id: p.id,
-        title: p.name,
-        latitude: p.latitude,
-        longitude: p.longitude,
+      nearby.map((container) => ({
+        id: container.id,
+        title: container.name,
+        latitude: container.latitude,
+        longitude: container.longitude,
       })),
-    [nearbyPoints],
+    [nearby],
   );
 
   useEffect(() => {
@@ -79,6 +82,16 @@ export function RecycleFlowMapScreen() {
       setSelectedContainerId(markers[0].id);
     }
   }, [markers, state.selectedContainerId, setSelectedContainerId]);
+
+  useEffect(() => {
+    if (
+      !resolvingBinType &&
+      state.selectedContainerId &&
+      !markers.some((marker) => marker.id === state.selectedContainerId)
+    ) {
+      clearSelectedContainer();
+    }
+  }, [clearSelectedContainer, markers, resolvingBinType, state.selectedContainerId]);
 
   return (
     <AppScreen insetBottom={false} insetTop={false}>
@@ -96,9 +109,7 @@ export function RecycleFlowMapScreen() {
                 </View>
               );
             })()}
-          <AppText style={styles.wasteLabel}>
-            {finalWasteType?.categoryLabel ?? 'Residuo'}
-          </AppText>
+          <AppText style={styles.wasteLabel}>{finalWasteType?.label ?? 'Residuo'}</AppText>
         </View>
       </View>
 
@@ -122,8 +133,8 @@ export function RecycleFlowMapScreen() {
           <ContainerSelectedCard
             container={selectedContainer}
             userLocation={location}
-            finalWasteTypeCategoryLabel={finalWasteType?.categoryLabel}
             finalWasteTypeLabel={finalWasteType?.label}
+            resolvedBinTypeName={resolvedBinType?.name}
             onDismiss={clearSelectedContainer}
             onRecycleHere={() => router.push('/recycle/instructions')}
             hideDismiss
