@@ -114,7 +114,6 @@ create table if not exists public.waste_types (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   description text,
-  recommended_bin_type_id uuid references public.bin_types(id) on delete set null,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz

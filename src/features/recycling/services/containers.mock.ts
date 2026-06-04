@@ -1,12 +1,24 @@
 import { RecyclingContainer } from '@/src/features/recycling/types/recycling.types';
-
-// IDs alineados con la migración 20260528000000_seed_recycling_data.sql.
-const PAPER_CARDBOARD = '11111111-1111-1111-1111-000000000001';
-const PLASTIC_PET = '11111111-1111-1111-1111-000000000002';
-const NON_RECOVERABLE = '11111111-1111-1111-1111-000000000003';
-const GLASS = '11111111-1111-1111-1111-000000000004';
-const BATTERY = '11111111-1111-1111-1111-000000000005';
-const ELECTRONIC_WASTE = '11111111-1111-1111-1111-000000000006';
+import {
+  BATTERIES_BIN_TYPE_ID,
+  GLASS_BIN_TYPE_ID,
+  NON_RECOVERABLE_BIN_TYPE_ID,
+  PAPER_CARDBOARD_BIN_TYPE_ID,
+  PLASTICS_BIN_TYPE_ID,
+  RAEE_BIN_TYPE_ID,
+} from '@/src/features/recycling/services/bin-types.mock';
+import {
+  BATTERIES_WASTE_TYPE_ID,
+  CARTON_WASTE_TYPE_ID,
+  GENERAL_WASTE_TYPE_ID,
+  GLASS_WASTE_TYPE_ID,
+  METALS_WASTE_TYPE_ID,
+  ORGANIC_WASTE_TYPE_ID,
+  OTHER_PLASTICS_WASTE_TYPE_ID,
+  PAPER_WASTE_TYPE_ID,
+  PLASTICS_PET_WASTE_TYPE_ID,
+  RAEE_WASTE_TYPE_ID,
+} from '@/src/features/recycling/services/waste-type-bin-types.mock';
 
 export const containers: RecyclingContainer[] = [
   {
@@ -14,17 +26,36 @@ export const containers: RecyclingContainer[] = [
     name: 'Contenedor Biblioteca Central',
     latitude: -12.0692,
     longitude: -77.0794,
-    acceptedWasteTypeIds: [PAPER_CARDBOARD, PLASTIC_PET],
+    acceptedWasteTypeIds: [
+      CARTON_WASTE_TYPE_ID,
+      PLASTICS_PET_WASTE_TYPE_ID,
+      OTHER_PLASTICS_WASTE_TYPE_ID,
+      PAPER_WASTE_TYPE_ID,
+    ],
+    availableBinTypeIds: [
+      PAPER_CARDBOARD_BIN_TYPE_ID,
+      PLASTICS_BIN_TYPE_ID,
+    ],
     instructionsByWasteTypeId: {
-      [PAPER_CARDBOARD]: [
-        'Deposita solo papel y carton limpios y secos.',
-        'Retira grapas grandes o plasticos adheridos.',
+      [CARTON_WASTE_TYPE_ID]: [
+        'Deposita solo carton limpio y seco.',
+        'Retira plasticos, cintas o restos de comida.',
         'Dobla cajas para reducir volumen.',
       ],
-      [PLASTIC_PET]: [
+      [PAPER_WASTE_TYPE_ID]: [
+        'Deposita solo papel limpio y seco.',
+        'Evita servilletas o papeles con grasa.',
+        'Retira plasticos, clips grandes o elementos adheridos.',
+      ],
+      [PLASTICS_PET_WASTE_TYPE_ID]: [
         'Enjuaga bien la botella de plastico.',
-        'Retira la tapa y la etiqueta.',
+        'Retira la tapa y la etiqueta cuando sea posible.',
         'Compacta la botella antes de depositarla.',
+      ],
+      [OTHER_PLASTICS_WASTE_TYPE_ID]: [
+        'Deposita plasticos limpios y secos.',
+        'Retira restos de comida o liquidos.',
+        'No mezcles plasticos con residuos generales.',
       ],
     },
   },
@@ -33,17 +64,23 @@ export const containers: RecyclingContainer[] = [
     name: 'Contenedor Estudios Generales',
     latitude: -12.0701,
     longitude: -77.0806,
-    acceptedWasteTypeIds: [GLASS, NON_RECOVERABLE],
+    acceptedWasteTypeIds: [GLASS_WASTE_TYPE_ID, GENERAL_WASTE_TYPE_ID, ORGANIC_WASTE_TYPE_ID],
+    availableBinTypeIds: [GLASS_BIN_TYPE_ID, NON_RECOVERABLE_BIN_TYPE_ID],
     instructionsByWasteTypeId: {
-      [GLASS]: [
+      [GLASS_WASTE_TYPE_ID]: [
         'Deposita envases de vidrio limpios.',
         'No mezcles con ceramica ni focos.',
         'Evita arrojar vidrio roto sin envolver.',
       ],
-      [NON_RECOVERABLE]: [
+      [GENERAL_WASTE_TYPE_ID]: [
         'Deposita residuos no reciclables.',
         'No mezclar con papel, plastico PET, vidrio, pilas o RAEE.',
         'Cierra bien bolsas de descarte antes de botar.',
+      ],
+      [ORGANIC_WASTE_TYPE_ID]: [
+        'Deposita solo restos organicos permitidos.',
+        'Retira empaques, bolsas o cubiertos descartables.',
+        'Evita mezclar organicos con residuos generales.',
       ],
     },
   },
@@ -52,17 +89,23 @@ export const containers: RecyclingContainer[] = [
     name: 'Punto Verde Complejo MacGregor',
     latitude: -12.0683,
     longitude: -77.0784,
-    acceptedWasteTypeIds: [BATTERY, ELECTRONIC_WASTE],
+    acceptedWasteTypeIds: [BATTERIES_WASTE_TYPE_ID, RAEE_WASTE_TYPE_ID, METALS_WASTE_TYPE_ID],
+    availableBinTypeIds: [BATTERIES_BIN_TYPE_ID, RAEE_BIN_TYPE_ID],
     instructionsByWasteTypeId: {
-      [BATTERY]: [
+      [BATTERIES_WASTE_TYPE_ID]: [
         'Aisla polos con cinta para evitar cortocircuitos.',
         'No mezcles pilas con residuos comunes.',
         'Deposita solo pilas en este contenedor.',
       ],
-      [ELECTRONIC_WASTE]: [
+      [RAEE_WASTE_TYPE_ID]: [
         'Deposita solo aparatos electricos o electronicos pequenos.',
         'Retira baterias removibles cuando sea posible.',
         'No mezcles RAEE con residuos comunes.',
+      ],
+      [METALS_WASTE_TYPE_ID]: [
+        'Deposita metales segun la indicacion institucional vigente.',
+        'No mezcles metales con residuos generales.',
+        'Consulta al personal si el residuo metalico no corresponde al punto RAEE.',
       ],
     },
   },

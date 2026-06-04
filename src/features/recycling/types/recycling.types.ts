@@ -11,6 +11,20 @@ export type WasteType = {
   categoryId: WasteCategoryId;
   categoryLabel: string;
   label: string;
+  description?: string;
+};
+
+export type BinType = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
+export type WasteTypeBinTypeMapping = {
+  universityId: string;
+  wasteTypeId: string;
+  binTypeId: string;
+  isActive?: boolean;
 };
 
 export type RecyclingContainer = {
@@ -19,6 +33,7 @@ export type RecyclingContainer = {
   latitude: number;
   longitude: number;
   acceptedWasteTypeIds: string[];
+  availableBinTypeIds: string[];
   instructionsByWasteTypeId: Record<string, string[]>;
 };
 

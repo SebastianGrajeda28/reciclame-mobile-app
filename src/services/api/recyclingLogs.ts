@@ -18,12 +18,13 @@ export async function createRecyclingLog(input: RecyclingLogInput): Promise<Recy
     .insert({
       user_id: input.userId,
       waste_type_id: input.wasteTypeId,
+      bin_type_id: input.binTypeId,
       recycling_point_id: input.recyclingPointId,
       detection_type: input.detectionType ?? null,
       confidence_score: input.confidenceScore ?? null,
       status: 'confirmed',
     })
-    .select('id, user_id, waste_type_id, recycling_point_id, detection_type, confidence_score, created_at')
+    .select('id, user_id, waste_type_id, bin_type_id, recycling_point_id, detection_type, confidence_score, created_at')
     .single();
 
   if (error || !data) {
@@ -34,6 +35,7 @@ export async function createRecyclingLog(input: RecyclingLogInput): Promise<Recy
     id: data.id,
     userId: data.user_id,
     wasteTypeId: data.waste_type_id,
+    binTypeId: data.bin_type_id,
     recyclingPointId: data.recycling_point_id,
     detectionType: data.detection_type ?? undefined,
     confidenceScore: data.confidence_score ?? undefined,

@@ -1,24 +1,28 @@
+import { router } from 'expo-router';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
 
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
 import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
-import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
+import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
-  filterWasteTypesByCategory,
-} from '@/src/features/recycling/services/filterContainers';
-import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
+  BATTERIES_BIN_TYPE_ID,
+  GLASS_BIN_TYPE_ID,
+  NON_RECOVERABLE_BIN_TYPE_ID,
+  PAPER_CARDBOARD_BIN_TYPE_ID,
+  PLASTICS_BIN_TYPE_ID,
+  RAEE_BIN_TYPE_ID,
+} from '@/src/features/recycling/services/bin-types.mock';
+import type { NearbyRecyclingPoint } from '@/src/features/recycling/services/recycling-points';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
-import type { NearbyRecyclingPoint } from '@/src/features/recycling/services/recycling-points';
-import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 const pUCPRegion = {
   latitude: -12.0695,
@@ -27,23 +31,56 @@ const pUCPRegion = {
   longitudeDelta: 0.01,
 };
 
-const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
-  plastic_pet: 'bottle',
-  paper_cardboard: 'briefcase',
-  glass: 'flask',
-  non_recoverable: 'delete',
-  battery: 'battery',
-  electronic_waste: 'laptop',
-};
-
-const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: WasteCategoryId }[] = [
+const FILTERS: {
+  id: string;
+  icon: AppIconName;
+  label: string;
+  activeColor?: string;
+  iconColor?: string;
+}[] = [
   { id: 'all', icon: 'trash', label: 'Todos' },
-  { id: 'plastic_pet', icon: 'bottle', label: 'Plástico', categoryId: 'plastic_pet' },
-  { id: 'paper_cardboard', icon: 'briefcase', label: 'Papel', categoryId: 'paper_cardboard' },
-  { id: 'glass', icon: 'flask', label: 'Vidrio', categoryId: 'glass' },
-  { id: 'non_recoverable', icon: 'delete', label: 'No rec.', categoryId: 'non_recoverable' },
-  { id: 'battery', icon: 'battery', label: 'Pilas', categoryId: 'battery' },
-  { id: 'electronic_waste', icon: 'laptop', label: 'RAEE', categoryId: 'electronic_waste' },
+  {
+    id: PLASTICS_BIN_TYPE_ID,
+    icon: binTypeConfig[PLASTICS_BIN_TYPE_ID].icon,
+    label: 'Plástico',
+    activeColor: binTypeConfig[PLASTICS_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[PLASTICS_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: PAPER_CARDBOARD_BIN_TYPE_ID,
+    icon: binTypeConfig[PAPER_CARDBOARD_BIN_TYPE_ID].icon,
+    label: 'Papel',
+    activeColor: binTypeConfig[PAPER_CARDBOARD_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[PAPER_CARDBOARD_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: GLASS_BIN_TYPE_ID,
+    icon: binTypeConfig[GLASS_BIN_TYPE_ID].icon,
+    label: 'Vidrio',
+    activeColor: binTypeConfig[GLASS_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[GLASS_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: NON_RECOVERABLE_BIN_TYPE_ID,
+    icon: binTypeConfig[NON_RECOVERABLE_BIN_TYPE_ID].icon,
+    label: 'No rec.',
+    activeColor: binTypeConfig[NON_RECOVERABLE_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[NON_RECOVERABLE_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: BATTERIES_BIN_TYPE_ID,
+    icon: binTypeConfig[BATTERIES_BIN_TYPE_ID].icon,
+    label: 'Pilas',
+    activeColor: binTypeConfig[BATTERIES_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[BATTERIES_BIN_TYPE_ID].iconColor,
+  },
+  {
+    id: RAEE_BIN_TYPE_ID,
+    icon: binTypeConfig[RAEE_BIN_TYPE_ID].icon,
+    label: 'RAEE',
+    activeColor: binTypeConfig[RAEE_BIN_TYPE_ID].color,
+    iconColor: binTypeConfig[RAEE_BIN_TYPE_ID].iconColor,
+  },
 ];
 
 export function MapScreen() {
@@ -52,20 +89,21 @@ export function MapScreen() {
   const [category, setCategory] = useState<string>('all');
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
   const { finalWasteType } = useResolvedRecycleSelection();
+  const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
+    state.finalWasteTypeId,
+  );
+
   const nearbyRef = useRef<NearbyRecyclingPoint[]>([]);
   const selectedContainerIdRef = useRef(state.selectedContainerId);
 
-  const filteredWasteTypes = useMemo(
-    () => filterWasteTypesByCategory(wasteTypes, category),
-    [category],
-  );
+  const binTypeIds = useMemo(() => {
+    if (state.finalWasteTypeId) {
+      return resolvedBinType ? [resolvedBinType.id] : [];
+    }
+    return category === 'all' ? undefined : [category];
+  }, [category, resolvedBinType, state.finalWasteTypeId]);
 
-  const wasteTypeIds = useMemo(
-    () => (category === 'all' ? undefined : filteredWasteTypes.map((wt) => wt.id)),
-    [category, filteredWasteTypes],
-  );
-
-  const { data: nearbyPoints, loading } = useNearbyRecyclingPoints({ location, wasteTypeIds });
+  const { data: nearbyPoints, loading } = useNearbyRecyclingPoints({ location, binTypeIds });
 
   nearbyRef.current = nearbyPoints;
   selectedContainerIdRef.current = state.selectedContainerId;
@@ -87,21 +125,24 @@ export function MapScreen() {
   );
 
   useEffect(() => {
-    if (!loading && nearbyPoints.length === 0 && category !== 'all') {
-      Alert.alert('Sin contenedores', 'No se encontraron contenedores compatibles con este filtro.', [
-        { text: 'Entendido' },
-      ]);
+    if (!loading && !resolvingBinType && nearbyPoints.length === 0 && category !== 'all') {
+      Alert.alert(
+        'Sin contenedores',
+        'No se encontraron contenedores compatibles con este filtro.',
+        [{ text: 'Entendido' }],
+      );
     }
-  }, [category, loading, nearbyPoints.length]);
+  }, [category, loading, nearbyPoints.length, resolvingBinType]);
 
   useEffect(() => {
     if (
+      !resolvingBinType &&
       selectedContainerIdRef.current &&
       !nearbyRef.current.some((c) => c.id === selectedContainerIdRef.current)
     ) {
       clearSelectedContainer();
     }
-  }, [category, clearSelectedContainer]);
+  }, [category, clearSelectedContainer, resolvedBinType, resolvingBinType]);
 
   return (
     <AppScreen insetBottom={false}>
@@ -116,28 +157,21 @@ export function MapScreen() {
         <AppText style={styles.filterTitle}>Filtrar por contenedores</AppText>
         <View style={styles.filterChips}>
           {FILTERS.map((f) => {
-            const cfg = f.categoryId ? wasteCategoryConfig[f.categoryId] : null;
             const isSelected = category === f.id;
+            const activeColor = f.activeColor ?? theme.colors.primary;
+            const iconColor = f.iconColor ?? theme.colors.textInverse;
             return (
               <IconFilterButton
                 key={f.id}
                 selected={isSelected}
                 onPress={() => setCategory(f.id)}
                 label={f.label}
-                activeColor={cfg?.color}
+                activeColor={activeColor}
                 icon={
                   <AppIcon
                     name={f.icon}
                     size={theme.iconSizes.md}
-                    color={
-                      cfg
-                        ? isSelected
-                          ? cfg.iconColor
-                          : cfg.color
-                        : isSelected
-                          ? theme.colors.textInverse
-                          : theme.colors.primary
-                    }
+                    color={isSelected ? iconColor : activeColor}
                   />
                 }
               />
@@ -163,8 +197,8 @@ export function MapScreen() {
           <ContainerSelectedCard
             container={selectedContainer}
             userLocation={location}
-            finalWasteTypeCategoryLabel={finalWasteType?.categoryLabel}
             finalWasteTypeLabel={finalWasteType?.label}
+            resolvedBinTypeName={resolvedBinType?.name}
             onDismiss={clearSelectedContainer}
             onRecycleHere={() => router.push('/recycle/camera')}
           />
@@ -205,16 +239,24 @@ type IconFilterButtonProps = {
   disabled?: boolean;
 };
 
-function IconFilterButton({ selected, onPress, icon, label, activeColor, disabled }: IconFilterButtonProps) {
+function IconFilterButton({
+  selected,
+  onPress,
+  icon,
+  label,
+  activeColor,
+  disabled,
+}: IconFilterButtonProps) {
   const categoryColor = activeColor ?? theme.colors.primary;
   return (
-    <Pressable onPress={onPress} style={[styles.iconFilterWrapper, disabled && styles.iconFilterDisabled]}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.iconFilterWrapper, disabled && styles.iconFilterDisabled]}
+    >
       <View
         style={[
           styles.iconFilter,
-          selected
-            ? { backgroundColor: categoryColor }
-            : { backgroundColor: categoryColor + '22' },
+          selected ? { backgroundColor: categoryColor } : { backgroundColor: categoryColor + '22' },
         ]}
       >
         {icon}
