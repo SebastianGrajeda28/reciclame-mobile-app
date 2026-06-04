@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppGate } from '@/src/features/auth/components/AppGate';
 import { RecycleFlowProvider } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AuthProvider } from '@/src/hooks/useAuth';
+import { UserSettingsProvider } from '@/src/hooks/useUserSettings';
 
 export default function RootLayout() {
   return (

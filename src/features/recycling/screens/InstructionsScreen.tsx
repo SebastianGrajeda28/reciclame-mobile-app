@@ -1,5 +1,5 @@
 import { router, useNavigation } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
@@ -8,6 +8,7 @@ import {
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useUserSettings } from '@/src/hooks/useUserSettings';
 import { createRecyclingLog } from '@/src/services/api/recyclingLogs';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
@@ -19,8 +20,11 @@ export function InstructionsScreen() {
     state.finalWasteTypeId,
   );
   const { session } = useAuth();
-  const [showAgain, setShowAgain] = useState(true);
+  const { settings, updateSetting } = useUserSettings();
   const [submitting, setSubmitting] = useState(false);
+  const [showAgain, setShowAgain] = useState(() => !(settings?.skipRecyclingInstructions ?? false));
+  const autoSubmitted = useRef(false);
+  const initialSkip = useRef(settings?.skipRecyclingInstructions ?? false);
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {
@@ -33,6 +37,68 @@ export function InstructionsScreen() {
       router.replace('/(tabs)');
     }
   }, [selectedContainer, finalWasteType]);
+
+  const notify = useCallback((title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  }, []);
+
+  const handleConfirm = useCallback(async () => {
+    if (!finalWasteType || !selectedContainer) {
+      notify('Datos incompletos', 'Falta categoría o contenedor seleccionado.');
+      return;
+    }
+
+    if (!session?.user) {
+      router.replace('/recycle/success');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const usedManual =
+        state.predictedWasteTypeId !== undefined &&
+        state.predictedWasteTypeId !== state.finalWasteTypeId;
+      await createRecyclingLog({
+        userId: session.user.id,
+        wasteTypeId: finalWasteType.id,
+        binTypeId: selectedContainer?.id ?? '',//esto es un parche, se deberia ver que datos se pone realmente en este log.
+        recyclingPointId: selectedContainer.id,
+        detectionType: usedManual ? 'manual' : 'auto',
+        confidenceScore: state.predictionConfidence,
+      });
+      router.replace('/recycle/success');
+    } catch (err) {
+      console.error('[InstructionsScreen] createRecyclingLog failed:', err);
+      notify(
+        'No se pudo registrar',
+        err instanceof Error ? err.message : 'Intenta nuevamente.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType]);
+
+  useEffect(() => {
+    if (
+      initialSkip.current &&
+      !autoSubmitted.current &&
+      selectedContainer &&
+      finalWasteType
+    ) {
+      autoSubmitted.current = true;
+      handleConfirm();
+    }
+  }, [selectedContainer, finalWasteType, handleConfirm]);
+
+  const handleToggleShowAgain = () => {
+    const next = !showAgain;
+    setShowAgain(next);
+    updateSetting({ skipRecyclingInstructions: !next });
+  };
 
   if (!selectedContainer || !finalWasteType) return null;
 
@@ -76,7 +142,7 @@ export function InstructionsScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.checkRow} onPress={() => setShowAgain((v) => !v)}>
+        <Pressable style={styles.checkRow} onPress={handleToggleShowAgain}>
           <View style={[styles.checkbox, showAgain && styles.checkboxChecked]}>
             {showAgain && <AppIcon name="check" size={theme.iconSizes.sm} color="#fff" />}
           </View>
@@ -86,65 +152,7 @@ export function InstructionsScreen() {
           label="Confirmar finalización"
           loading={submitting}
           disabled={submitting}
-          onPress={async () => {
-            const notify = (title: string, message: string) => {
-              if (Platform.OS === 'web') {
-                window.alert(`${title}\n\n${message}`);
-              } else {
-                Alert.alert(title, message);
-              }
-            };
-
-            if (!session?.user) {
-              notify(
-                'Sesión requerida',
-                'Inicia sesión con Google para registrar tu reciclaje (modo offline no guarda en BD).',
-              );
-              return;
-            }
-            if (!finalWasteType || !selectedContainer) {
-              notify('Datos incompletos', 'Falta categoría o contenedor seleccionado.');
-              return;
-            }
-            if (resolvingBinType || !resolvedBinType) {
-              notify(
-                'Datos incompletos',
-                'Aún no se pudo determinar el contenedor correspondiente.',
-              );
-              return;
-            }
-            if (!selectedContainer.availableBinTypeIds.includes(resolvedBinType.id)) {
-              notify(
-                'Contenedor no compatible',
-                'El punto seleccionado no cuenta con el contenedor correspondiente.',
-              );
-              return;
-            }
-
-            setSubmitting(true);
-            try {
-              const usedManual =
-                state.predictedWasteTypeId === undefined ||
-                state.predictedWasteTypeId !== state.finalWasteTypeId;
-              await createRecyclingLog({
-                userId: session.user.id,
-                wasteTypeId: finalWasteType.id,
-                binTypeId: resolvedBinType.id,
-                recyclingPointId: selectedContainer.id,
-                detectionType: usedManual ? 'manual' : 'auto',
-                confidenceScore: usedManual ? undefined : state.predictionConfidence,
-              });
-              router.replace('/recycle/success');
-            } catch (err) {
-              console.error('[InstructionsScreen] createRecyclingLog failed:', err);
-              notify(
-                'No se pudo registrar',
-                err instanceof Error ? err.message : 'Intenta nuevamente.',
-              );
-            } finally {
-              setSubmitting(false);
-            }
-          }}
+          onPress={handleConfirm}
         />
       </View>
     </AppScreen>

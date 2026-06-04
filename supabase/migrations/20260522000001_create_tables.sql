@@ -26,6 +26,7 @@ create table if not exists public.user_settings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references public.users(id) on delete cascade,
   notifications_enabled boolean not null default true,
+  skip_recycling_instructions boolean not null default false,
   profile_visibility text,
   language text,
   created_at timestamptz not null default now(),
