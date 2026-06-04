@@ -1,5 +1,4 @@
 import { Session } from '@supabase/supabase-js';
-import { router } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 import { supabase } from '@/src/services/supabase/client';
@@ -41,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (event === 'SIGNED_OUT') {
         setOfflineMode(false);
-        router.replace('/');
+        //router.replace('/');
       } else if (
         (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') &&
         newSession?.user
@@ -111,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error signing out:', error);
     }
-    router.replace('/');
+    //router.replace('/');
   };
 
   return (
