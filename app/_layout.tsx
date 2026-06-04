@@ -11,7 +11,7 @@ export default function RootLayout() {
       <AuthProvider>
         <RecycleFlowProvider>
           <AppGate>
-            <Stack>
+            <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="profile/achievements" options={{ headerShown: false }} />
               <Stack.Screen name="profile/avatar" options={{ headerShown: false }} />
