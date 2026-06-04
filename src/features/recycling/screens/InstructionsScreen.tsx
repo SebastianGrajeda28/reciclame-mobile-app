@@ -65,7 +65,7 @@ export function InstructionsScreen() {
       await createRecyclingLog({
         userId: session.user.id,
         wasteTypeId: finalWasteType.id,
-        binTypeId: selectedContainer?.id ?? '',//esto es un parche, se deberia ver que datos se pone realmente en este log.
+        binTypeId: '33333333-3333-3333-3333-000000000001',//esto es un parche, se deberia ver que datos se pone realmente en este log.
         recyclingPointId: selectedContainer.id,
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,

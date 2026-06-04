@@ -8,7 +8,6 @@ import { ProfileSettingsRow } from '@/src/features/profile/components/ProfileSet
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
-import { supabase } from '@/src/services/supabase/client';
 import { AppButton, AppIcon, AppIconButton, AppSwitch, theme } from '@/src/ui';
 
 export function ProfileSettingsScreen() {
@@ -28,10 +27,7 @@ export function ProfileSettingsScreen() {
   async function handleSignOut() {
     try {
       setSigningOut(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        throw error;
-      }
+      await signOut();
     } catch {
       Alert.alert('No se pudo cerrar sesión', 'Intenta nuevamente en unos segundos.');
     } finally {
