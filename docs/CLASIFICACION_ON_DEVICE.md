@@ -4,49 +4,64 @@ Inferencia de residuos en el celular usando `assets/model/model.tflite` (10 clas
 
 ---
 
-## Cómo arrancarlo
+## Quickstart — primera vez (o máquina nueva)
 
 ```powershell
 cd "D:\Dev\15. DP2-Reciclame\reciclame-mobile-app"
 
-# 1. Instalar deps nuevas (Expo elige las versiones compatibles con el SDK)
+# 1. Instalar deps nativas (Expo elige versiones compatibles con el SDK)
 bunx expo install expo-image-manipulator react-native-fast-tflite jpeg-js
 
-# 2. Generar dev build (una sola vez — reemplaza Expo Go)
+# 2. Generar dev build y correr (una sola vez por máquina)
 bunx expo prebuild
-bunx expo run:android   # con cel USB o emulador AVD abierto
+bunx expo run:android       # cel por USB  ← recomendado
+# o con emulador AVD abierto en Android Studio:
+# bunx expo run:android --device emulator
 
 # 3. Aplicar migración de las 10 categorías
 bun run db:reset
+```
 
-# 4. Activar el classifier real
-# editar src/features/recycling/services/config.ts:
-#   RECYCLE_USE_MOCKS = false
+A partir del paso 2 abrís la app **reciclame-mobile-app** instalada (NO Expo Go). Hot reload sigue igual; solo recompilás si agregás otro módulo nativo.
 
-# 5. Levantar el bundler como siempre
+> iOS requiere Mac + `bunx expo run:ios`. Pendiente para el release final.
+
+---
+
+## Quickstart — ya configurado (dev loop diario)
+
+```powershell
+cd "D:\Dev\15. DP2-Reciclame\reciclame-mobile-app"
+
+# Levantar Supabase local (si no está corriendo)
+bun run db:start
+
+# Levantar bundler Metro
 bun run start
 ```
 
-A partir del paso 2, abrís la app **reciclame-mobile-app** instalada (NO Expo Go). El dev loop de JS sigue igual: hot reload, QR, etc. Solo recompilás si agregás otro módulo nativo.
+Abrís la app instalada en el cel/emulador y hacés shake → Reload, o `r` en la terminal.
 
-> Para iOS hace falta Mac + `bunx expo run:ios`. Pendiente para el release final.
+**Probar en emulador sin cel:**
+1. Abrir Android Studio → Virtual Device Manager → Play en el AVD
+2. `bunx expo run:android` (primera vez) o `bun run start` si ya está instalada la app
 
 ---
 
 ## Las 10 categorías
 
-| ID | name (BD) | categoryId (app) | clase modelo |
-|---|---|---|---|
-| 001 | Papel | `paper` | Papel |
-| 002 | Botella plastica | `plastic_bottle` | Botella plástica |
-| 003 | No aprovechables | `non_recoverable` | Residuo general |
-| 004 | Vidrio | `glass` | Vidrio |
-| 005 | Pilas | `battery` | Pilas |
-| 006 | RAEE | `electronic_waste` | RAEE |
-| 007 | Carton | `cardboard` | Cartón |
-| 008 | Metal | `metal` | Metal |
-| 009 | Organico | `organic` | Orgánico |
-| 010 | Plastico | `plastic` | Plástico |
+| ID | name (BD) | categoryId (app) | clase modelo | bin type |
+|---|---|---|---|---|
+| 001 | Carton | `cardboard` | Cartón | Papel y cartón |
+| 002 | Botella plastica | `plastic_bottle` | Botella plástica | Plásticos |
+| 003 | No aprovechables | `non_recoverable` | Residuo general | No aprovechables |
+| 004 | Vidrio | `glass` | Vidrio | Vidrio |
+| 005 | Pilas | `battery` | Pilas | Pilas |
+| 006 | RAEE | `electronic_waste` | RAEE | RAEE |
+| 007 | Otros plasticos | `plastic` | Plástico | Plásticos |
+| 008 | Metal | `metal` | Metal | RAEE |
+| 009 | Papel | `paper` | Papel | Papel y cartón |
+| 010 | Organico | `organic` | Orgánico | No aprovechables |
 
 Mapeo modelo→ID en [on-device-labels.ts](../src/features/recycling/services/classification/providers/on-device-labels.ts). Si cambia el modelo, hay que reordenar este archivo + `labels.json` en lockstep.
 
