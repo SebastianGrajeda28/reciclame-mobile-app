@@ -130,15 +130,6 @@ export function ProcessingScreen() {
               {finalWasteType?.label ?? 'No identificado'}
             </AppText>
 
-            {finalWasteType && (
-              <View style={styles.infoCard}>
-                <AppIcon name="info" size={theme.iconSizes.md} color={theme.colors.primary} />
-                <AppText style={styles.infoText}>
-                  Clase del residuo: {finalWasteType.categoryLabel}
-                </AppText>
-              </View>
-            )}
-
             {resolvedBinType && binTypeUiConfig && (
               <View style={styles.suggestionSection}>
                 <AppText style={styles.suggestionLabel}>Contenedor correspondiente:</AppText>

@@ -132,7 +132,7 @@ export function InstructionsScreen() {
                 binTypeId: resolvedBinType.id,
                 recyclingPointId: selectedContainer.id,
                 detectionType: usedManual ? 'manual' : 'auto',
-                confidenceScore: state.predictionConfidence,
+                confidenceScore: usedManual ? undefined : state.predictionConfidence,
               });
               router.replace('/recycle/success');
             } catch (err) {

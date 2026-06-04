@@ -4,14 +4,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
+import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
 import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
-import { containers } from '@/src/features/recycling/services/containers.mock';
-import { getNearbyCompatibleContainersByBinType } from '@/src/features/recycling/services/filterContainers';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 import { AppIcon, AppScreen, AppText, theme } from '@/src/ui';
@@ -54,9 +53,12 @@ export function RecycleFlowMapScreen() {
     autoSelected.current = false;
   }, [state.finalWasteTypeId]);
 
-  const nearby = useMemo(
-    () => getNearbyCompatibleContainersByBinType(location, containers, resolvedBinType?.id),
-    [location, resolvedBinType],
+  const binTypeIds = useMemo(() => (resolvedBinType ? [resolvedBinType.id] : []), [resolvedBinType]);
+  const { data: nearby } = useNearbyRecyclingPoints({ location, binTypeIds });
+
+  const selectedContainer = useMemo(
+    () => nearby.find((container) => container.id === state.selectedContainerId) ?? null,
+    [nearby, state.selectedContainerId],
   );
 
   const markers = useMemo(

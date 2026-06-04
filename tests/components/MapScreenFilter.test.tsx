@@ -3,10 +3,12 @@ import { render, fireEvent, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import { MapScreen } from '@/src/features/map/screens/MapScreen';
+import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 
 jest.mock('expo-location', () => ({
@@ -27,9 +29,12 @@ jest.mock('@/src/features/map/components/RecycleMap', () => ({
 }));
 
 jest.mock('@/src/features/recycling/hooks/useRecycleFlow');
+jest.mock('@/src/features/recycling/hooks/useResolvedBinType');
+jest.mock('@/src/features/map/hooks/useNearbyRecyclingPoints');
 
 const mockClearSelectedContainer = jest.fn();
 const libraryContainerId = containers[0].id;
+const mockUseNearbyRecyclingPoints = useNearbyRecyclingPoints as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -40,6 +45,23 @@ beforeEach(() => {
     selectedContainer: null,
     finalWasteType: null,
   });
+  (useResolvedBinType as jest.Mock).mockReturnValue({ binType: null, loading: false });
+  mockUseNearbyRecyclingPoints.mockImplementation(
+    ({ binTypeIds }: { binTypeIds?: string[] }) => {
+      const filtered = binTypeIds?.length
+        ? containers.filter((container) =>
+            container.availableBinTypeIds.some((id) => binTypeIds.includes(id)),
+          )
+        : containers;
+
+      return {
+        data: filtered.map((container, index) => ({ ...container, distanceKm: index })),
+        loading: false,
+        error: null,
+        refetch: jest.fn(),
+      };
+    },
+  );
 });
 
 describe('MapScreen filter chips', () => {
@@ -64,7 +86,7 @@ describe('MapScreen filter chips', () => {
 
     const { getByText } = render(<MapScreen />);
 
-    // Switch to glass filter — container-1 has no glass waste type
+    // Switch to glass filter: container-1 has no glass bin type.
     await act(async () => {
       fireEvent.press(getByText('Vidrio'));
     });
@@ -81,7 +103,7 @@ describe('MapScreen filter chips', () => {
 
     const { getByText } = render(<MapScreen />);
 
-    // Switch to plastic filter — container-1 accepts plastic
+    // Switch to plastic filter: container-1 has plastic bin type.
     await act(async () => {
       fireEvent.press(getByText('Plástico'));
     });
