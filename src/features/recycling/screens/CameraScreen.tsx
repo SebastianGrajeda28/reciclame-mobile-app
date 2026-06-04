@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView } from 'expo-camera';
 import Feather from '@expo/vector-icons/Feather';
 import { router, useNavigation } from 'expo-router';
@@ -26,18 +26,22 @@ export function CameraScreen() {
   const { pickImage } = useGalleryPicker();
 
   async function handleCapture() {
-    const uri = await capture();
-    if (uri) {
-      setCapturedPhotoUri(uri);
+    const result = await capture();
+    if (result.status === 'ok') {
+      setCapturedPhotoUri(result.uri);
       router.push('/recycle/processing');
+    } else if (result.status === 'invalid') {
+      Alert.alert('Imagen no válida', result.error, [{ text: 'Entendido' }]);
     }
   }
 
   async function handleGallery() {
-    const uri = await pickImage();
-    if (uri) {
-      setCapturedPhotoUri(uri);
+    const result = await pickImage();
+    if (result.status === 'ok') {
+      setCapturedPhotoUri(result.uri);
       router.push('/recycle/processing');
+    } else if (result.status === 'invalid') {
+      Alert.alert('Imagen no válida', result.error, [{ text: 'Entendido' }]);
     }
   }
 
