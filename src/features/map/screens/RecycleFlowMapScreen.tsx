@@ -17,10 +17,14 @@ import type { AppIconName } from '@/src/ui/components/AppIcon';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
-  plastic_pet: 'bottle',
-  paper_cardboard: 'briefcase',
+  paper: 'fileDocument',
+  cardboard: 'briefcase',
+  plastic_bottle: 'bottle',
+  plastic: 'bottle',
+  metal: 'flask',
   glass: 'flask',
   non_recoverable: 'delete',
+  organic: 'leaf',
   battery: 'battery',
   electronic_waste: 'laptop',
 };

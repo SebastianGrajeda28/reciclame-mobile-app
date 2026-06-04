@@ -28,20 +28,28 @@ const pUCPRegion = {
 };
 
 const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
-  plastic_pet: 'bottle',
-  paper_cardboard: 'briefcase',
+  paper: 'fileDocument',
+  cardboard: 'briefcase',
+  plastic_bottle: 'bottle',
+  plastic: 'bottle',
+  metal: 'flask',
   glass: 'flask',
   non_recoverable: 'delete',
+  organic: 'leaf',
   battery: 'battery',
   electronic_waste: 'laptop',
 };
 
 const FILTERS: { id: string; icon: AppIconName; label: string; categoryId?: WasteCategoryId }[] = [
   { id: 'all', icon: 'trash', label: 'Todos' },
-  { id: 'plastic_pet', icon: 'bottle', label: 'Plástico', categoryId: 'plastic_pet' },
-  { id: 'paper_cardboard', icon: 'briefcase', label: 'Papel', categoryId: 'paper_cardboard' },
+  { id: 'paper', icon: 'fileDocument', label: 'Papel', categoryId: 'paper' },
+  { id: 'cardboard', icon: 'briefcase', label: 'Cartón', categoryId: 'cardboard' },
+  { id: 'plastic_bottle', icon: 'bottle', label: 'Botella', categoryId: 'plastic_bottle' },
+  { id: 'plastic', icon: 'bottle', label: 'Plástico', categoryId: 'plastic' },
+  { id: 'metal', icon: 'flask', label: 'Metal', categoryId: 'metal' },
   { id: 'glass', icon: 'flask', label: 'Vidrio', categoryId: 'glass' },
   { id: 'non_recoverable', icon: 'delete', label: 'No rec.', categoryId: 'non_recoverable' },
+  { id: 'organic', icon: 'leaf', label: 'Orgánico', categoryId: 'organic' },
   { id: 'battery', icon: 'battery', label: 'Pilas', categoryId: 'battery' },
   { id: 'electronic_waste', icon: 'laptop', label: 'RAEE', categoryId: 'electronic_waste' },
 ];

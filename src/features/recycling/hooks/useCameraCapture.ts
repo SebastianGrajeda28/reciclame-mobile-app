@@ -18,8 +18,15 @@ export function useCameraCapture() {
 
   async function capture(): Promise<string | null> {
     if (!cameraRef.current) return null;
-    const picture = await cameraRef.current.takePictureAsync({ quality: 0.6 });
-    return picture?.uri ?? null;
+    const picture = await cameraRef.current.takePictureAsync({
+      quality: 0.6,
+      base64: true,
+    });
+    if (!picture) return null;
+    if (picture.base64) {
+      return `data:image/jpeg;base64,${picture.base64}`;
+    }
+    return picture.uri;
   }
 
   return { permission, requestPermission, cameraRef, flash, toggleFlash, capture };

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router, useNavigation } from 'expo-router';
 
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
@@ -27,10 +28,14 @@ import type { AppIconName } from '@/src/ui/components/AppIcon';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
 
 const CATEGORY_ICON: Record<WasteCategoryId, AppIconName> = {
-  plastic_pet: 'bottle',
-  paper_cardboard: 'briefcase',
+  paper: 'fileDocument',
+  cardboard: 'briefcase',
+  plastic_bottle: 'bottle',
+  plastic: 'bottle',
+  metal: 'flask',
   glass: 'flask',
   non_recoverable: 'delete',
+  organic: 'leaf',
   battery: 'battery',
   electronic_waste: 'laptop',
 };
@@ -88,7 +93,7 @@ export function ProcessingScreen() {
       <View style={styles.imageSection}>
         <View style={styles.imageWrapper}>
           {state.capturedPhotoUri ? (
-            <Image source={{ uri: state.capturedPhotoUri }} style={styles.image} resizeMode="cover" />
+            <Image source={{ uri: state.capturedPhotoUri }} style={styles.image} contentFit="cover" />
           ) : (
             <View style={styles.imagePlaceholder} />
           )}

@@ -1,8 +1,12 @@
 export type WasteCategoryId =
-  | 'paper_cardboard'
-  | 'plastic_pet'
-  | 'non_recoverable'
+  | 'paper'
+  | 'cardboard'
+  | 'plastic_bottle'
+  | 'plastic'
+  | 'metal'
   | 'glass'
+  | 'non_recoverable'
+  | 'organic'
   | 'battery'
   | 'electronic_waste';
 

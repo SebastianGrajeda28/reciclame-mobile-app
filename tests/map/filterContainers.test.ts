@@ -23,9 +23,9 @@ describe('filterWasteTypesByCategory', () => {
   });
 
   it('returns only matching waste types for a specific category', () => {
-    const result = filterWasteTypesByCategory(wasteTypes, 'plastic_pet');
+    const result = filterWasteTypesByCategory(wasteTypes, 'plastic_bottle');
     expect(result.length).toBeGreaterThan(0);
-    result.forEach((wt) => expect(wt.categoryId).toBe('plastic_pet'));
+    result.forEach((wt) => expect(wt.categoryId).toBe('plastic_bottle'));
   });
 
   it('returns empty array for unknown category', () => {
@@ -34,7 +34,7 @@ describe('filterWasteTypesByCategory', () => {
   });
 
   it('returns empty array when input is empty', () => {
-    const result = filterWasteTypesByCategory([], 'plastic_pet');
+    const result = filterWasteTypesByCategory([], 'plastic_bottle');
     expect(result).toHaveLength(0);
   });
 });
@@ -78,7 +78,7 @@ describe('getNearbyCompatibleContainers', () => {
       name: 'Boundary container',
       latitude: PUCP.latitude,
       longitude: PUCP.longitude,
-      acceptedWasteTypeIds: [idByCategory('plastic_pet')],
+      acceptedWasteTypeIds: [idByCategory('plastic_bottle')],
       instructionsByWasteTypeId: {},
     };
     const result = getNearbyCompatibleContainers(PUCP, [containerAtBoundary], wasteTypes, 3);
