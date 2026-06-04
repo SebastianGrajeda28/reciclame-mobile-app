@@ -1,15 +1,14 @@
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
 
+import { getTabsScreenOptions } from '@/src/navigation/tabs';
 import { AppIcon, AppTabBar } from '@/src/ui';
 
 export default function TabLayout() {
   return (
     <Tabs
-      tabBar={(props) => <AppTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: { backgroundColor: 'transparent', borderTopWidth: 0, elevation: 0 },
-      }}
+      tabBar={Platform.OS === 'android' ? (props) => <AppTabBar {...props} /> : undefined}
+      screenOptions={getTabsScreenOptions()}
     >
       <Tabs.Screen
         name="index"
