@@ -3,15 +3,18 @@ import { render, fireEvent, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import { MapScreen } from '@/src/features/map/screens/MapScreen';
+import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
+import { containers } from '@/src/features/recycling/services/containers.mock';
 
 jest.mock('expo-location', () => ({
-  getCurrentPositionAsync: jest.fn().mockResolvedValue({
-    coords: { latitude: -12.0695, longitude: -77.0793 },
-  }),
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  watchPositionAsync: jest.fn().mockResolvedValue({ remove: jest.fn() }),
 }));
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
@@ -26,8 +29,12 @@ jest.mock('@/src/features/map/components/RecycleMap', () => ({
 }));
 
 jest.mock('@/src/features/recycling/hooks/useRecycleFlow');
+jest.mock('@/src/features/recycling/hooks/useResolvedBinType');
+jest.mock('@/src/features/map/hooks/useNearbyRecyclingPoints');
 
 const mockClearSelectedContainer = jest.fn();
+const libraryContainerId = containers[0].id;
+const mockUseNearbyRecyclingPoints = useNearbyRecyclingPoints as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -38,6 +45,23 @@ beforeEach(() => {
     selectedContainer: null,
     finalWasteType: null,
   });
+  (useResolvedBinType as jest.Mock).mockReturnValue({ binType: null, loading: false });
+  mockUseNearbyRecyclingPoints.mockImplementation(
+    ({ binTypeIds }: { binTypeIds?: string[] }) => {
+      const filtered = binTypeIds?.length
+        ? containers.filter((container) =>
+            container.availableBinTypeIds.some((id) => binTypeIds.includes(id)),
+          )
+        : containers;
+
+      return {
+        data: filtered.map((container, index) => ({ ...container, distanceKm: index })),
+        loading: false,
+        error: null,
+        refetch: jest.fn(),
+      };
+    },
+  );
 });
 
 describe('MapScreen filter chips', () => {
@@ -54,16 +78,15 @@ describe('MapScreen filter chips', () => {
   });
 
   it('clears selected container when active filter excludes it', async () => {
-    // container-1 accepts paper_cardboard_bin + plastic_pet_bin only
     (useRecycleFlow as jest.Mock).mockReturnValue({
-      state: { selectedContainerId: 'container-1' },
+      state: { selectedContainerId: libraryContainerId },
       setSelectedContainerId: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
 
     const { getByText } = render(<MapScreen />);
 
-    // Switch to glass filter — container-1 has no glass waste type
+    // Switch to glass filter: container-1 has no glass bin type.
     await act(async () => {
       fireEvent.press(getByText('Vidrio'));
     });
@@ -72,16 +95,15 @@ describe('MapScreen filter chips', () => {
   });
 
   it('does not clear container when filter still includes it', async () => {
-    // container-1 accepts plastic_pet_bin
     (useRecycleFlow as jest.Mock).mockReturnValue({
-      state: { selectedContainerId: 'container-1' },
+      state: { selectedContainerId: libraryContainerId },
       setSelectedContainerId: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
 
     const { getByText } = render(<MapScreen />);
 
-    // Switch to plastic filter — container-1 accepts plastic
+    // Switch to plastic filter: container-1 has plastic bin type.
     await act(async () => {
       fireEvent.press(getByText('Plástico'));
     });
@@ -91,7 +113,7 @@ describe('MapScreen filter chips', () => {
 
   it('does not clear container when filter is all', async () => {
     (useRecycleFlow as jest.Mock).mockReturnValue({
-      state: { selectedContainerId: 'container-1' },
+      state: { selectedContainerId: libraryContainerId },
       setSelectedContainerId: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });

@@ -4,9 +4,9 @@ import { MapScreen } from '../../src/features/map/screens/MapScreen';
 import { RecycleFlowProvider } from '../../src/features/recycling/hooks/useRecycleFlow';
 
 jest.mock('expo-location', () => ({
-  getCurrentPositionAsync: jest.fn().mockResolvedValue({
-    coords: { latitude: -12.0695, longitude: -77.0793 },
-  }),
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  watchPositionAsync: jest.fn().mockResolvedValue({ remove: jest.fn() }),
 }));
 
 jest.mock('expo-router', () => ({

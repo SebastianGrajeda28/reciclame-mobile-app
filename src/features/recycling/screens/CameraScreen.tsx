@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView } from 'expo-camera';
 import Feather from '@expo/vector-icons/Feather';
 import { router, useNavigation } from 'expo-router';
@@ -7,6 +7,7 @@ import { router, useNavigation } from 'expo-router';
 import { CameraFlashToggle } from '@/src/features/recycling/components/CameraFlashToggle';
 import { CameraShutterButton } from '@/src/features/recycling/components/CameraShutterButton';
 import { useCameraCapture } from '@/src/features/recycling/hooks/useCameraCapture';
+import { useCancelCapture } from '@/src/features/recycling/hooks/useCancelCapture';
 import { useGalleryPicker } from '@/src/features/recycling/hooks/useGalleryPicker';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AppText, theme } from '@/src/ui';
@@ -21,21 +22,26 @@ export function CameraScreen() {
     });
   }, [navigation, resetFlow]);
   const { cameraRef, flash, toggleFlash, capture } = useCameraCapture();
+  const { confirmCancel } = useCancelCapture();
   const { pickImage } = useGalleryPicker();
 
   async function handleCapture() {
-    const uri = await capture();
-    if (uri) {
-      setCapturedPhotoUri(uri);
+    const result = await capture();
+    if (result.status === 'ok') {
+      setCapturedPhotoUri(result.uri);
       router.push('/recycle/processing');
+    } else if (result.status === 'invalid') {
+      Alert.alert('Imagen no válida', result.error, [{ text: 'Entendido' }]);
     }
   }
 
   async function handleGallery() {
-    const uri = await pickImage();
-    if (uri) {
-      setCapturedPhotoUri(uri);
+    const result = await pickImage();
+    if (result.status === 'ok') {
+      setCapturedPhotoUri(result.uri);
       router.push('/recycle/processing');
+    } else if (result.status === 'invalid') {
+      Alert.alert('Imagen no válida', result.error, [{ text: 'Entendido' }]);
     }
   }
 
@@ -44,7 +50,13 @@ export function CameraScreen() {
       <CameraView ref={cameraRef} style={styles.camera} facing="back" flash={flash} />
 
       <View style={styles.topBar}>
-        <View style={styles.controlSpacer} />
+        <Pressable
+          testID="cancel-button"
+          style={({ pressed }) => [styles.controlButton, pressed && styles.controlPressed]}
+          onPress={confirmCancel}
+        >
+          <Feather name="x" size={22} color="white" />
+        </Pressable>
         <Pressable style={styles.controlButton}>
           <Feather name="info" size={22} color="white" />
         </Pressable>
@@ -96,7 +108,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.s4,
     paddingHorizontal: theme.spacing.s4,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   bottomBar: {
@@ -119,9 +131,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  controlSpacer: {
-    flex: 1,
   },
   controlPressed: {
     opacity: 0.6,

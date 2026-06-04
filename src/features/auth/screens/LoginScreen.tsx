@@ -374,7 +374,12 @@ export function LoginScreen({ onContinueOffline }: LoginScreenProps) {
       const { signInWithGoogle } = await import('@/src/features/auth/services/googleAuth');
       await signInWithGoogle();
       // AppGate re-renders automatically via onAuthStateChange
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message === 'OAuth cancelado por el usuario.') {
+        setState('welcome');
+        return;
+      }
+
       setState('error');
     }
   };
