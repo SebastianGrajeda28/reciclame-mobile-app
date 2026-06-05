@@ -1,5 +1,5 @@
 import { supabase } from '@/src/services/supabase/client';
-import type { RecyclingLog, RecyclingLogInput } from '@/src/types/recycling';
+import type { RecyclingLog, RecyclingLogInput, RecyclingLogListItem } from '@/src/types/recycling';
 
 /**
  * Guarda el registro final de una acción de segregación en Supabase.
@@ -41,4 +41,26 @@ export async function createRecyclingLog(input: RecyclingLogInput): Promise<Recy
     confidenceScore: data.confidence_score ?? undefined,
     createdAt: data.created_at,
   };
+}
+
+export async function getRecyclingLogs(userId: string): Promise<RecyclingLogListItem[]> {
+  const { data, error } = await supabase
+    .from('recycling_records')
+    .select('id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) {
+    throw new Error(error?.message ?? 'No se pudo obtener el historial de reciclaje.');
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    wasteTypeName: (row.waste_types as unknown as { name: string } | null)?.name ?? 'Desconocido',
+    recyclingPointName: (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
+    detectionType: row.detection_type ?? undefined,
+    confidenceScore: row.confidence_score ?? undefined,
+    status: row.status ?? undefined,
+  }));
 }
