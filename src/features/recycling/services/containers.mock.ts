@@ -1,4 +1,3 @@
-import { RecyclingContainer } from '@/src/features/recycling/types/recycling.types';
 import {
   BATTERIES_BIN_TYPE_ID,
   GLASS_BIN_TYPE_ID,
@@ -19,6 +18,7 @@ import {
   PLASTICS_PET_WASTE_TYPE_ID,
   RAEE_WASTE_TYPE_ID,
 } from '@/src/features/recycling/services/waste-type-bin-types.mock';
+import { RecyclingContainer } from '@/src/features/recycling/types/recycling.types';
 
 export const containers: RecyclingContainer[] = [
   {
