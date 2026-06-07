@@ -10,12 +10,14 @@ import { ProfileStreakCard } from '@/src/features/profile/components/ProfileStre
 import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 import { useStreakProgress } from '@/src/features/profile/hooks/useStreakProgress';
 import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
+import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppIcon, AppText, theme } from '@/src/ui';
 
 export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData } = useStreakProgress();
+  const { config: avatarConfig } = useAvatarConfig();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
 
   const featuredIds = profileGamificationSnapshot.featuredBadgeIds as readonly string[];
@@ -29,6 +31,7 @@ export function ProfileScreen() {
         displayName={displayName}
         email={currentUser?.email}
         avatarUrl={currentUser?.avatarUrl}
+        avatarConfig={avatarConfig}
         memberSinceLabel={formatMemberSince(currentUser?.createdAt)}
         onCustomizePress={() => router.push(routes.profileAvatar)}
         onSettingsPress={() => router.push(routes.profileSettings)}
