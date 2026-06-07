@@ -35,8 +35,9 @@ export function ProfileScreen() {
       />
       <ProfileStreakCard
         currentStreakDays={streakData?.streakDays ?? 0}
-        heat={streakData?.heat ?? 50}
+        heat={streakData?.heat ?? 0}
         level={streakData?.level ?? 1}
+        recycledToday={streakData?.recycledToday ?? false}
       />
       <ProfileAchievementsPreviewCard
         featuredBadges={featuredBadges}

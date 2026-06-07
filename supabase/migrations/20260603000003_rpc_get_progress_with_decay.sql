@@ -2,9 +2,10 @@
 -- Se llama desde el cliente al abrir la app — no requiere pg_cron.
 CREATE OR REPLACE FUNCTION public.get_progress_with_decay(p_user_id uuid)
 RETURNS TABLE (
-  streak_days int,
-  heat        int,
-  level       int
+  streak_days         int,
+  heat                int,
+  level               int,
+  last_recycling_date date
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -21,7 +22,7 @@ BEGIN
   WHERE user_id = p_user_id AND is_active = true;
 
   IF NOT FOUND THEN
-    RETURN QUERY SELECT 0, 50, 1;
+    RETURN QUERY SELECT 0, 0, 1, NULL::date;
     RETURN;
   END IF;
 
@@ -38,9 +39,9 @@ BEGIN
     effective_heat := effective_heat - (30 * days_missed);
 
     IF effective_heat <= 0 THEN
-      -- Racha muerta: streak reset, heat reset, level queda
+      -- Racha muerta: streak vuelve al checkpoint del nivel, heat reset, level queda
       effective_heat   := 50;
-      effective_streak := 0;
+      effective_streak := public.streak_level_checkpoint(COALESCE(rec.level, 1));
     END IF;
 
     UPDATE public.user_progress
@@ -51,6 +52,6 @@ BEGIN
     WHERE user_id = p_user_id;
   END IF;
 
-  RETURN QUERY SELECT effective_streak, effective_heat, COALESCE(rec.level, 1);
+  RETURN QUERY SELECT effective_streak, effective_heat, COALESCE(rec.level, 1), rec.last_recycling_date;
 END;
 $$;

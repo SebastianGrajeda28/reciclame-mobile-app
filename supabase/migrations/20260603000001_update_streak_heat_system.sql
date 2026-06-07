@@ -18,6 +18,27 @@ BEGIN
 END;
 $$;
 
+-- Función auxiliar: retorna el checkpoint de streak_days para un nivel dado.
+-- Al morir la racha, streak_days se resetea al inicio del nivel actual.
+-- El nivel nunca baja — solo streak_days vuelve al umbral de entrada del nivel.
+CREATE OR REPLACE FUNCTION public.streak_level_checkpoint(p_level int)
+RETURNS int
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  CASE p_level
+    WHEN 7 THEN RETURN 189;
+    WHEN 6 THEN RETURN 93;
+    WHEN 5 THEN RETURN 45;
+    WHEN 4 THEN RETURN 21;
+    WHEN 3 THEN RETURN 9;
+    WHEN 2 THEN RETURN 3;
+    ELSE        RETURN 0;
+  END CASE;
+END;
+$$;
+
 -- Función auxiliar: calcula el gain de calor basado en el nivel.
 -- Gain = cumsum(nivel) = nivel*(nivel+1)/2
 CREATE OR REPLACE FUNCTION public.heat_gain_for_level(p_level int)
@@ -64,10 +85,7 @@ BEGIN
       heat_gain := public.heat_gain_for_level(COALESCE(progress_record.level, 1));
       new_heat  := LEAST(100, COALESCE(progress_record.heat, 50) + heat_gain);
 
-      new_level := GREATEST(
-        COALESCE(progress_record.level, 1),
-        public.compute_streak_level(new_streak)
-      );
+      new_level := public.compute_streak_level(new_streak);
     ELSE
       new_streak := COALESCE(progress_record.streak_days, 0);
       new_heat   := COALESCE(progress_record.heat, 50);

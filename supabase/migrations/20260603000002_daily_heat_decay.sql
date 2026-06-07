@@ -17,7 +17,7 @@ BEGIN
                     ELSE heat - 30
                   END,
     streak_days = CASE
-                    WHEN heat - 30 <= 0 THEN 0
+                    WHEN heat - 30 <= 0 THEN public.streak_level_checkpoint(level)
                     ELSE streak_days
                   END,
     updated_at  = now()
@@ -28,12 +28,16 @@ BEGIN
 END;
 $$;
 
--- Para activar el decay diario automático, ejecutar en Supabase Dashboard → SQL Editor:
---
---   SELECT cron.schedule(
---     'daily-heat-decay',
---     '0 3 * * *',
---     $$SELECT public.apply_daily_heat_decay()$$
---   );
---
--- Requiere extensión pg_cron habilitada en el proyecto de Supabase.
+-- Habilita pg_cron y registra el job de decay diario a medianoche UTC.
+-- Requiere que la extensión pg_cron esté habilitada en Supabase Dashboard → Database → Extensions.
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+SELECT cron.unschedule('daily-heat-decay') WHERE EXISTS (
+  SELECT 1 FROM cron.job WHERE jobname = 'daily-heat-decay'
+);
+
+SELECT cron.schedule(
+  'daily-heat-decay',
+  '0 0 * * *',
+  $$SELECT public.apply_daily_heat_decay()$$
+);

@@ -15,7 +15,7 @@ export const STREAK_LEVEL_COLORS: Record<StreakLevel, string> = {
   2: '#DC2626',
   3: '#F97316',
   4: '#FACC15',
-  5: '#F8FAFC',
+  5: '#CBD5E1',
   6: '#38BDF8',
   7: '#A78BFA',
 };
@@ -35,7 +35,7 @@ export const HEAT_FIRE_COLORS: { maxPercent: number; color: string }[] = [
   { maxPercent: 28,  color: '#DC2626' },
   { maxPercent: 42,  color: '#F97316' },
   { maxPercent: 57,  color: '#FACC15' },
-  { maxPercent: 71,  color: '#F8FAFC' },
+  { maxPercent: 71,  color: '#CBD5E1' },
   { maxPercent: 85,  color: '#38BDF8' },
   { maxPercent: 100, color: '#A78BFA' },
 ];
