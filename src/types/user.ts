@@ -35,6 +35,7 @@ export type UserSetting = {
   id: string;
   userId: string;
   notificationsEnabled: boolean;
+  skipRecyclingInstructions: boolean;
   profileVisibility?: string;
   language?: string;
   updatedAt?: Date;

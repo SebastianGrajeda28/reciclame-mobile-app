@@ -22,7 +22,7 @@ export async function signInWithGoogle(): Promise<void> {
       });
 
       if (error) throw error;
-      return; 
+      return;
     }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -30,6 +30,9 @@ export async function signInWithGoogle(): Promise<void> {
       options: {
         redirectTo,
         skipBrowserRedirect: true,
+        queryParams: {
+          prompt: 'select_account', // ← fuerza elegir cuenta
+        },
       },
     });
 
@@ -41,8 +44,8 @@ export async function signInWithGoogle(): Promise<void> {
     if (result.type === 'success' && result.url) {
       // 1. Extraemos todo lo que esté después del '#' o del '?'
       const urlString = result.url;
-      const queryString = urlString.includes('#') 
-        ? urlString.split('#')[1] 
+      const queryString = urlString.includes('#')
+        ? urlString.split('#')[1]
         : urlString.split('?')[1];
 
       if (!queryString) {

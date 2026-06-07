@@ -1,3 +1,4 @@
+import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { routes } from '@/src/constants/routes';
@@ -9,6 +10,7 @@ import { ProfileStreakCard } from '@/src/features/profile/components/ProfileStre
 import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
+import { AppIcon, AppText, theme } from '@/src/ui';
 
 export function ProfileScreen() {
   const currentUser = useCurrentUser();
@@ -39,8 +41,45 @@ export function ProfileScreen() {
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />
       <ProfileStatsGrid stats={profileGamificationSnapshot.stats} />
+      <Pressable
+        style={({ pressed }) => [styles.historyRow, pressed && styles.historyRowPressed]}
+        onPress={() => router.push(routes.recycleHistory)}
+      >
+        <View style={styles.historyLeft}>
+          <AppIcon name="recycle" size={theme.iconSizes.sm} color={theme.colors.primary} />
+          <AppText style={styles.historyLabel}>Mi Historial</AppText>
+        </View>
+        <AppIcon name="chevronRight" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
+      </Pressable>
     </ProfileScreenContainer>
   );
 }
 
 export default ProfileScreen;
+
+const styles = StyleSheet.create({
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  historyRowPressed: {
+    opacity: 0.7,
+  },
+  historyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  historyLabel: {
+    fontSize: theme.fontSizes.md,
+    fontWeight: theme.fontWeights.medium,
+    color: theme.colors.textPrimary,
+  },
+});

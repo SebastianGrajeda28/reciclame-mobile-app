@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
+import { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 
 const PUCP_CENTER = { latitude: -12.0695, longitude: -77.0793 };
 
@@ -10,6 +11,7 @@ export function useStudentLocation(): Coordinate {
   const subscriptionRef = useRef<Location.LocationSubscription | null>(null);
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     let mounted = true;
 
     async function startWatching() {
