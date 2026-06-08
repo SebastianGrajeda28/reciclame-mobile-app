@@ -9,4 +9,5 @@ export const routes = {
   recycleManual: '/recycle/manual',
   recycleInstructions: '/recycle/instructions',
   recycleSuccess: '/recycle/success',
+  recycleHistory: '/recycle/history',
 } as const;

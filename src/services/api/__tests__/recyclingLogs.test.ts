@@ -1,4 +1,4 @@
-import { createRecyclingLog } from '@/src/services/api/recyclingLogs';
+import { createRecyclingLog, getRecyclingLogs } from '@/src/services/api/recyclingLogs';
 import { supabase } from '@/src/services/supabase/client';
 
 jest.mock('@/src/services/supabase/client', () => {
@@ -16,6 +16,13 @@ function buildQueryChain(response: { data: unknown; error: unknown }) {
   const select = jest.fn(() => ({ single }));
   const insert = jest.fn(() => ({ select }));
   return { insert, select, single };
+}
+
+function buildListQueryChain(response: { data: unknown; error: unknown }) {
+  const order = jest.fn().mockResolvedValue(response);
+  const eq = jest.fn(() => ({ order }));
+  const select = jest.fn(() => ({ eq }));
+  return { select, eq, order };
 }
 
 describe('createRecyclingLog', () => {
@@ -114,5 +121,50 @@ describe('createRecyclingLog', () => {
         confidence_score: null,
       }),
     );
+  });
+});
+
+describe('getRecyclingLogs', () => {
+  beforeEach(() => {
+    mockedFrom.mockReset();
+  });
+
+  test('Debería devolver los registros del usuario ordenados por fecha descendente', async () => {
+    const dbRows = [
+      {
+        id: 'rec-1',
+        created_at: '2026-05-28T01:00:00Z',
+        detection_type: 'auto',
+        confidence_score: 0.87,
+        status: 'confirmed',
+        waste_types: { name: 'Plástico (PET)' },
+        recycling_points: { name: 'Contenedor Biblioteca Central' },
+      },
+    ];
+    const chain = buildListQueryChain({ data: dbRows, error: null });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    const result = await getRecyclingLogs('user-1');
+
+    expect(mockedFrom).toHaveBeenCalledWith('recycling_records');
+    expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'rec-1',
+      wasteTypeName: 'Plástico (PET)',
+      recyclingPointName: 'Contenedor Biblioteca Central',
+      detectionType: 'auto',
+    });
+  });
+
+  test('Debería lanzar Error cuando la consulta falla', async () => {
+    const chain = buildListQueryChain({
+      data: null,
+      error: { message: 'permission denied' },
+    });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    await expect(getRecyclingLogs('user-1')).rejects.toThrow('permission denied');
   });
 });

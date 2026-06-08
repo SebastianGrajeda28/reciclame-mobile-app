@@ -42,3 +42,13 @@ export type RecyclingRecord = {
   createdAt: Date;
   syncedAt?: Date;
 };
+
+export type RecyclingLogListItem = {
+  id: string;
+  createdAt: string;
+  wasteTypeName: string;
+  recyclingPointName: string;
+  detectionType?: 'auto' | 'manual';
+  confidenceScore?: number;
+  status?: string;
+};

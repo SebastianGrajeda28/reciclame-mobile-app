@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { routes } from '@/src/constants/routes';
 import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
 import { useFunFactByWasteTypeId } from '@/src/features/recycling/hooks/useFunFact';
 import {
@@ -50,6 +51,11 @@ export function SuccessScreen() {
       <View style={styles.actions}>
         <AppButton label="Reciclar otro ítem" onPress={handleRecycleAnother} />
         <AppButton variant="outline" label="Volver al mapa" onPress={handleDone} />
+        <AppButton
+          variant="outline"
+          label="Ver mi historial"
+          onPress={() => router.push(routes.recycleHistory)}
+        />
       </View>
     </AppScreen>
   );
