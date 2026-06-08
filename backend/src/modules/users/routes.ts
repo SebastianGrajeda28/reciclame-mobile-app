@@ -1,8 +1,15 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
+import { createClient } from "@supabase/supabase-js";
 import { db } from "../../db";
-import { users, NewAppUser } from "../../db/schema";
+import { users, roles, userRoles, NewAppUser } from "../../db/schema";
 import { requireRole } from "../../middleware/roles";
+
+const supabaseAdmin = createClient(
+  Bun.env.SUPABASE_URL!,
+  Bun.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 const app = new Hono();
 
@@ -26,6 +33,44 @@ app.get("/:id", requireRole("ADMIN"), async (c) => {
 
   if (!user) return c.json({ error: "Not found" }, 404);
   return c.json(user);
+});
+
+// POST /api/users/provision — crea en Supabase Auth, public.users y asigna rol
+app.post("/provision", requireRole("ADMIN"), async (c) => {
+  const body = await c.req.json<{ email: string; password: string; name: string; roleName: string }>();
+  const { email, password, name, roleName } = body;
+
+  if (!email || !password || !roleName) {
+    return c.json({ error: "email, password y roleName son requeridos" }, 400);
+  }
+
+  // 1. Crear en Supabase Auth
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    user_metadata: { full_name: name },
+    email_confirm: true,
+  });
+
+  if (authError || !authData.user) {
+    return c.json({ error: authError?.message ?? "Error al crear usuario en Auth" }, 400);
+  }
+
+  const newUserId = authData.user.id;
+
+  // 2. Insertar en public.users (ignora si un trigger ya lo hizo)
+  await db.insert(users).values({ id: newUserId, email }).onConflictDoNothing();
+
+  // 3. Buscar rol y asignar
+  const [role] = await db.select().from(roles).where(eq(roles.name, roleName));
+  if (!role) {
+    await supabaseAdmin.auth.admin.deleteUser(newUserId);
+    return c.json({ error: `Rol '${roleName}' no encontrado` }, 400);
+  }
+
+  await db.insert(userRoles).values({ userId: newUserId, roleId: role.id });
+
+  return c.json({ message: "Usuario creado", userId: newUserId }, 201);
 });
 
 // POST /api/users
