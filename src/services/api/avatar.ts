@@ -16,6 +16,9 @@ export async function getAvatarConfig(userId: string): Promise<AvatarConfig | nu
 }
 
 export async function saveAvatarConfig(userId: string, config: AvatarConfig): Promise<void> {
+  // TODO(#79): validar que hat/clothes/hair/beard/moustache en config están desbloqueados
+  // en user_rewards antes de guardar. Hoy se acepta cualquier valor del catálogo frontend.
+  // También migrar user_cosmetic_colors de AsyncStorage a DB (tabla pendiente de crear).
   const { error } = await supabase
     .from('avatars')
     .upsert(

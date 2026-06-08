@@ -8,6 +8,7 @@ export type AvatarComposerProps = {
   config: AvatarConfig;
   size?: number;
   blink?: boolean;
+  showBg?: boolean;
 };
 
 const NATIVE_SIZE = 32;
@@ -40,7 +41,7 @@ function AvatarLayer({ source, size }: { source: number; size: number }) {
   );
 }
 
-export function AvatarComposer({ config, size = 160, blink = true }: AvatarComposerProps) {
+export function AvatarComposer({ config, size = 160, blink = true, showBg = true }: AvatarComposerProps) {
   const [eyeFrame, setEyeFrame] = useState<1 | 2>(1);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,7 +64,7 @@ export function AvatarComposer({ config, size = 160, blink = true }: AvatarCompo
     };
   }, [blink]);
 
-  const layers = getLayers(config, eyeFrame);
+  const layers = getLayers(config, eyeFrame, showBg);
   const scale = getPixelPerfectScale(size);
   const renderSize = NATIVE_SIZE * scale;
   const offset = (size - renderSize) / 2;

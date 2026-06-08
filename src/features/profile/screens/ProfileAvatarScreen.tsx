@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useItemColorMap } from '@/src/features/profile/hooks/useItemColorMap';
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 
 import { AvatarComposer } from '@/src/features/profile/components/AvatarComposer';
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
@@ -47,14 +47,29 @@ import {
   beardKey,
   moustacheKey,
 } from '@/src/features/profile/data/avatarCatalog';
-import { COSMETIC_COLOR_HEX } from '@/src/features/profile/data/avatarCatalog';
-import { AppButton, AppChip, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
+import { COSMETIC_COLOR_HEX, SKIN_COLOR_HEX } from '@/src/features/profile/data/avatarCatalog';
+import { AppButton, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
 
 type Tab = 'Raza' | 'Piel' | 'Ojos' | 'Orejas' | 'Nariz' | 'Boca' | 'Cejas' | 'Pelo' | 'Barba' | 'Bigote' | 'Ropa' | 'Gorro' | 'Fondo';
-const TABS: Tab[] = ['Raza', 'Piel', 'Ojos', 'Orejas', 'Nariz', 'Boca', 'Cejas', 'Pelo', 'Barba', 'Bigote', 'Ropa', 'Gorro', 'Fondo'];
+type Group = 'General' | 'Rasgos' | 'Cabello' | 'Vestimenta';
 
-const AVATAR_SIZE = 192;
+const GROUPS: Group[] = ['General', 'Rasgos', 'Cabello', 'Vestimenta'];
+
+const GROUP_TABS: Record<Group, Tab[]> = {
+  General:    ['Raza', 'Fondo'],
+  Rasgos:     ['Orejas', 'Ojos', 'Nariz', 'Boca'],
+  Cabello:    ['Pelo', 'Cejas', 'Barba', 'Bigote'],
+  Vestimenta: ['Ropa', 'Gorro'],
+};
+
+const AVATAR_SIZE = 224;
 const SWATCH_SIZE = 56;
+const RACE_SWATCH_SIZE = 56;
+const COLOR_COLUMNS = 10;
+const COLOR_DOT_SIZE = 36;
+const COLOR_DOT_GAP = 6;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type SwatchItem = {
   id: string;
@@ -64,34 +79,150 @@ type SwatchItem = {
   onPress: () => void;
 };
 
-function Swatch({ item }: { item: SwatchItem }) {
-  return (
-    <TouchableOpacity
-      onPress={item.onPress}
-      style={[styles.swatch, item.selected && styles.swatchSelected]}
-      accessibilityLabel={item.label}
-    >
-      {item.source ? (
-        <Image source={item.source} style={styles.swatchImage} resizeMode="contain" />
-      ) : (
-        <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
-      )}
-    </TouchableOpacity>
-  );
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Parse "color_style" compound strings where color is the first segment. */
+function parseSimpleColorStyle(value: string | null): { color: string | null; style: string | null } {
+  if (!value) return { color: null, style: null };
+  const parts = value.split('_');
+  return { color: parts[0], style: parts.slice(1).join('_') || null };
 }
 
-function SwatchGrid({ items }: { items: SwatchItem[] }) {
+/** Parse "color_style" compound strings where style is the last segment (handles leather colors). */
+function parseCompoundColorStyle(value: string | null): { color: string | null; style: string | null } {
+  if (!value) return { color: null, style: null };
+  const sep = value.lastIndexOf('_');
+  if (sep < 0) return { color: null, style: null };
+  return { color: value.slice(0, sep), style: value.slice(sep + 1) };
+}
+
+/** Build swatch items for nullable cosmetic (Pelo/Barba/Bigote/Ropa/Gorro). */
+function buildNullableSwatchItems(
+  activeStyle: string | null,
+  activeColor: string | null,
+  defaultColor: string,
+  styles: string[],
+  keyFn: (colorAndStyle: string) => string,
+  updateFn: (value: string) => void,
+  nullUpdateFn: () => void,
+  isNull: boolean,
+): SwatchItem[] {
+  return [
+    { id: '__none', label: 'Ninguno', source: null, selected: isNull, onPress: nullUpdateFn },
+    ...styles.map((style) => ({
+      id: style,
+      label: style,
+      source: getAsset(keyFn(`${activeColor ?? defaultColor}_${style}`)),
+      selected: activeStyle === style,
+      onPress: () => updateFn(`${activeColor ?? defaultColor}_${style}`),
+    })),
+  ];
+}
+
+/** Build swatch items for color-per-style cosmetics (Ropa/Gorro) using saved color memory. */
+function buildColoredStyleItems(
+  activeStyle: string | null,
+  activeColor: string | null,
+  availableColors: string[],
+  availableStyles: string[],
+  savedColorMap: Record<string, string>,
+  keyFn: (colorAndStyle: string) => string,
+  updateFn: (colorAndStyle: string) => void,
+  saveColorFn: (style: string, color: string) => void,
+  nullUpdateFn: () => void,
+  isNull: boolean,
+): SwatchItem[] {
+  return [
+    { id: '__none', label: 'Ninguno', source: null, selected: isNull, onPress: nullUpdateFn },
+    ...availableStyles.map((style) => {
+      const savedColor = savedColorMap[style];
+      const firstColor = availableColors.find((c) => getAsset(keyFn(`${c}_${style}`)) !== null) ?? null;
+      if (!firstColor) return null;
+      const previewColor = style === activeStyle
+        ? (activeColor ?? savedColor ?? firstColor)
+        : (savedColor && getAsset(keyFn(`${savedColor}_${style}`)) !== null ? savedColor : firstColor);
+      const source = getAsset(keyFn(`${previewColor}_${style}`));
+      if (source === null) return null;
+      return {
+        id: style,
+        label: style,
+        source,
+        selected: activeStyle === style,
+        onPress: () => {
+          const color = savedColor && getAsset(keyFn(`${savedColor}_${style}`)) !== null
+            ? savedColor : firstColor;
+          saveColorFn(style, color);
+          updateFn(`${color}_${style}`);
+        },
+      };
+    }).filter((i): i is NonNullable<typeof i> => i !== null),
+  ];
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function TabBar({ items, activeItem, onSelect, variant }: {
+  items: string[];
+  activeItem: string;
+  onSelect: (item: string) => void;
+  variant: 'group' | 'sub';
+}) {
+  const isGroup = variant === 'group';
   return (
-    <View style={styles.swatchGrid}>
+    <View style={isGroup ? styles.groupTabs : styles.subTabs}>
       {items.map((item) => (
-        <Swatch key={item.id} item={item} />
+        <TouchableOpacity
+          key={item}
+          style={[isGroup ? styles.groupTab : styles.subTab, activeItem === item && (isGroup ? styles.groupTabActive : styles.subTabActive)]}
+          onPress={() => onSelect(item)}
+        >
+          <AppText
+            variant="caption"
+            style={[isGroup ? styles.groupTabLabel : styles.subTabLabel, activeItem === item && (isGroup ? styles.groupTabLabelActive : styles.subTabLabelActive)]}
+          >
+            {item}
+          </AppText>
+        </TouchableOpacity>
       ))}
     </View>
   );
 }
 
-function ColorDot({ color, selected, onPress }: { color: string; selected: boolean; onPress: () => void }) {
-  const hex = COSMETIC_COLOR_HEX[color] ?? '#888';
+function Swatch({ item, showLabel }: { item: SwatchItem; showLabel?: boolean }) {
+  return (
+    <View style={styles.swatchWrapper}>
+      <TouchableOpacity
+        onPress={item.onPress}
+        style={[styles.swatch, item.selected && styles.swatchSelected]}
+        accessibilityLabel={item.label}
+      >
+        {item.source ? (
+          <Image source={item.source} style={styles.swatchImage} resizeMode="contain" />
+        ) : (
+          <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
+        )}
+      </TouchableOpacity>
+      {showLabel && item.label ? (
+        <AppText variant="caption" style={[styles.swatchLabel, item.selected && styles.swatchLabelActive]}>
+          {item.label}
+        </AppText>
+      ) : null}
+    </View>
+  );
+}
+
+function SwatchGrid({ items, showLabels }: { items: SwatchItem[]; showLabels?: boolean }) {
+  return (
+    <View style={styles.swatchGrid}>
+      {items.map((item) => (
+        <Swatch key={item.id} item={item} showLabel={showLabels} />
+      ))}
+    </View>
+  );
+}
+
+function ColorDot({ color, selected, onPress, hexOverride }: { color: string; selected: boolean; onPress: () => void; hexOverride?: string }) {
+  const hex = hexOverride ?? COSMETIC_COLOR_HEX[color] ?? '#888';
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -103,19 +234,26 @@ function ColorDot({ color, selected, onPress }: { color: string; selected: boole
   );
 }
 
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export function ProfileAvatarScreen() {
-  const { config, setConfig, save, saving } = useAvatarConfig();
+  const { config, setConfig, save, saving, hasChanges } = useAvatarConfig();
+  const [group, setGroup] = useState<Group>('General');
   const [tab, setTab] = useState<Tab>('Raza');
   const { map: hatColors, setColor: setHatColor } = useItemColorMap('avatar:hatColors');
   const { map: clothesColors, setColor: setClothesColor } = useItemColorMap('avatar:clothesColors');
+  const { map: raceSkins, setColor: setRaceSkin } = useItemColorMap('avatar:raceSkins');
+  const { map: hairColors, setColor: setHairColor } = useItemColorMap('avatar:hairColors');
+  const { map: beardColors, setColor: setBeardColor } = useItemColorMap('avatar:beardColors');
+  const { map: moustacheColors, setColor: setMoustacheColor } = useItemColorMap('avatar:moustacheColors');
+
+  function selectGroup(g: Group) {
+    setGroup(g);
+    setTab(GROUP_TABS[g][0]);
+  }
 
   function update(patch: Partial<AvatarConfig>) {
     setConfig((c) => ({ ...c, ...patch }));
-  }
-
-  function currentSkinIndex() {
-    return RACE_SKINS[config.race].indexOf(config.skin);
   }
 
   function eyeColorForSkin(race: AvatarRace, skin: string) {
@@ -123,50 +261,128 @@ export function ProfileAvatarScreen() {
     return EYE_COLORS[race][idx] ?? EYE_COLORS[race][0];
   }
 
+  function getColorDots(): React.ReactElement<typeof ColorDot>[] | null {
+    switch (tab) {
+      case 'Raza': {
+        return RACE_SKINS[config.race].map((skin) => (
+          <ColorDot
+            key={skin}
+            color={skin}
+            hexOverride={SKIN_COLOR_HEX[skin]}
+            selected={config.skin === skin}
+            onPress={() => {
+              setRaceSkin(config.race, skin);
+              update({ skin, eyeColor: eyeColorForSkin(config.race, skin) });
+            }}
+          />
+        ));
+      }
+      case 'Cejas': {
+        const { color: browColor, style: activeBrowStyle } = parseSimpleColorStyle(config.brows);
+        return BROW_COLORS.map((color) => (
+          <ColorDot key={color} color={color} selected={browColor === color}
+            onPress={() => update({ brows: `${color}_${activeBrowStyle}` })} />
+        ));
+      }
+      case 'Pelo': {
+        const { color: hairColor, style: activeHairStyle } = parseSimpleColorStyle(config.hair);
+        const resolvedHairColor = hairColor ?? hairColors['color'] ?? HAIR_COLORS[0];
+        if (!activeHairStyle && !hairColors['color']) return null;
+        return HAIR_COLORS.map((color) => (
+          <ColorDot key={color} color={color} selected={resolvedHairColor === color}
+            onPress={() => { setHairColor('color', color); if (activeHairStyle) update({ hair: `${color}_${activeHairStyle}` }); }} />
+        ));
+      }
+      case 'Barba': {
+        const { color: beardColor, style: activeBeardStyle } = parseSimpleColorStyle(config.beard);
+        const resolvedBeardColor = beardColor ?? beardColors['color'] ?? BEARD_COLORS[0];
+        if (!activeBeardStyle && !beardColors['color']) return null;
+        return BEARD_COLORS.map((color) => (
+          <ColorDot key={color} color={color} selected={resolvedBeardColor === color}
+            onPress={() => { setBeardColor('color', color); if (activeBeardStyle) update({ beard: `${color}_${activeBeardStyle}` }); }} />
+        ));
+      }
+      case 'Bigote': {
+        const { color: moustacheColor, style: activeMoustacheStyle } = parseSimpleColorStyle(config.moustache);
+        const resolvedMoustacheColor = moustacheColor ?? moustacheColors['color'] ?? MOUSTACHE_COLORS[0];
+        if (!activeMoustacheStyle && !moustacheColors['color']) return null;
+        return MOUSTACHE_COLORS.map((color) => (
+          <ColorDot key={color} color={color} selected={resolvedMoustacheColor === color}
+            onPress={() => { setMoustacheColor('color', color); if (activeMoustacheStyle) update({ moustache: `${color}_${activeMoustacheStyle}` }); }} />
+        ));
+      }
+      case 'Ropa': {
+        const { color: clothesColor, style: activeClothesStyle } = parseCompoundColorStyle(config.clothes);
+        if (!activeClothesStyle) return null;
+        const valid = CLOTHES_COLORS.filter((c) => getAsset(clothesKey(`${c}_${activeClothesStyle}`)) !== null);
+        if (valid.length === 0) return null;
+        return valid.map((color) => (
+          <ColorDot key={color} color={color} selected={clothesColor === color}
+            onPress={() => { setClothesColor(activeClothesStyle, color); update({ clothes: `${color}_${activeClothesStyle}` }); }} />
+        ));
+      }
+      case 'Gorro': {
+        const { color: hatColor, style: activeHatStyle } = parseCompoundColorStyle(config.hat);
+        if (!activeHatStyle) return null;
+        const valid = HAT_COLORS.filter((c) => getAsset(hatKey(`${c}_${activeHatStyle}`)) !== null);
+        if (valid.length === 0) return null;
+        return valid.map((color) => (
+          <ColorDot key={color} color={color} selected={hatColor === color}
+            onPress={() => { setHatColor(activeHatStyle, color); update({ hat: `${color}_${activeHatStyle}` }); }} />
+        ));
+      }
+      case 'Fondo': {
+        const activeBgStyle = config.bg.startsWith('light_') ? 'light' : 'normal';
+        const activeBgColor = config.bg.startsWith('light_') ? config.bg.slice(6) : config.bg;
+        return BG_COLORS.map((color) => (
+          <ColorDot key={color} color={color} selected={activeBgColor === color}
+            onPress={() => update({ bg: bgAssetName(activeBgStyle, color) })} />
+        ));
+      }
+      default:
+        return null;
+    }
+  }
+
   function renderTabContent() {
     switch (tab) {
       case 'Raza': {
         return (
-          <View>
-            <SwatchGrid
-              items={RACES.map((race) => ({
-                id: race,
-                label: RACE_LABELS[race],
-                source: getAsset(baseKey(race, RACE_SKINS[race][RACE_SKINS[race].length - 1])),
-                selected: config.race === race,
-                onPress: () => {
-                  const idx = Math.min(currentSkinIndex(), RACE_SKINS[race].length - 1);
-                  const skin = RACE_SKINS[race][idx];
-                  update({ race, skin, eyeColor: eyeColorForSkin(race, skin) });
-                },
-              }))}
-            />
-            <View style={styles.raceLabels}>
-              {RACES.map((race) => (
-                <AppText
-                  key={race}
-                  variant="caption"
-                  style={[styles.raceLabel, config.race === race && styles.raceLabelActive]}
-                >
-                  {RACE_LABELS[race]}
-                </AppText>
-              ))}
-            </View>
+          <View style={styles.raceGrid}>
+            {RACES.map((race) => {
+              const savedSkin = raceSkins[race];
+              const skin = race === config.race
+                ? config.skin
+                : (savedSkin && RACE_SKINS[race].includes(savedSkin))
+                  ? savedSkin
+                  : RACE_SKINS[race][0];
+              const racePreviewConfig: AvatarConfig = {
+                ...config,
+                race,
+                skin,
+                eyeColor: eyeColorForSkin(race, skin),
+                hat: null,
+                clothes: null,
+                hair: null,
+                beard: null,
+                moustache: null,
+              };
+              const isSelected = config.race === race;
+              return (
+                <View key={race} style={styles.swatchWrapper}>
+                  <TouchableOpacity
+                    style={[styles.raceSwatch, isSelected && styles.raceSwatchSelected]}
+                    onPress={() => update({ race, skin, eyeColor: eyeColorForSkin(race, skin) })}
+                  >
+                    <AvatarComposer config={racePreviewConfig} size={RACE_SWATCH_SIZE} blink={false} showBg={false} />
+                  </TouchableOpacity>
+                  <AppText variant="caption" style={[styles.swatchLabel, isSelected && styles.swatchLabelActive]}>
+                    {RACE_LABELS[race]}
+                  </AppText>
+                </View>
+              );
+            })}
           </View>
-        );
-      }
-
-      case 'Piel': {
-        return (
-          <SwatchGrid
-            items={RACE_SKINS[config.race].map((skin) => ({
-              id: skin,
-              label: skin,
-              source: getAsset(baseKey(config.race, skin)),
-              selected: config.skin === skin,
-              onPress: () => update({ skin, eyeColor: eyeColorForSkin(config.race, skin) }),
-            }))}
-          />
         );
       }
 
@@ -227,223 +443,99 @@ export function ProfileAvatarScreen() {
       }
 
       case 'Cejas': {
-        const activeBrowStyle = config.brows.split('_').slice(1).join('_');
-        const browColor = config.brows.split('_')[0];
+        const { color: browColor, style: activeBrowStyle } = parseSimpleColorStyle(config.brows);
         return (
-          <View style={styles.twoSection}>
-            <SwatchGrid
-              items={BROW_STYLES.map((style) => ({
-                id: style,
-                label: style,
-                source: getAsset(browsKey(`${browColor}_${style}`)),
-                selected: activeBrowStyle === style,
-                onPress: () => update({ brows: `${browColor}_${style}` }),
-              }))}
-            />
-            <View style={styles.colorChips}>
-              {BROW_COLORS.map((color) => (
-                <ColorDot key={color} color={color} selected={browColor === color}
-                  onPress={() => update({ brows: `${color}_${activeBrowStyle}` })} />
-              ))}
-            </View>
-          </View>
+          <SwatchGrid
+            items={BROW_STYLES.map((style) => ({
+              id: style,
+              label: style,
+              source: getAsset(browsKey(`${browColor}_${style}`)),
+              selected: activeBrowStyle === style,
+              onPress: () => update({ brows: `${browColor}_${style}` }),
+            }))}
+          />
         );
       }
 
       case 'Pelo': {
-        const activeHairStyle = config.hair ? config.hair.split('_').slice(1).join('_') : null;
-        const hairColor = config.hair ? config.hair.split('_')[0] : null;
+        const { color: hairColor, style: activeHairStyle } = parseSimpleColorStyle(config.hair);
+        const savedHairColor = hairColor ?? hairColors['color'] ?? HAIR_COLORS[0];
         return (
-          <View style={styles.twoSection}>
-            <SwatchGrid
-              items={[
-                { id: '__none', label: 'Ninguno', source: null, selected: config.hair === null, onPress: () => update({ hair: null }) },
-                ...HAIR_STYLES.map((style) => ({
-                  id: style,
-                  label: style,
-                  source: getAsset(hairKey(`${hairColor ?? HAIR_COLORS[0]}_${style}`)),
-                  selected: activeHairStyle === style,
-                  onPress: () => update({ hair: `${hairColor ?? HAIR_COLORS[0]}_${style}` }),
-                })),
-              ]}
-            />
-            {activeHairStyle && (
-              <View style={styles.colorChips}>
-                {HAIR_COLORS.map((color) => (
-                  <ColorDot key={color} color={color} selected={hairColor === color}
-                    onPress={() => update({ hair: `${color}_${activeHairStyle}` })} />
-                ))}
-              </View>
+          <SwatchGrid
+            items={buildNullableSwatchItems(
+              activeHairStyle, savedHairColor, HAIR_COLORS[0],
+              HAIR_STYLES, hairKey,
+              (v) => { setHairColor('color', savedHairColor); update({ hair: v }); },
+              () => update({ hair: null }),
+              config.hair === null,
             )}
-          </View>
+          />
         );
       }
 
       case 'Barba': {
-        const activeBeardStyle = config.beard ? config.beard.split('_').slice(1).join('_') : null;
-        const beardColor = config.beard ? config.beard.split('_')[0] : null;
+        const { color: beardColor, style: activeBeardStyle } = parseSimpleColorStyle(config.beard);
+        const savedBeardColor = beardColor ?? beardColors['color'] ?? BEARD_COLORS[0];
         return (
-          <View style={styles.twoSection}>
-            <SwatchGrid
-              items={[
-                { id: '__none', label: 'Ninguno', source: null, selected: config.beard === null, onPress: () => update({ beard: null }) },
-                ...BEARD_STYLES.map((style) => ({
-                  id: style,
-                  label: style,
-                  source: getAsset(beardKey(`${beardColor ?? BEARD_COLORS[0]}_${style}`)),
-                  selected: activeBeardStyle === style,
-                  onPress: () => update({ beard: `${beardColor ?? BEARD_COLORS[0]}_${style}` }),
-                })),
-              ]}
-            />
-            {activeBeardStyle && (
-              <View style={styles.colorChips}>
-                {BEARD_COLORS.map((color) => (
-                  <ColorDot key={color} color={color} selected={beardColor === color}
-                    onPress={() => update({ beard: `${color}_${activeBeardStyle}` })} />
-                ))}
-              </View>
+          <SwatchGrid
+            items={buildNullableSwatchItems(
+              activeBeardStyle, savedBeardColor, BEARD_COLORS[0],
+              BEARD_STYLES, beardKey,
+              (v) => { setBeardColor('color', savedBeardColor); update({ beard: v }); },
+              () => update({ beard: null }),
+              config.beard === null,
             )}
-          </View>
+          />
         );
       }
 
       case 'Bigote': {
-        const activeMoustacheStyle = config.moustache ? config.moustache.split('_').slice(1).join('_') : null;
-        const moustacheColor = config.moustache ? config.moustache.split('_')[0] : null;
+        const { color: moustacheColor, style: activeMoustacheStyle } = parseSimpleColorStyle(config.moustache);
+        const savedMoustacheColor = moustacheColor ?? moustacheColors['color'] ?? MOUSTACHE_COLORS[0];
         return (
-          <View style={styles.twoSection}>
-            <SwatchGrid
-              items={[
-                { id: '__none', label: 'Ninguno', source: null, selected: config.moustache === null, onPress: () => update({ moustache: null }) },
-                ...MOUSTACHE_STYLES.map((style) => ({
-                  id: style,
-                  label: style,
-                  source: getAsset(moustacheKey(`${moustacheColor ?? MOUSTACHE_COLORS[0]}_${style}`)),
-                  selected: activeMoustacheStyle === style,
-                  onPress: () => update({ moustache: `${moustacheColor ?? MOUSTACHE_COLORS[0]}_${style}` }),
-                })),
-              ]}
-            />
-            {activeMoustacheStyle && (
-              <View style={styles.colorChips}>
-                {MOUSTACHE_COLORS.map((color) => (
-                  <ColorDot key={color} color={color} selected={moustacheColor === color}
-                    onPress={() => update({ moustache: `${color}_${activeMoustacheStyle}` })} />
-                ))}
-              </View>
+          <SwatchGrid
+            items={buildNullableSwatchItems(
+              activeMoustacheStyle, savedMoustacheColor, MOUSTACHE_COLORS[0],
+              MOUSTACHE_STYLES, moustacheKey,
+              (v) => { setMoustacheColor('color', savedMoustacheColor); update({ moustache: v }); },
+              () => update({ moustache: null }),
+              config.moustache === null,
             )}
-          </View>
+          />
         );
       }
 
       case 'Ropa': {
-        const clothesSep = config.clothes ? config.clothes.lastIndexOf('_') : -1;
-        const activeClothesStyle = clothesSep >= 0 ? config.clothes!.slice(clothesSep + 1) : null;
-        const clothesColor = clothesSep >= 0 ? config.clothes!.slice(0, clothesSep) : null;
-        const validClothesColors = activeClothesStyle
-          ? CLOTHES_COLORS.filter((c) => getAsset(clothesKey(`${c}_${activeClothesStyle}`)) !== null)
-          : [];
+        const { color: clothesColor, style: activeClothesStyle } = parseCompoundColorStyle(config.clothes);
         return (
-          <View style={styles.twoSection}>
-            <SwatchGrid
-              items={[
-                { id: '__none', label: 'Ninguno', source: null, selected: config.clothes === null, onPress: () => update({ clothes: null }) },
-                ...CLOTHES_STYLES.map((style) => {
-                  const savedColor = clothesColors[style];
-                  const firstColor = CLOTHES_COLORS.find((c) => getAsset(clothesKey(`${c}_${style}`)) !== null) ?? null;
-                  if (!firstColor) return null;
-                  const previewColor = style === activeClothesStyle
-                    ? (clothesColor ?? savedColor ?? firstColor)
-                    : (savedColor && getAsset(clothesKey(`${savedColor}_${style}`)) !== null ? savedColor : firstColor);
-                  const source = getAsset(clothesKey(`${previewColor}_${style}`));
-                  if (source === null) return null;
-                  return {
-                    id: style,
-                    label: style,
-                    source,
-                    selected: activeClothesStyle === style,
-                    onPress: () => {
-                      const color = savedColor && getAsset(clothesKey(`${savedColor}_${style}`)) !== null
-                        ? savedColor
-                        : firstColor;
-                      update({ clothes: `${color}_${style}` });
-                    },
-                  };
-                }).filter((i): i is SwatchItem => i !== null),
-              ]}
-            />
-            {activeClothesStyle && validClothesColors.length > 0 && (
-              <View style={styles.colorChips}>
-                {validClothesColors.map((color) => (
-                  <ColorDot
-                    key={color}
-                    color={color}
-                    selected={clothesColor === color}
-                    onPress={() => {
-                      setClothesColor(activeClothesStyle, color);
-                      update({ clothes: `${color}_${activeClothesStyle}` });
-                    }}
-                  />
-                ))}
-              </View>
+          <SwatchGrid
+            items={buildColoredStyleItems(
+              activeClothesStyle, clothesColor,
+              CLOTHES_COLORS, CLOTHES_STYLES,
+              clothesColors, clothesKey,
+              (v) => update({ clothes: v }),
+              (style, color) => setClothesColor(style, color),
+              () => update({ clothes: null }),
+              config.clothes === null,
             )}
-          </View>
+          />
         );
       }
 
       case 'Gorro': {
-        const hatSep = config.hat ? config.hat.lastIndexOf('_') : -1;
-        const activeHatStyle = hatSep >= 0 ? config.hat!.slice(hatSep + 1) : null;
-        const hatColor = hatSep >= 0 ? config.hat!.slice(0, hatSep) : null;
-        const validHatColors = activeHatStyle
-          ? HAT_COLORS.filter((c) => getAsset(hatKey(`${c}_${activeHatStyle}`)) !== null)
-          : [];
+        const { color: hatColor, style: activeHatStyle } = parseCompoundColorStyle(config.hat);
         return (
-          <View style={styles.twoSection}>
-            <SwatchGrid
-              items={[
-                { id: '__none', label: 'Ninguno', source: null, selected: config.hat === null, onPress: () => update({ hat: null }) },
-                ...HAT_STYLES.map((style) => {
-                  const savedColor = hatColors[style];
-                  const firstColor = HAT_COLORS.find((c) => getAsset(hatKey(`${c}_${style}`)) !== null) ?? null;
-                  if (!firstColor) return null;
-                  const previewColor = style === activeHatStyle
-                    ? (hatColor ?? savedColor ?? firstColor)
-                    : (savedColor && getAsset(hatKey(`${savedColor}_${style}`)) !== null ? savedColor : firstColor);
-                  const source = getAsset(hatKey(`${previewColor}_${style}`));
-                  if (source === null) return null;
-                  return {
-                    id: style,
-                    label: style,
-                    source,
-                    selected: activeHatStyle === style,
-                    onPress: () => {
-                      const color = savedColor && getAsset(hatKey(`${savedColor}_${style}`)) !== null
-                        ? savedColor
-                        : firstColor;
-                      update({ hat: `${color}_${style}` });
-                    },
-                  };
-                }).filter((i): i is SwatchItem => i !== null),
-              ]}
-            />
-            {activeHatStyle && validHatColors.length > 0 && (
-              <View style={styles.colorChips}>
-                {validHatColors.map((color) => (
-                  <ColorDot
-                    key={color}
-                    color={color}
-                    selected={hatColor === color}
-                    onPress={() => {
-                      setHatColor(activeHatStyle, color);
-                      update({ hat: `${color}_${activeHatStyle}` });
-                    }}
-                  />
-                ))}
-              </View>
+          <SwatchGrid
+            items={buildColoredStyleItems(
+              activeHatStyle, hatColor,
+              HAT_COLORS, HAT_STYLES,
+              hatColors, hatKey,
+              (v) => update({ hat: v }),
+              (style, color) => setHatColor(style, color),
+              () => update({ hat: null }),
+              config.hat === null,
             )}
-          </View>
+          />
         );
       }
 
@@ -451,34 +543,41 @@ export function ProfileAvatarScreen() {
         const activeBgStyle = config.bg.startsWith('light_') ? 'light' : 'normal';
         const activeBgColor = config.bg.startsWith('light_') ? config.bg.slice(6) : config.bg;
         return (
-          <View style={styles.twoSection}>
-            <SwatchGrid
-              items={BG_STYLES.map((style) => ({
-                id: style,
-                label: style,
-                source: getAsset(bgKey(bgAssetName(style, activeBgColor))),
-                selected: activeBgStyle === style,
-                onPress: () => update({ bg: bgAssetName(style, activeBgColor) }),
-              }))}
-            />
-            <View style={styles.colorChips}>
-              {BG_COLORS.map((color) => (
-                <ColorDot
-                  key={color}
-                  color={color}
-                  selected={activeBgColor === color}
-                  onPress={() => update({ bg: bgAssetName(activeBgStyle, color) })}
-                />
-              ))}
-            </View>
-          </View>
+          <SwatchGrid
+            showLabels
+            items={BG_STYLES.map((style) => ({
+              id: style,
+              label: style === 'light' ? 'Con círculo' : 'Plano',
+              source: getAsset(bgKey(bgAssetName(style, activeBgColor))),
+              selected: activeBgStyle === style,
+              onPress: () => update({ bg: bgAssetName(style, activeBgColor) }),
+            }))}
+          />
         );
       }
     }
   }
 
+  const colorDots = getColorDots();
+
   return (
-    <ProfileScreenContainer>
+    <ProfileScreenContainer
+      footer={
+        <AppButton
+          label={saving ? 'Guardando...' : 'Guardar cambios'}
+          onPress={async () => {
+            try {
+              await save(config);
+              router.back();
+            } catch {
+              Alert.alert('Error al guardar', 'No se pudo guardar el avatar. Intenta nuevamente.');
+            }
+          }}
+          style={styles.primaryAction}
+          disabled={!hasChanges || saving}
+        />
+      }
+    >
       <ProfileSubpageHeader
         title="Personalizar avatar"
         leading={
@@ -498,29 +597,27 @@ export function ProfileAvatarScreen() {
         <AvatarComposer config={config} size={AVATAR_SIZE} blink />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {TABS.map((t) => (
-          <AppChip key={t} label={t} active={tab === t} onPress={() => setTab(t)} />
-        ))}
-      </ScrollView>
-
-      <ScrollView style={styles.selectorScroll} contentContainerStyle={styles.selectorContent}>
-        {renderTabContent()}
-      </ScrollView>
-
-      <View style={styles.footerActions}>
-        <AppButton label="Cancelar" variant="outline" onPress={() => router.back()} />
-        <AppButton
-          label={saving ? 'Guardando...' : 'Guardar avatar'}
-          onPress={async () => { await save(config); router.back(); }}
-          style={styles.primaryAction}
-        />
+      <View style={styles.tabsContainer}>
+        <TabBar items={GROUPS} activeItem={group} onSelect={(g) => selectGroup(g as Group)} variant="group" />
+        <TabBar items={GROUP_TABS[group]} activeItem={tab} onSelect={(t) => setTab(t as Tab)} variant="sub" />
       </View>
+
+      <View style={styles.selectorCard}>
+        <AppText variant="caption" style={styles.cardLabel}>Estilo</AppText>
+        <ScrollView style={styles.selectorScroll} contentContainerStyle={styles.selectorContent}>
+          {renderTabContent()}
+        </ScrollView>
+      </View>
+
+      {colorDots ? (
+        <View style={styles.colorCard}>
+          <View style={styles.colorAreaHeader}>
+            <AppText variant="caption" style={styles.cardLabel}>Color</AppText>
+          </View>
+          <View style={styles.colorChips}>{colorDots}</View>
+        </View>
+      ) : null}
+
     </ProfileScreenContainer>
   );
 }
@@ -534,31 +631,79 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceMuted,
     borderRadius: theme.radius.lg,
   },
-  tabsScroll: {
-    flexGrow: 0,
+  tabsContainer: {
+    gap: 0,
   },
-  tabsContent: {
+  groupTabs: {
     flexDirection: 'row',
-    gap: theme.spacing.s2,
-    paddingVertical: theme.spacing.s1,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  groupTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.s2,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  groupTabActive: {
+    borderBottomColor: theme.colors.primary,
+  },
+  groupTabLabel: {
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeights.medium,
+    fontSize: 14,
+  },
+  groupTabLabelActive: {
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeights.semibold,
+  },
+  subTabs: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  subTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.s2,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  subTabActive: {
+    borderBottomColor: theme.colors.primary,
+  },
+  subTabLabel: {
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeights.medium,
+    fontSize: 14,
+  },
+  subTabLabelActive: {
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeights.semibold,
   },
   selectorScroll: {
     flex: 1,
+    alignSelf: 'stretch',
   },
   selectorContent: {
     paddingVertical: theme.spacing.s3,
+    alignItems: 'center',
+  },
+  colorAreaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   colorChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.s2,
-    paddingBottom: theme.spacing.s3,
-    alignItems: 'center',
-    flex: 1,
+    gap: COLOR_DOT_GAP,
+    justifyContent: 'center',
+    maxWidth: COLOR_COLUMNS * COLOR_DOT_SIZE + (COLOR_COLUMNS - 1) * COLOR_DOT_GAP,
   },
   colorDot: {
-    width: 32,
-    height: 32,
+    width: COLOR_DOT_SIZE,
+    height: COLOR_DOT_SIZE,
     borderRadius: theme.radius.full,
     borderWidth: 2,
     borderColor: theme.colors.border,
@@ -570,9 +715,30 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   colorDotInner: {
-    width: 22,
-    height: 22,
+    width: COLOR_DOT_SIZE - 10,
+    height: COLOR_DOT_SIZE - 10,
     borderRadius: theme.radius.full,
+  },
+  raceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.s3,
+    justifyContent: 'center',
+  },
+  raceSwatch: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.surface,
+    width: SWATCH_SIZE,
+    height: SWATCH_SIZE,
+    overflow: 'hidden',
+  },
+  raceSwatchSelected: {
+    borderColor: theme.colors.primary,
+    borderWidth: 3,
   },
   swatchGrid: {
     flexDirection: 'row',
@@ -599,37 +765,50 @@ const styles = StyleSheet.create({
     width: SWATCH_SIZE - 4,
     height: SWATCH_SIZE - 4,
   },
-  twoSection: {
-    gap: theme.spacing.s1,
+  swatchWrapper: {
+    alignItems: 'center',
+    gap: 3,
   },
-  sectionLabel: {
-    marginBottom: theme.spacing.s1,
-  },
-  sectionLabelGap: {
-    marginTop: theme.spacing.s3,
-  },
-  raceLabels: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.s2,
-    marginTop: theme.spacing.s2,
-  },
-  raceLabel: {
+  swatchLabel: {
     width: SWATCH_SIZE,
     textAlign: 'center',
     color: theme.colors.textSecondary,
-    fontSize: 10,
+    fontSize: 12,
   },
-  raceLabelActive: {
+  swatchLabelActive: {
     color: theme.colors.primary,
     fontWeight: theme.fontWeights.semibold,
   },
-  footerActions: {
-    flexDirection: 'row',
-    gap: theme.spacing.s3,
-    paddingTop: theme.spacing.s3,
+  selectorCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surface,
+    paddingTop: theme.spacing.s2,
+    gap: theme.spacing.s1,
+    alignItems: 'center',
+  },
+  cardLabel: {
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeights.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    fontSize: 11,
+  },
+  colorCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.s3,
+    paddingTop: theme.spacing.s2,
+    paddingBottom: theme.spacing.s3,
+    gap: theme.spacing.s1,
+    alignItems: 'center',
   },
   primaryAction: {
-    flex: 1,
+    width: '100%',
   },
 });

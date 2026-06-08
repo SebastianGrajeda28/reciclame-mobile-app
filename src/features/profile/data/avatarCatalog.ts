@@ -62,6 +62,11 @@ export const HAT_STYLES = ['bandana', 'beanie', 'cowboy', 'engineer', 'fedora', 
 export const CLOTHES_COLORS = ['black', 'black_leather', 'blue', 'bronze', 'brown_leather', 'gold', 'green', 'grey', 'iron', 'lime', 'orange', 'pink', 'purple', 'red', 'silver', 'turquoise', 'white', 'white_leather', 'yellow'];
 export const CLOTHES_STYLES = ['breastplate', 'brute', 'doublet', 'robe', 'vest'];
 
+// TODO(#79): HAT_STYLES y CLOTHES_STYLES (y HAIR/BEARD/MOUSTACHE_STYLES) representan todos los
+// ítems existentes. Cuando se implemente el sistema de desbloqueo, el editor deberá filtrar
+// estos arrays mostrando solo los ítems presentes en user_rewards del usuario.
+// Requires: rewards.item_key + rewards.item_type en DB (ver migración 20260607000001).
+
 export const BEARD_COLORS = ['black', 'blonde', 'blue', 'brown', 'green', 'pink', 'purple', 'red', 'turquoise', 'white'];
 export const BEARD_STYLES = ['braided', 'chops', 'classic', 'curtain', 'dutch', 'egyptian', 'fork', 'garibaldi', 'goatee', 'long', 'lumberjack', 'shaft', 'shaman', 'sideburns', 'viking'];
 
@@ -70,6 +75,39 @@ export const MOUSTACHE_STYLES = ['bandit', 'cowboy', 'dali', 'dallas', 'elder', 
 
 export const BG_STYLES = ['normal', 'light'];
 export const BG_COLORS = ['blue', 'green', 'khaki', 'lime', 'marine', 'pink', 'purple', 'red', 'salmon', 'sky', 'turquoise', 'violet', 'yellow'];
+
+export const SKIN_COLOR_HEX: Record<string, string> = {
+  // human
+  black:          '#3D2314',
+  brown:          '#8D5524',
+  pale:           '#F1C27D',
+  white:          '#FDDBB4',
+  // elf
+  albino:         '#F5E6D3',
+  purple:         '#9B6B9B',
+  soft:           '#C8A882',
+  tourmaline:     '#7BA99B',
+  // dwarf
+  bronzed:        '#A0522D',
+  obsidian:       '#2C1810',
+  rosacea:        '#C47B7B',
+  stone:          '#8B8680',
+  // orc
+  dark:           '#2D5016',
+  emerald:        '#4A7C35',
+  green:          '#6B8E3A',
+  olive:          '#8FAF5A',
+  // goblin
+  desert:         '#C8A45A',
+  grassland:      '#7AAF4A',
+  swamp:          '#5A7A3A',
+  tundra:         '#8AAFAF',
+  // halfling
+  apple:          '#E8A090',
+  blueberry:      '#7A6AAF',
+  chestnut:       '#A0622A',
+  wheat:          '#D4AA70',
+};
 
 export const COSMETIC_COLOR_HEX: Record<string, string> = {
   black:          '#1a1a1a',
@@ -174,9 +212,9 @@ export function getAsset(key: string): number | null {
   return (avatarAssets as Record<string, number>)[key] ?? null;
 }
 
-export function getLayers(config: AvatarConfig, eyeFrame: 1 | 2 = 1): Array<{ key: string; source: number }> {
+export function getLayers(config: AvatarConfig, eyeFrame: 1 | 2 = 1, includeBg = true): Array<{ key: string; source: number }> {
   const layers: Array<{ key: string; source: number | null } | null> = [
-    { key: 'bg', source: getAsset(bgKey(config.bg)) },
+    includeBg ? { key: 'bg', source: getAsset(bgKey(config.bg)) } : null,
     { key: 'base', source: getAsset(baseKey(config.race, config.skin)) },
     { key: 'ears', source: getAsset(earsKey(config.race, config.skin, config.ears)) },
     config.clothes ? { key: 'clothes', source: getAsset(clothesKey(config.clothes)) } : null,
