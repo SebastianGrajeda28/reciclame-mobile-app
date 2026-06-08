@@ -10,12 +10,12 @@ type Variables = {
   roles: string[];
 };
 
-const supabase = createClient(
-  Bun.env.SUPABASE_URL!,
-  Bun.env.SUPABASE_ANON_KEY!
-);
-
 export const authMiddleware = createMiddleware<{ Variables: Variables }>(async (c, next) => {
+  const supabase = createClient(
+    Bun.env.SUPABASE_URL!,
+    Bun.env.SUPABASE_ANON_KEY!
+  );
+
   const authHeader = c.req.header("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return c.json({ error: "Unauthorized" }, 401);
