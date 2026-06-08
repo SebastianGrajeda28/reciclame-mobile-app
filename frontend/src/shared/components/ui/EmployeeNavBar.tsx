@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   ClipboardList,
-  LayoutGrid,
-  CalendarDays,
   Home,
   Users,
   Info,
@@ -31,12 +29,6 @@ export default function EmployeeNavbar() {
 
 
   const isEmployeeDashboard = path === "/employee-event/espacios";
-  const isEmployeeEvents =
-    ["/employee/events", "/employee/nuevo-evento"].includes(path) ||
-    /^\/employee\/events\/\d+$/.test(path);
-
-  const isEmployeeReservas = path.startsWith("/employee/reservas");
-
   const isAdminHome = path === "/admin";
   const isAdminAccounts =
     ["/admin/accounts", "/admin/accounts/nuevo"].includes(path) ||
@@ -61,23 +53,7 @@ export default function EmployeeNavbar() {
               <span className="text-lg font-medium">Dashboard</span>
             </Button>
 
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/manager/eventos")}
-              className={`${baseBtn} ${isEmployeeEvents ? activeBtn : inactiveBtn}`}
-            >
-              <LayoutGrid className="w-5 h-5" />
-              <span className="text-lg font-medium">Eventos</span>
-            </Button>
 
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/manager/reservas")}
-              className={`${baseBtn} ${isEmployeeReservas ? activeBtn : inactiveBtn}`}
-            >
-              <CalendarDays className="w-5 h-5" />
-              <span className="text-lg font-medium">Reservas</span>
-            </Button>
           </>
         )}
 

@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,70 +17,35 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/login`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) throw new Error("Credenciales incorrectas");
-
-      ////console.log("Login exitoso:", data);
-
-      const meRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/me`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!meRes.ok) { toast.error("No se pudo obtener el usuario"); return; }
-
-      window.dispatchEvent(new Event("authChanged"));
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw new Error(error.message);
       navigate("/");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        toast.error(err.message);
-      } else {
-        toast.error("Ocurrió un error desconocido");
-      }
+      toast.error(err instanceof Error ? err.message : "Credenciales incorrectas");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLoginSuccess = async (credentialResponse: CredentialResponse) => {
-    ////console.log("✅ Google credential recibida:", credentialResponse);
+  const handleGoogleLogin = async () => {
+    console.log("[Google Login] Iniciando OAuth con Google...");
+    console.log("[Google Login] redirectTo:", `${window.location.origin}/auth/callback`);
 
-    try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ credentialResponse }),
-      });
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
 
-      if (!res.ok) { toast.error("❌ Error al iniciar sesión con Google"); return; }
-
-      const meRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/me`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!meRes.ok) { toast.error("❌ No se pudo obtener el usuario"); return; }
-
-      window.dispatchEvent(new Event("authChanged"));
-
-      navigate("/");
-    } catch {
-      toast.error("Error con Google");
+    if (error) {
+      console.error("[Google Login] Error al llamar signInWithOAuth:", error);
+      toast.error("Error al iniciar sesión con Google");
+      return;
     }
-  };
 
-  const handleGoogleLoginError = () => {
-    ////console.log("❌ Falló el inicio con Google");
-    toast.error("Falló el inicio con Google");
+    console.log("[Google Login] signInWithOAuth OK, redirigiendo a:", data.url);
   };
 
   return (
@@ -92,10 +58,21 @@ const Login: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="flex justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleLoginSuccess}
-                onError={handleGoogleLoginError}
-              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full flex items-center gap-2"
+                onClick={handleGoogleLogin}
+              >
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                Continuar con Google
+              </Button>
+            </div>
+
+            <div className="relative flex items-center gap-2">
+              <div className="flex-1 border-t border-gray-300" />
+              <span className="text-xs text-gray-400">o</span>
+              <div className="flex-1 border-t border-gray-300" />
             </div>
 
             <div>
@@ -178,6 +155,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-
-
-
