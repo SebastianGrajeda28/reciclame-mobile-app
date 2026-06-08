@@ -23,6 +23,8 @@ import ManagerPanel from './shared/pages/ManagerPanel';
 import ViewerPanel from './shared/pages/ViewerPanel';
 import UsersPage from './modules/admin/pages/UsersPage';
 import AdminConfigPage from './modules/admin/pages/AdminConfigPage';
+import ForgotPassword from './shared/pages/ForgotPassword';
+import ResetPassword from './shared/pages/ResetPassword';
 
 export default function App() {
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -46,6 +48,8 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/logout" element={<Logout />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
                 {/* ── VIEWER ── */}
                 <Route element={<ProtectedRoute allowedRoles={['VIEWER']} />}>
