@@ -8,12 +8,14 @@ import { ProfileScreenContainer } from '@/src/features/profile/components/Profil
 import { ProfileStatsGrid } from '@/src/features/profile/components/ProfileStatsGrid';
 import { ProfileStreakCard } from '@/src/features/profile/components/ProfileStreakCard';
 import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
+import { useStreakProgress } from '@/src/features/profile/hooks/useStreakProgress';
 import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppIcon, AppText, theme } from '@/src/ui';
 
 export function ProfileScreen() {
   const currentUser = useCurrentUser();
+  const { data: streakData } = useStreakProgress();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
 
   const featuredIds = profileGamificationSnapshot.featuredBadgeIds as readonly string[];
@@ -32,8 +34,10 @@ export function ProfileScreen() {
         onSettingsPress={() => router.push(routes.profileSettings)}
       />
       <ProfileStreakCard
-        currentStreakDays={profileGamificationSnapshot.currentStreakDays}
-        nextStreakMilestoneDays={profileGamificationSnapshot.nextStreakMilestoneDays}
+        currentStreakDays={streakData?.streakDays ?? 0}
+        heat={streakData?.heat ?? 0}
+        level={streakData?.level ?? 1}
+        recycledToday={streakData?.recycledToday ?? false}
       />
       <ProfileAchievementsPreviewCard
         featuredBadges={featuredBadges}
