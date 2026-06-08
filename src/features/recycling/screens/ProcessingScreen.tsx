@@ -230,21 +230,6 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeights.bold,
     color: theme.colors.primary,
   },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.spacing.sm,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
-  },
   suggestionSection: {
     gap: theme.spacing.xs,
   },

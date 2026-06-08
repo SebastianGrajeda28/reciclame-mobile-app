@@ -54,7 +54,7 @@ export function SuccessScreen() {
         <AppButton
           variant="outline"
           label="Ver mi historial"
-          onPress={() => router.push(routes.recycleHistory)}
+          onPress={() => router.replace(routes.recycleHistory)}
         />
       </View>
     </AppScreen>
@@ -96,6 +96,7 @@ const styles = StyleSheet.create({
   },
   funFact: {
     width: '100%',
+    marginTop: 0,
   },
   actions: {
     width: '100%',
