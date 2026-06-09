@@ -41,58 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_OUT') {
         setOfflineMode(false);
         //router.replace('/');
-      } else if (
-        (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') &&
-        newSession?.user
-      ) {
-        const user = newSession.user;
-        const checkAndCreateProfile = async () => {
-          try {
-            // 1. Ensure user is in public.users table
-            const { error: userError } = await supabase
-              .from('users')
-              .upsert({ id: user.id, email: user.email }, { onConflict: 'id' });
-
-            if (userError) {
-              console.error('Error ensuring user in users table:', userError);
-              return;
-            }
-
-            // 2. Check if user profile exists in public.user_profiles
-            const { data: profile, error: profileSelectError } = await supabase
-              .from('user_profiles')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle();
-
-            if (profileSelectError) {
-              console.error('Error checking user profile:', profileSelectError);
-              return;
-            }
-
-            // 3. If no profile exists, create it
-            if (!profile) {
-              const displayName =
-                user.user_metadata?.full_name ??
-                user.user_metadata?.name ??
-                user.user_metadata?.display_name ??
-                user.email?.split('@')[0] ??
-                'Usuario';
-
-              const { error: profileInsertError } = await supabase
-                .from('user_profiles')
-                .insert({ user_id: user.id, alias: displayName });
-
-              if (profileInsertError) {
-                console.error('Error creating user profile:', profileInsertError);
-              }
-            }
-          } catch (err) {
-            console.error('Error in profile validation flow:', err);
-          }
-        };
-
-        checkAndCreateProfile();
       }
     });
 
