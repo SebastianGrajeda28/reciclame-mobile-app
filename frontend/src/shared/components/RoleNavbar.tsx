@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { ModeToggle } from "@/components/ui/mode-toggle";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "../context/UserContext";
+import ProfilePopover from "./ProfilePopover";
 
 /*  Cambiar */
 const NAV_ITEMS_VIEWER = [
@@ -15,11 +15,6 @@ const PANEL_ROUTES: Record<string, string> = {
   MANAGER: "/manager",
 };
 
-const TEXTS = {
-  accountLabel: "Cuenta",
-  logout: "Logout",
-  login: "Iniciar sesión",
-};
 
 function getNavLinkClasses(isActive: boolean) {
   if (isActive) {
@@ -32,7 +27,6 @@ export default function RoleNavbar() {
   const location = useLocation();
   const { account } = useUser();
   const userRole = account?.role || null;
-  const avatarUrl = "https://github.com/shadcn.png";
 
   return (
     <div className="flex items-center justify-between w-full gap-6">
@@ -42,7 +36,7 @@ export default function RoleNavbar() {
             to="/login"
             className="px-4 py-2 text-sm font-medium border border-(--brand) text-(--brand) rounded-md hover:bg-(--brand) hover:text-white"
           >
-            {TEXTS.login}
+            Iniciar sesión
           </Link>
         )}
 
@@ -69,22 +63,7 @@ export default function RoleNavbar() {
       </div>
 
       <div className="flex items-center gap-4">
-        {userRole && (
-          <>
-            <div className="flex flex-col items-end">
-              <Link className="text-sm font-medium text-gray-900 dark:text-white hover:underline" to="/account">
-                {TEXTS.accountLabel}
-              </Link>
-              <Link to="/logout" className="text-xs text-gray-600 hover:underline dark:text-gray-300 dark:hover:text-white">
-                {TEXTS.logout}
-              </Link>
-            </div>
-            <Avatar>
-              <AvatarImage src={avatarUrl} />
-              <AvatarFallback>US</AvatarFallback>
-            </Avatar>
-          </>
-        )}
+        <ProfilePopover />
         <ModeToggle />
       </div>
     </div>

@@ -17,9 +17,14 @@ import { Toaster } from 'sonner';
 import Home from './shared/pages/Home';
 import Login from './shared/pages/Login';
 import Logout from './shared/pages/Logout';
+import AuthCallback from './shared/pages/AuthCallback';
 import AdminPanel from './shared/pages/AdminPanel';
 import ManagerPanel from './shared/pages/ManagerPanel';
 import ViewerPanel from './shared/pages/ViewerPanel';
+import UsersPage from './modules/admin/pages/UsersPage';
+import AdminConfigPage from './modules/admin/pages/AdminConfigPage';
+import ForgotPassword from './shared/pages/ForgotPassword';
+import ResetPassword from './shared/pages/ResetPassword';
 
 export default function App() {
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -42,6 +47,9 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/logout" element={<Logout />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
                 {/* ── VIEWER ── */}
                 <Route element={<ProtectedRoute allowedRoles={['VIEWER']} />}>
@@ -56,6 +64,8 @@ export default function App() {
                 {/* ── ADMIN ── */}
                 <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
                   <Route path="/admin" element={<AdminPanel />} />
+                  <Route path="/admin/accounts" element={<UsersPage />} />
+                  <Route path="/admin/config" element={<AdminConfigPage />} />
                 </Route>
 
                 <Route path="/unauthorized" element={<p>Acceso denegado. No tienes permisos para ver esta página.</p>} />

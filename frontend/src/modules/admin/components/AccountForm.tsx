@@ -21,9 +21,10 @@ interface AccountFormProps {
   mode: "register" | "update";
   initialData?: Partial<AccountFormData>;
   onSubmit: (data: AccountFormData) => void;
+  disabled?: boolean;
 }
 
-export function AccountForm({ mode, initialData, onSubmit }: AccountFormProps) {
+export function AccountForm({ mode, initialData, onSubmit, disabled }: AccountFormProps) {
   const { register, handleSubmit, setValue, control } = useForm<AccountFormData>({
     defaultValues: {
       name: initialData?.name ?? "",
@@ -74,8 +75,8 @@ export function AccountForm({ mode, initialData, onSubmit }: AccountFormProps) {
         </Select>
       </div>
 
-      <Button type="submit" className="w-full">
-        {mode === "register" ? "Crear cuenta" : "Guardar cambios"}
+      <Button type="submit" className="w-full" disabled={disabled}>
+        {disabled ? "Guardando..." : mode === "register" ? "Crear cuenta" : "Guardar cambios"}
       </Button>
 
     </form>

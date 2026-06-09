@@ -1,5 +1,17 @@
 import { pgTable, uuid, text, boolean, integer, timestamp } from "drizzle-orm/pg-core";
 
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export type AppUser = typeof users.$inferSelect;
+export type NewAppUser = typeof users.$inferInsert;
+
 export const roles = pgTable("roles", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
@@ -34,6 +46,9 @@ export const educationalContent = pgTable("educational_content", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
+
+
+
 
 export type EducationalContent = typeof educationalContent.$inferSelect;
 export type NewEducationalContent = typeof educationalContent.$inferInsert;
