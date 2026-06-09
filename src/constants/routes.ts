@@ -10,4 +10,5 @@ export const routes = {
   recycleInstructions: '/recycle/instructions',
   recycleSuccess: '/recycle/success',
   recycleHistory: '/recycle/history',
+  friendsAdd: '/(tabs)/friends/add',
 } as const;
