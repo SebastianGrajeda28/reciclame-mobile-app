@@ -169,10 +169,10 @@ function FriendsEmptyState() {
         resizeMode="contain"
       />
       <AppText variant="h4" style={styles.emptyTitle}>
-        No tienes amigos.. aun
+        No tienes amigos.. aún
       </AppText>
       <AppText variant="caption" muted style={styles.emptyDescription}>
-        Parece que todavia no tienes amigos agregados. Invita a tus amigos y juntos hagan la
+        Parece que todavía no tienes amigos agregados. ¡Invita a tus amigos y juntos hagan la
         diferencia!
       </AppText>
     </View>
