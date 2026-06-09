@@ -12,7 +12,11 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
 
   const visibleRoutes = state.routes.filter((route) => {
     const options = descriptors[route.key]?.options as { href?: unknown } | undefined;
-    return options?.href !== null && route.name !== 'index';
+    return (
+      options?.href !== null &&
+      route.name !== 'index' &&
+      typeof descriptors[route.key]?.options.tabBarIcon === 'function'
+    );
   });
 
   return (
