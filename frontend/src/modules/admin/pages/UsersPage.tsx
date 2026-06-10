@@ -4,9 +4,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, UserPlus } from "lucide-react";
-import AssignRoleModal from "../components/AssignRoleModal";
+import { Search, UserPlus, X } from "lucide-react";
+import ManageUserModal from "../components/ManageUserModal";
 import CreateUserDialog from "../components/CreateUserDialog";
 import { useQuery } from "@tanstack/react-query";
 
@@ -30,6 +31,47 @@ type AdminUsersData = {
 };
 
 type RoleFilter = "all" | "with" | "without";
+
+function UsersTableSkeleton() {
+  return (
+    <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="flex items-center justify-between mb-6">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-9 w-36" />
+      </div>
+
+      <div className="flex gap-3 mb-4 flex-wrap">
+        <Skeleton className="h-9 flex-1 min-w-48 max-w-sm" />
+        <Skeleton className="h-9 w-44" />
+      </div>
+
+      <div className="rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Rol</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Último login</TableHead>
+              <TableHead>Creado</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <TableRow key={index}>
+                <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 async function fetchAdminUsers(accessToken: string): Promise<AdminUsersData> {
   const base = import.meta.env.VITE_BACKEND_URL;
@@ -65,6 +107,7 @@ export default function UsersPage() {
   const {
     data,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useQuery({
@@ -88,17 +131,20 @@ export default function UsersPage() {
     return matchesSearch && matchesRole;
   });
 
-  if (isLoading) return <p>Cargando usuarios...</p>;
+  if (isLoading) return <UsersTableSkeleton />;
   if (error) return <p>Error: {(error as Error).message}</p>;
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Gestión de Cuentas</h1>
-        <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
-          <UserPlus className="w-4 h-4" />
-          Crear empleado
-        </Button>
+        <div className="flex items-center gap-3">
+          {isFetching && <span className="text-sm text-gray-500">Actualizando...</span>}
+          <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
+            <UserPlus className="w-4 h-4" />
+            Crear empleado
+          </Button>
+        </div>
       </div>
 
       {/* Barra de filtros */}
@@ -109,8 +155,18 @@ export default function UsersPage() {
             placeholder="Buscar por email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 pr-9"
           />
+          {search && (
+            <button
+              type="button"
+              aria-label="Limpiar búsqueda"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
           <SelectTrigger className="w-44">
@@ -124,7 +180,7 @@ export default function UsersPage() {
         </Select>
       </div>
 
-      <div className="rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className={`rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-opacity ${isFetching ? "opacity-60" : "opacity-100"}`}>
         <Table>
           <TableHeader>
             <TableRow>
@@ -154,7 +210,7 @@ export default function UsersPage() {
                     {roleMap.has(user.id) ? (
                       <Badge variant="outline">{roleMap.get(user.id)}</Badge>
                     ) : (
-                      <span className="text-gray-400 text-sm">Sin rol</span>
+                      <span className="text-gray-500 dark:text-gray-300 text-sm">Sin rol</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -162,12 +218,12 @@ export default function UsersPage() {
                       {user.isActive ? "Activo" : "Inactivo"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-gray-500 text-sm">
+                  <TableCell className="text-gray-500 dark:text-gray-300 text-sm">
                     {user.lastLoginAt
                       ? new Date(user.lastLoginAt).toLocaleString("es-PE")
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-gray-500 text-sm">
+                  <TableCell className="text-gray-500 dark:text-gray-300 text-sm">
                     {new Date(user.createdAt).toLocaleDateString("es-PE")}
                   </TableCell>
                 </TableRow>
@@ -178,7 +234,7 @@ export default function UsersPage() {
       </div>
 
       {selectedUser && (
-        <AssignRoleModal
+        <ManageUserModal
           userId={selectedUser.id}
           userEmail={selectedUser.email}
           userIsActive={selectedUser.isActive}

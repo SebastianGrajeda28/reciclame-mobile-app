@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useUser } from "@/shared/context/UserContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +10,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface Role { id: string; name: string; }
 interface Assignment { id: string; roleId: string; roleName: string; }
+interface RoleData { roles: Role[]; currentAssignment: Assignment | null; }
 
 interface Props {
   userId: string;
@@ -22,39 +24,55 @@ interface Props {
   onUpdated: () => void;
 }
 
-export default function AssignRoleModal({ userId, userEmail, userIsActive, onClose, onUpdated }: Props) {
+async function fetchRoleData(base: string, accessToken: string, userId: string): Promise<RoleData> {
+  const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
+
+  const [rolesRes, assignRes] = await Promise.all([
+    fetch(`${base}/api/roles`, { headers }),
+    fetch(`${base}/api/user-roles?userId=${userId}&includeInactive=false`, { headers }),
+  ]);
+
+  if (!rolesRes.ok) throw new Error(`Error roles ${rolesRes.status}`);
+  if (!assignRes.ok) throw new Error(`Error asignación ${assignRes.status}`);
+
+  const [roles, assignments]: [Role[], Assignment[]] = await Promise.all([
+    rolesRes.json(),
+    assignRes.json(),
+  ]);
+
+  return {
+    roles,
+    currentAssignment: assignments[0] ?? null,
+  };
+}
+
+export default function ManageUserModal({ userId, userEmail, userIsActive, onClose, onUpdated }: Props) {
   const { session } = useUser();
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
-  const [currentAssignment, setCurrentAssignment] = useState<Assignment | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [isActive, setIsActive] = useState(userIsActive);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pendingRoleId, setPendingRoleId] = useState<string | null>(null);
+  const [pendingActiveChange, setPendingActiveChange] = useState(false);
 
   const token = session?.access_token ?? "";
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   const base = import.meta.env.VITE_BACKEND_URL;
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [rolesRes, assignRes] = await Promise.all([
-        fetch(`${base}/api/roles`, { headers }),
-        fetch(`${base}/api/user-roles?userId=${userId}&includeInactive=false`, { headers }),
-      ]);
-      const roles: Role[] = await rolesRes.json();
-      const assignments: Assignment[] = await assignRes.json();
-      setAvailableRoles(roles);
-      setCurrentAssignment(assignments[0] ?? null);
-    } catch {
-      toast.error("Error al cargar datos");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin-user-role-data", userId, session?.user.id],
+    queryFn: () => fetchRoleData(base, token, userId),
+    enabled: !!session,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => { loadData(); }, [userId]);
+  const availableRoles = data?.roles ?? [];
+  const currentAssignment = data?.currentAssignment ?? null;
 
   // Confirmar cambio/asignación de rol
   const confirmRoleChange = async () => {
@@ -74,7 +92,7 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
       if (!res.ok) throw new Error();
       toast.success(currentAssignment ? "Rol actualizado" : "Rol asignado");
       setSelectedRoleId("");
-      await loadData();
+      await refetch();
       onUpdated();
     } catch {
       toast.error("Error al asignar rol");
@@ -85,7 +103,7 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
   };
 
   // Activar / desactivar cuenta
-  const toggleActive = async () => {
+  const confirmActiveChange = async () => {
     setSaving(true);
     try {
       const endpoint = isActive
@@ -101,6 +119,7 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
       toast.error("Error al cambiar estado de la cuenta");
     } finally {
       setSaving(false);
+      setPendingActiveChange(false);
     }
   };
 
@@ -118,8 +137,10 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
           <h2 className="text-lg font-bold mb-1">Gestionar cuenta</h2>
           <p className="text-sm text-gray-500 mb-5 truncate">{userEmail}</p>
 
-          {loading ? (
+          {isLoading ? (
             <p className="text-sm text-gray-400">Cargando...</p>
+          ) : error ? (
+            <p className="text-sm text-red-500">Error al cargar datos</p>
           ) : (
             <div className="space-y-6">
 
@@ -135,7 +156,7 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
                   variant={isActive ? "destructive" : "default"}
                   size="sm"
                   disabled={saving}
-                  onClick={toggleActive}
+                  onClick={() => setPendingActiveChange(true)}
                 >
                   {isActive ? "Desactivar" : "Activar"}
                 </Button>
@@ -147,7 +168,7 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
 
                 {currentAssignment ? (
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-sm px-3 py-1">
+                    <Badge variant="default" className="text-sm px-3 py-1">
                       {currentAssignment.roleName}
                     </Badge>
                     <span className="text-xs text-gray-400">— cambiar:</span>
@@ -158,10 +179,10 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
 
                 <div className="flex gap-2">
                   <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder={currentAssignment ? "Selecciona nuevo rol" : "Selecciona un rol"} />
+                    <SelectTrigger className="flex-1 bg-white dark:bg-gray-900">
+                      <SelectValue className="text-gray-200" placeholder={currentAssignment ? "Selecciona nuevo rol" : "Selecciona un rol"} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-gray-900">
                       {availableRoles
                         .filter((r) => r.id !== currentAssignment?.roleId)
                         .map((r) => (
@@ -185,7 +206,7 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
 
       {/* Confirmación de cambio de rol */}
       <AlertDialog open={!!pendingRoleId} onOpenChange={(open) => { if (!open) setPendingRoleId(null); }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white dark:bg-gray-900">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {currentAssignment ? "¿Cambiar rol?" : "¿Asignar rol?"}
@@ -201,6 +222,28 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
             <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
             <AlertDialogAction disabled={saving} onClick={confirmRoleChange}>
               {saving ? "Guardando..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmación de activación/desactivación */}
+      <AlertDialog open={pendingActiveChange} onOpenChange={(open) => { if (!open) setPendingActiveChange(false); }}>
+        <AlertDialogContent className="bg-white dark:bg-gray-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isActive ? "¿Desactivar cuenta?" : "¿Activar cuenta?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isActive
+                ? `Se desactivará la cuenta de ${userEmail}. El usuario perderá acceso a las funciones protegidas.`
+                : `Se activará la cuenta de ${userEmail}. El usuario volverá a aparecer como activo.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={saving} onClick={confirmActiveChange}>
+              {saving ? "Guardando..." : isActive ? "Desactivar" : "Activar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
