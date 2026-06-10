@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useUser } from "@/shared/context/UserContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, UserPlus } from "lucide-react";
 import AssignRoleModal from "../components/AssignRoleModal";
 import CreateUserDialog from "../components/CreateUserDialog";
+import { useQuery } from "@tanstack/react-query";
 
-interface AppUser {
+type AppUser = {
   id: string;
   email: string;
   createdAt: string;
@@ -18,56 +19,66 @@ interface AppUser {
   isActive: boolean;
 }
 
-interface UserRoleRow {
+type UserRoleRow = {
   userId: string;
   roleName: string;
-}
+};
+
+type AdminUsersData = {
+  users: AppUser[];
+  roleMap: Map<string, string>;
+};
 
 type RoleFilter = "all" | "with" | "without";
 
+async function fetchAdminUsers(accessToken: string): Promise<AdminUsersData> {
+  const base = import.meta.env.VITE_BACKEND_URL;
+  const headers = { Authorization: `Bearer ${accessToken}` };
+
+  const [usersRes, rolesRes] = await Promise.all([
+    fetch(`${base}/api/users?includeInactive=true`, { headers }),
+    fetch(`${base}/api/user-roles?includeInactive=false`, { headers }),
+  ]);
+
+  if (!usersRes.ok) throw new Error(`Error usuarios ${usersRes.status}`);
+  if (!rolesRes.ok) throw new Error(`Error roles ${rolesRes.status}`);
+
+  const [users, roles]: [AppUser[], UserRoleRow[]] = await Promise.all([
+    usersRes.json(),
+    rolesRes.json(),
+  ]);
+
+  return {
+    users,
+    roleMap: new Map(roles.map((r: { userId: string; roleName: string }) => [r.userId, r.roleName])),
+  };
+}
+
 export default function UsersPage() {
   const { session } = useUser();
-  const [users, setUsers] = useState<AppUser[]>([]);
-  const [roleMap, setRoleMap] = useState<Map<string, string>>(new Map());
+
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("with");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const loadUsers = async () => {
-    if (!session) return;
-    setLoading(true);
-    try {
-      const headers = { Authorization: `Bearer ${session.access_token}` };
-      const base = import.meta.env.VITE_BACKEND_URL;
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["admin-users", session?.user.id],
+    queryFn: () => fetchAdminUsers(session!.access_token),
+    enabled: !!session,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-      const [usersRes, rolesRes] = await Promise.all([
-        fetch(`${base}/api/users?includeInactive=true`, { headers }),
-        fetch(`${base}/api/user-roles?includeInactive=false`, { headers }),
-      ]);
+  const users = data?.users ?? [];
+  const roleMap = data?.roleMap ?? new Map();
 
-      if (!usersRes.ok) throw new Error(`Error ${usersRes.status}`);
-      if (!rolesRes.ok) throw new Error(`Error ${rolesRes.status}`);
-
-      const [usersData, rolesData]: [AppUser[], UserRoleRow[]] = await Promise.all([
-        usersRes.json(),
-        rolesRes.json(),
-      ]);
-
-      setUsers(usersData);
-      setRoleMap(new Map(rolesData.map((r) => [r.userId, r.roleName])));
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error al cargar datos");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { loadUsers(); }, [session]);
-
-  const filtered = users.filter((u) => {
+  const filtered = users.filter((u: AppUser) => {
     const matchesSearch = u.email.toLowerCase().includes(search.toLowerCase());
     const hasRole = roleMap.has(u.id);
     const matchesRole =
@@ -77,8 +88,8 @@ export default function UsersPage() {
     return matchesSearch && matchesRole;
   });
 
-  if (loading) return <p className="p-6 text-gray-500">Cargando usuarios...</p>;
-  if (error) return <p className="p-6 text-red-500">Error: {error}</p>;
+  if (isLoading) return <p>Cargando usuarios...</p>;
+  if (error) return <p>Error: {(error as Error).message}</p>;
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
@@ -132,7 +143,7 @@ export default function UsersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((user) => (
+              filtered.map((user: AppUser) => (
                 <TableRow
                   key={user.id}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -172,14 +183,14 @@ export default function UsersPage() {
           userEmail={selectedUser.email}
           userIsActive={selectedUser.isActive}
           onClose={() => setSelectedUser(null)}
-          onUpdated={loadUsers}
+          onUpdated={() => refetch()}
         />
       )}
 
       {showCreate && (
         <CreateUserDialog
           onClose={() => setShowCreate(false)}
-          onCreated={loadUsers}
+          onCreated={() => refetch()}
         />
       )}
     </div>
