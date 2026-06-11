@@ -212,8 +212,8 @@ export function getAsset(key: string): number | null {
   return (avatarAssets as Record<string, number>)[key] ?? null;
 }
 
-export function getLayers(config: AvatarConfig, eyeFrame: 1 | 2 = 1, includeBg = true): Array<{ key: string; source: number }> {
-  const layers: Array<{ key: string; source: number | null } | null> = [
+export function getLayers(config: AvatarConfig, eyeFrame: 1 | 2 = 1, includeBg = true): { key: string; source: number }[] {
+  const layers: ({ key: string; source: number | null } | null)[] = [
     includeBg ? { key: 'bg', source: getAsset(bgKey(config.bg)) } : null,
     { key: 'base', source: getAsset(baseKey(config.race, config.skin)) },
     { key: 'ears', source: getAsset(earsKey(config.race, config.skin, config.ears)) },

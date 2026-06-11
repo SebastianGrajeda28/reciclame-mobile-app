@@ -35,7 +35,6 @@ import {
   bgAssetName,
   getAsset,
   bgKey,
-  baseKey,
   earsKey,
   noseKey,
   mouthKey,
@@ -46,8 +45,9 @@ import {
   clothesKey,
   beardKey,
   moustacheKey,
+  COSMETIC_COLOR_HEX,
+  SKIN_COLOR_HEX,
 } from '@/src/features/profile/data/avatarCatalog';
-import { COSMETIC_COLOR_HEX, SKIN_COLOR_HEX } from '@/src/features/profile/data/avatarCatalog';
 import { AppButton, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
 
 type Tab = 'Raza' | 'Piel' | 'Ojos' | 'Orejas' | 'Nariz' | 'Boca' | 'Cejas' | 'Pelo' | 'Barba' | 'Bigote' | 'Ropa' | 'Gorro' | 'Fondo';
