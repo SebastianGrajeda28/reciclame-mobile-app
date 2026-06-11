@@ -1,5 +1,4 @@
-// Full brand scales from the design system.
-// Use these when building primitives or when a specific step is explicitly required by design.
+// Design tokens — keep in sync with src/lib/theme.ts in reciclame-web.
 const palette = {
   green: {
     50: '#ECFDF3',
