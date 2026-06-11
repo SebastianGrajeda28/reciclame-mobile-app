@@ -23,6 +23,7 @@ import ManagerPanel from './shared/pages/ManagerPanel';
 import ViewerPanel from './shared/pages/ViewerPanel';
 import UsersPage from './modules/admin/pages/UsersPage';
 import AdminConfigPage from './modules/admin/pages/AdminConfigPage';
+import FunFactsPage from './modules/admin/pages/FunFactsPage';
 import ForgotPassword from './shared/pages/ForgotPassword';
 import ResetPassword from './shared/pages/ResetPassword';
 
@@ -65,6 +66,7 @@ export default function App() {
                 <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
                   <Route path="/admin" element={<AdminPanel />} />
                   <Route path="/admin/accounts" element={<UsersPage />} />
+                  <Route path="/admin/fun-facts" element={<FunFactsPage />} />
                   <Route path="/admin/config" element={<AdminConfigPage />} />
                 </Route>
 
