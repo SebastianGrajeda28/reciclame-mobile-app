@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronDown, ChevronUp, Pencil, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,17 +17,14 @@ import type { WasteType } from "../services/WasteTypesService";
 import type { Instruction, InstructionPayload } from "../services/InstructionsService";
 import InstructionStepsSection from "./InstructionStepsSection";
 
-// Valor sentinela: SelectItem no admite value="" y wasteTypeId es opcional.
-const NO_WASTE_TYPE = "none";
-
-type PendingAction = "edit" | "delete" | null;
+type PendingAction = "edit" | "deactivate" | "restore" | null;
 
 type InstructionCardProps = {
   instruction: Instruction;
   wasteTypes: WasteType[];
   isSaving?: boolean;
   onUpdate: (id: string, values: InstructionPayload) => Promise<void> | void;
-  onDelete: (id: string) => Promise<void> | void;
+  onChangeStatus: (id: string, isActive: boolean) => Promise<void> | void;
 };
 
 export default function InstructionCard({
@@ -35,11 +32,11 @@ export default function InstructionCard({
   wasteTypes,
   isSaving = false,
   onUpdate,
-  onDelete,
+  onChangeStatus,
 }: InstructionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(instruction.title);
-  const [editWasteTypeId, setEditWasteTypeId] = useState(instruction.wasteTypeId ?? NO_WASTE_TYPE);
+  const [editWasteTypeId, setEditWasteTypeId] = useState(instruction.wasteTypeId ?? "");
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [showSteps, setShowSteps] = useState(false);
 
@@ -48,7 +45,7 @@ export default function InstructionCard({
 
   function cancelEdit() {
     setEditTitle(instruction.title);
-    setEditWasteTypeId(instruction.wasteTypeId ?? NO_WASTE_TYPE);
+    setEditWasteTypeId(instruction.wasteTypeId ?? "");
     setIsEditing(false);
   }
 
@@ -57,24 +54,45 @@ export default function InstructionCard({
       if (pendingAction === "edit") {
         await onUpdate(instruction.id, {
           title: editTitle.trim(),
-          wasteTypeId: editWasteTypeId === NO_WASTE_TYPE ? null : editWasteTypeId,
+          wasteTypeId: editWasteTypeId === "" ? null : editWasteTypeId,
         });
         setIsEditing(false);
       }
 
-      if (pendingAction === "delete") {
-        await onDelete(instruction.id);
+      if (pendingAction === "deactivate") {
+        await onChangeStatus(instruction.id, false);
+        setIsEditing(false);
+      }
+
+      if (pendingAction === "restore") {
+        await onChangeStatus(instruction.id, true);
       }
 
       setPendingAction(null);
     } catch {
-      // El toast de error se muestra desde la mutación de la página.
+      // El error se notifica desde la mutación.
     }
   }
 
+  const actionTitle =
+    pendingAction === "edit"
+      ? "¿Guardar cambios?"
+      : pendingAction === "deactivate"
+        ? "¿Desactivar instrucción?"
+        : "¿Restaurar instrucción?";
+
+  const actionDescription =
+    pendingAction === "edit"
+      ? "Se actualizará el texto y/o el tipo de residuo de esta instrucción."
+      : pendingAction === "deactivate"
+        ? "La instrucción y sus pasos dejarán de mostrarse, pero podrá restaurarse desde la pestaña de inactivas."
+        : "La instrucción y sus pasos volverán a aparecer en la lista de activas.";
+
   return (
     <>
-      <article className="rounded-2xl bg-[#eef3f8] px-5 py-5 shadow-[0_3px_0_rgba(15,23,42,0.08)]">
+      <article
+        className={`rounded-2xl bg-[#eef3f8] px-5 py-5 shadow-[0_3px_0_rgba(15,23,42,0.08)] ${instruction.isActive ? "" : "opacity-80"}`}
+      >
         {isEditing ? (
           <div className="space-y-4">
             <label className="block">
@@ -84,7 +102,6 @@ export default function InstructionCard({
                   <SelectValue placeholder="Selecciona un tipo de residuo" />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
-                  <SelectItem value={NO_WASTE_TYPE}>Sin tipo de residuo</SelectItem>
                   {wasteTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name}
@@ -130,31 +147,46 @@ export default function InstructionCard({
             </div>
 
             <div className="flex shrink-0 items-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2 border-[#9bb7cf] text-[#0b2f4e]"
-                disabled={isSaving}
-                onClick={() => setIsEditing(true)}
-              >
-                <Pencil className="h-4 w-4" />
-                Editar
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                disabled={isSaving}
-                onClick={() => setPendingAction("delete")}
-              >
-                <Trash2 className="h-4 w-4" />
-                Eliminar
-              </Button>
+              {instruction.isActive ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 border-[#9bb7cf] text-[#0b2f4e]"
+                    disabled={isSaving}
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Editar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    disabled={isSaving}
+                    onClick={() => setPendingAction("deactivate")}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Desactivar
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 border-[#9bb7cf] text-[#0b2f4e]"
+                  disabled={isSaving}
+                  onClick={() => setPendingAction("restore")}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restaurar
+                </Button>
+              )}
             </div>
           </div>
         )}
 
-        {!isEditing && (
+        {!isEditing && instruction.isActive && (
           <>
             <button
               type="button"
@@ -172,19 +204,19 @@ export default function InstructionCard({
       <AlertDialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingAction === "edit" ? "¿Guardar cambios?" : "¿Eliminar instrucción?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingAction === "edit"
-                ? "Se actualizará el texto y/o el tipo de residuo de esta instrucción."
-                : "La instrucción y sus pasos dejarán de mostrarse en la aplicación."}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{actionTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{actionDescription}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSaving}>Cancelar</AlertDialogCancel>
             <AlertDialogAction disabled={isSaving} onClick={confirmPendingAction}>
-              {isSaving ? "Guardando..." : pendingAction === "delete" ? "Eliminar" : "Guardar"}
+              {isSaving
+                ? "Guardando..."
+                : pendingAction === "deactivate"
+                  ? "Desactivar"
+                  : pendingAction === "restore"
+                    ? "Restaurar"
+                    : "Guardar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

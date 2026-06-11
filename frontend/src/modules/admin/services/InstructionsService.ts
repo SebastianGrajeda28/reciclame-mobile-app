@@ -17,7 +17,7 @@ export type InstructionPayload = {
 };
 
 export async function getInstructions(accessToken: string): Promise<Instruction[]> {
-  const res = await fetch(buildBackendUrl("/api/instructions"), {
+  const res = await fetch(buildBackendUrl("/api/instructions?includeInactive=true"), {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
@@ -59,6 +59,16 @@ export async function deactivateInstruction(accessToken: string, id: string) {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
-  if (!res.ok) throw new Error(`Error eliminar instruccion ${res.status}`);
+  if (!res.ok) throw new Error(`Error desactivar instruccion ${res.status}`);
+  return res.json();
+}
+
+export async function restoreInstruction(accessToken: string, id: string) {
+  const res = await fetch(buildBackendUrl(`/api/instructions/${id}/restore`), {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) throw new Error(`Error restaurar instruccion ${res.status}`);
   return res.json();
 }

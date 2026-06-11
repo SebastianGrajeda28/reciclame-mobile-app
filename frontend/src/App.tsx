@@ -28,7 +28,6 @@ import ManagerPanel from "./shared/pages/ManagerPanel";
 import ViewerPanel from "./shared/pages/ViewerPanel";
 import UsersPage from "./modules/admin/pages/UsersPage";
 import AdminConfigPage from "./modules/admin/pages/AdminConfigPage";
-import AdminFunFactsPage from "./modules/admin/pages/FunFactsPage";
 
 function RootEntry() {
   const { account, loading } = useUser();
@@ -85,7 +84,7 @@ function AppShell() {
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/admin/accounts" element={<UsersPage />} />
-            <Route path="/admin/fun-facts" element={<AdminFunFactsPage />} />
+            <Route path="/admin/fun-facts" element={<Navigate to="/fun-facts" replace />} />
             <Route path="/admin/config" element={<AdminConfigPage />} />
           </Route>
           <Route path="/metrics" element={<Navigate to="/metricas" replace />} />

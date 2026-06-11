@@ -25,7 +25,7 @@ export default function AdminPanel() {
         </Link>
 
         <Link
-          to="/admin/fun-facts"
+          to="/fun-facts"
           className="flex flex-col items-center gap-3 p-6 rounded-xl border hover:border-emerald-500 hover:shadow-md transition"
         >
           <Lightbulb className="w-8 h-8 text-emerald-600" />
