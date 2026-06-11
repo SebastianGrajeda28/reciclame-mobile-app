@@ -67,3 +67,17 @@ export const educationalContent = pgTable("educational_content", {
 
 export type EducationalContent = typeof educationalContent.$inferSelect;
 export type NewEducationalContent = typeof educationalContent.$inferInsert;
+
+export const funFacts = pgTable("fun_facts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  text: text("text").notNull(),
+  wasteTypeId: uuid("waste_type_id"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+});
+
+export type FunFact = typeof funFacts.$inferSelect;
+export type NewFunFact = typeof funFacts.$inferInsert;

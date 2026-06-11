@@ -114,6 +114,14 @@ body,
     scrollbar-gutter: stable;
   }
 
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+  }
+
   * {
     /* @apply border-border outline-ring/50; */
     @apply border-border;
