@@ -22,7 +22,8 @@
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
-    "db:migrate": "supabase db push"
+    "db:migrate": "supabase db push",
+    "postinstall": "node ./scripts/sync-design-system.mjs"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",

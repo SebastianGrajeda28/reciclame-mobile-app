@@ -50,8 +50,6 @@ const palette = {
   },
 } as const;
 
-// Semantic aliases compose on top of the raw palette.
-// Prefer these for feedback/status UI instead of picking palette steps ad hoc in screens.
 const semantic = {
   success: {
     fg: palette.green[500],
@@ -75,43 +73,25 @@ const semantic = {
 export const theme = {
   palette,
   semantic,
-  // Product-facing aliases.
-  // Default app code should use theme.colors.* first.
-  // Reach for theme.palette.* only when creating DS primitives or implementing a design-specified tone.
   colors: {
-    // Surfaces & backgrounds
     background: palette.neutral[50],
     surface: palette.neutral[0],
     surfaceMuted: palette.neutral[50],
-
-    // Text
     textPrimary: palette.neutral[900],
     textSecondary: palette.neutral[500],
     textInverse: palette.neutral[0],
-    textInverseSubtle: 'rgba(255,255,255,0.6)', // white 60% — inactive text on dark surfaces
-
-    // Borders
+    textInverseSubtle: 'rgba(255,255,255,0.6)',
     border: palette.neutral[200],
     borderStrong: palette.neutral[300],
-
-    // Brand — Green (Primary)
     primary: palette.green.DEFAULT,
     primaryPressed: palette.green[500],
     primaryLight: palette.green[50],
     primarySubtle: palette.green[200],
-
-    // Brand — Navy (Secondary)
     secondary: palette.navy.DEFAULT,
     secondaryPressed: palette.navy[700],
-
-    // Brand — Cyan (Accent)
     accent: palette.cyan.DEFAULT,
     accentPressed: palette.cyan[700],
-
-    // Outline button stroke
     outline: palette.neutral[300],
-
-    // Semantic
     success: semantic.success.fg,
     successBg: semantic.success.bg,
     warning: semantic.warning.fg,
@@ -121,21 +101,13 @@ export const theme = {
     info: semantic.info.fg,
     infoBg: semantic.info.bg,
     infoBorder: semantic.info.border,
-
-    // Inputs
     inputBackground: palette.neutral[0],
     inputPlaceholder: palette.neutral[300],
-
-    // Disabled
     disabled: palette.neutral[200],
     disabledText: palette.neutral[300],
-
-    // Legacy aliases kept for existing screens
     infoTintBackground: semantic.info.bg,
     infoTintBorder: semantic.info.border,
   },
-
-  // Base 4 px grid — s1…s16
   spacing: {
     s1: 4,
     s2: 8,
@@ -147,8 +119,6 @@ export const theme = {
     s10: 40,
     s12: 48,
     s16: 64,
-
-    // Legacy aliases kept for existing screens
     xxs: 2,
     xs: 4,
     sm: 8,
@@ -157,7 +127,6 @@ export const theme = {
     xl: 24,
     xxl: 32,
   },
-
   radius: {
     xs: 4,
     sm: 8,
@@ -165,12 +134,8 @@ export const theme = {
     lg: 16,
     xl: 24,
     full: 999,
-
-    // Legacy alias
     pill: 999,
   },
-
-  // DS typography scale — Manrope
   typography: {
     display: { fontSize: 34, lineHeight: 36, fontWeight: '800' as const },
     h1: { fontSize: 28, lineHeight: 31, fontWeight: '800' as const },
@@ -183,8 +148,6 @@ export const theme = {
     caption: { fontSize: 12, lineHeight: 17, fontWeight: '500' as const },
     overline: { fontSize: 10, lineHeight: 13, fontWeight: '700' as const },
   },
-
-  // Legacy fontSizes kept for existing screens
   fontSizes: {
     xs: 12,
     sm: 14,
@@ -194,7 +157,6 @@ export const theme = {
     xxl: 28,
     display: 34,
   },
-
   fontWeights: {
     regular: '400' as const,
     medium: '500' as const,
@@ -202,8 +164,6 @@ export const theme = {
     bold: '700' as const,
     extrabold: '800' as const,
   },
-
-  // Elevation levels
   shadows: {
     none: {
       shadowColor: 'transparent',
@@ -247,7 +207,6 @@ export const theme = {
       shadowOffset: { width: 0, height: 0 },
       elevation: 0,
     },
-    // Legacy alias
     card: {
       shadowColor: '#0E1114',
       shadowOpacity: 0.06,
@@ -256,7 +215,6 @@ export const theme = {
       elevation: 2,
     },
   },
-
   iconSizes: {
     xs: 12,
     sm: 16,
@@ -264,7 +222,6 @@ export const theme = {
     lg: 24,
     xl: 32,
   },
-
   components: {
     screenPaddingHorizontal: 16,
     buttonHeights: {
@@ -280,8 +237,6 @@ export const theme = {
     chipHeight: 36,
     segmentedHeight: 40,
   },
-
-  // Feature-specific tokens
   recycle: {
     headerScore: palette.green[700],
     headerSubtitle: palette.cyan[500],
