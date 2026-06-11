@@ -23,6 +23,12 @@ import MetricsDashboard from "./shared/pages/MetricsDashboard";
 import FunFactsPage from "./shared/pages/FunFactsPage";
 import InstructionsPage from "./shared/pages/InstructionsPage";
 import UserPage from "./shared/pages/UserPage";
+import AdminPanel from "./shared/pages/AdminPanel";
+import ManagerPanel from "./shared/pages/ManagerPanel";
+import ViewerPanel from "./shared/pages/ViewerPanel";
+import UsersPage from "./modules/admin/pages/UsersPage";
+import AdminConfigPage from "./modules/admin/pages/AdminConfigPage";
+import AdminFunFactsPage from "./modules/admin/pages/FunFactsPage";
 
 function RootEntry() {
   const { account, loading } = useUser();
@@ -68,11 +74,23 @@ function AppShell() {
             <Route path="/mi-cuenta" element={<UserPage />} />
           </Route>
 
+          <Route element={<ProtectedRoute allowedRoles={["VIEWER"]} />}>
+            <Route path="/viewer" element={<ViewerPanel />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["MANAGER", "ADMIN"]} />}>
+            <Route path="/manager" element={<ManagerPanel />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin/accounts" element={<UsersPage />} />
+            <Route path="/admin/fun-facts" element={<AdminFunFactsPage />} />
+            <Route path="/admin/config" element={<AdminConfigPage />} />
+          </Route>
+
           <Route path="/metrics" element={<Navigate to="/metricas" replace />} />
           <Route path="/instructions" element={<Navigate to="/instrucciones" replace />} />
-          <Route path="/admin" element={<Navigate to="/metricas" replace />} />
-          <Route path="/manager" element={<Navigate to="/metricas" replace />} />
-          <Route path="/viewer" element={<Navigate to="/metricas" replace />} />
           <Route path="/home" element={<Navigate to="/" replace />} />
           <Route path="/unauthorized" element={<Navigate to="/metricas" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
