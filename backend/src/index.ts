@@ -8,6 +8,7 @@ import instructionStepsRoutes from "./modules/instruction_steps/routes";
 import userRolesRoutes from "./modules/user_roles/routes";
 import usersRoutes from "./modules/users/routes";
 import rolesRoutes from "./modules/roles/routes";
+import wasteTypesRoutes from "./modules/waste_types/routes";
 import type { User } from "@supabase/supabase-js";
 import { client } from "./db";
 
@@ -55,5 +56,6 @@ app.route("/api/instruction-steps", instructionStepsRoutes);
 app.route("/api/user-roles", userRolesRoutes);
 app.route("/api/users", usersRoutes);
 app.route("/api/roles", rolesRoutes);
+app.route("/api/waste-types", wasteTypesRoutes);
 
 export default { port: 3000, fetch: app.fetch };
