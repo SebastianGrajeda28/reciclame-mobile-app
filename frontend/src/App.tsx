@@ -88,7 +88,6 @@ function AppShell() {
             <Route path="/admin/fun-facts" element={<AdminFunFactsPage />} />
             <Route path="/admin/config" element={<AdminConfigPage />} />
           </Route>
-
           <Route path="/metrics" element={<Navigate to="/metricas" replace />} />
           <Route path="/instructions" element={<Navigate to="/instrucciones" replace />} />
           <Route path="/home" element={<Navigate to="/" replace />} />
