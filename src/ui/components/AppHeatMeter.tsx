@@ -8,18 +8,19 @@ type AppHeatMeterProps = {
   value: number;
   maxValue: number;
   label?: string;
+  color?: string;
 };
 
 const TRACK_HEIGHT = 24;
 
-export function AppHeatMeter({ value, maxValue, label }: AppHeatMeterProps) {
+export function AppHeatMeter({ value, maxValue, label, color }: AppHeatMeterProps) {
   return (
     <View style={styles.track}>
       <AppBarChart
         data={[
           {
             value,
-            frontColor: theme.colors.warning,
+            frontColor: color ?? theme.colors.warning,
           },
         ]}
         maxValue={maxValue}
@@ -53,10 +54,12 @@ const styles = StyleSheet.create({
   labelWrap: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: theme.spacing.s3,
   },
   label: {
     color: theme.colors.textPrimary,
     fontWeight: theme.fontWeights.medium,
+    textAlign: 'center',
   },
 });

@@ -37,6 +37,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <AppIcon name="user" color={color} size={size} />,
         }}
       />
+      <Tabs.Screen
+        name="friends/add"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

@@ -1,12 +1,15 @@
 import { StyleSheet, View } from 'react-native';
 
+import { AvatarComposer } from '@/src/features/profile/components/AvatarComposer';
 import { ProfileAvatarDisplay } from '@/src/features/profile/components/ProfileAvatarDisplay';
+import { AvatarConfig } from '@/src/features/profile/data/avatarCatalog';
 import { AppButton, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
 
 type ProfileHeroCardProps = {
   displayName: string;
   email?: string;
   avatarUrl?: string;
+  avatarConfig?: AvatarConfig | null;
   memberSinceLabel?: string;
   onCustomizePress: () => void;
   onSettingsPress: () => void;
@@ -16,6 +19,7 @@ export function ProfileHeroCard({
   displayName,
   email,
   avatarUrl,
+  avatarConfig,
   memberSinceLabel,
   onCustomizePress,
   onSettingsPress,
@@ -33,7 +37,11 @@ export function ProfileHeroCard({
             <AppIcon name="settings" size={theme.iconSizes.md} color={theme.colors.textPrimary} />
           }
         />
-        <ProfileAvatarDisplay avatarUrl={avatarUrl} displayName={displayName} size="lg" />
+        {avatarConfig ? (
+          <AvatarComposer config={avatarConfig} size={132} blink />
+        ) : (
+          <ProfileAvatarDisplay avatarUrl={avatarUrl} displayName={displayName} size="lg" />
+        )}
         <View style={styles.heroTextWrap}>
           <AppText variant="h1" style={styles.heroName}>
             {displayName}

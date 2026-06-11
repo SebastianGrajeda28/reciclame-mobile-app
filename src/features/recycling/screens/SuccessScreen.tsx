@@ -1,7 +1,9 @@
-import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 import { routes } from '@/src/constants/routes';
+import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
+import { useFunFactByWasteTypeId } from '@/src/features/recycling/hooks/useFunFact';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
@@ -11,6 +13,7 @@ import { AppButton, AppScreen, AppText, theme } from '@/src/ui';
 export function SuccessScreen() {
   const { resetFlow } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
+  const { funFact } = useFunFactByWasteTypeId(finalWasteType?.id);
 
   function handleDone() {
     resetFlow();
@@ -33,11 +36,17 @@ export function SuccessScreen() {
       <AppText style={styles.title}>¡Reciclaje registrado!</AppText>
 
       {finalWasteType && (
-        <AppText muted style={styles.subtitle}>{finalWasteType.categoryLabel}</AppText>
+        <AppText muted style={styles.subtitle}>
+          {finalWasteType.categoryLabel}
+        </AppText>
       )}
       {selectedContainer && (
-        <AppText muted style={styles.subtitle}>{selectedContainer.name}</AppText>
+        <AppText muted style={styles.subtitle}>
+          {selectedContainer.name}
+        </AppText>
       )}
+
+      {funFact ? <FunFactCard text={funFact.text} style={styles.funFact} /> : null}
 
       <View style={styles.actions}>
         <AppButton label="Reciclar otro ítem" onPress={handleRecycleAnother} />
@@ -45,7 +54,7 @@ export function SuccessScreen() {
         <AppButton
           variant="outline"
           label="Ver mi historial"
-          onPress={() => router.push(routes.recycleHistory)}
+          onPress={() => router.replace(routes.recycleHistory)}
         />
       </View>
     </AppScreen>
@@ -84,6 +93,10 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: theme.fontSizes.md,
     textAlign: 'center',
+  },
+  funFact: {
+    width: '100%',
+    marginTop: 0,
   },
   actions: {
     width: '100%',
