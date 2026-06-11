@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { db } from "../../db";
-import { instructions, type NewInstruction } from "../../db/schema";
+import { instructions, instructionSteps, type NewInstruction } from "../../db/schema";
 import { requireRole } from "../../middleware/roles";
 
 const app = new Hono();
@@ -67,7 +67,7 @@ app.put("/:id", requireRole("ADMIN"), async (c) => {
   return c.json(updated);
 });
 
-// DELETE /api/instructions/:id — eliminación lógica
+// DELETE /api/instructions/:id — eliminación lógica en cascada hacia los pasos
 app.delete("/:id", requireRole("ADMIN"), async (c) => {
   const [deleted] = await db
     .update(instructions)
@@ -76,10 +76,16 @@ app.delete("/:id", requireRole("ADMIN"), async (c) => {
     .returning();
 
   if (!deleted) return c.json({ error: "Not found" }, 404);
+
+  await db
+    .update(instructionSteps)
+    .set({ isActive: false, updatedAt: new Date() })
+    .where(eq(instructionSteps.instructionId, deleted.id));
+
   return c.json({ message: "Instrucción desactivada", id: deleted.id });
 });
 
-// PATCH /api/instructions/:id/restore — restaurar eliminación lógica
+// PATCH /api/instructions/:id/restore — restauración lógica en cascada hacia los pasos
 app.patch("/:id/restore", requireRole("ADMIN"), async (c) => {
   const [restored] = await db
     .update(instructions)
@@ -88,6 +94,12 @@ app.patch("/:id/restore", requireRole("ADMIN"), async (c) => {
     .returning();
 
   if (!restored) return c.json({ error: "Not found" }, 404);
+
+  await db
+    .update(instructionSteps)
+    .set({ isActive: true, updatedAt: new Date() })
+    .where(eq(instructionSteps.instructionId, restored.id));
+
   return c.json({ message: "Instrucción restaurada", id: restored.id });
 });
 
