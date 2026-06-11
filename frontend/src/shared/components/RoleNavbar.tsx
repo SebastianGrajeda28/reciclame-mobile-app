@@ -1,70 +1,58 @@
 import { Link, useLocation } from "react-router-dom";
-import { ModeToggle } from "@/components/ui/mode-toggle";
 import { useUser } from "../context/UserContext";
 import ProfilePopover from "./ProfilePopover";
 
-/*  Cambiar */
-const NAV_ITEMS_VIEWER = [
-  { name: "Reservas", path: "/reservas" },
-  { name: "Eventos", path: "/eventos" },
-  { name: "Academias", path: "/academias" },
+const NAV_ITEMS = [
+  { label: "Métricas", path: "/metricas" },
+  { label: "Fun Facts", path: "/fun-facts" },
+  { label: "Instrucciones", path: "/instrucciones" },
 ];
 
-const PANEL_ROUTES: Record<string, string> = {
-  ADMIN: "/admin",
-  MANAGER: "/manager",
-};
-
-
-function getNavLinkClasses(isActive: boolean) {
-  if (isActive) {
-    return "bg-white text-[#0e2a32] dark:bg-[#f3f0ea] dark:text-[#0e2a32] px-3 py-1 rounded-md text-sm font-medium";
-  }
-  return "text-gray-600 dark:text-white hover:text-black dark:hover:text-[#b9e0d8] px-3 py-1 rounded-md text-sm font-medium";
+function linkClasses(active: boolean) {
+  return active
+    ? "relative block min-w-[132px] px-2 py-5 text-center text-[1rem] font-medium text-white"
+    : "relative block min-w-[132px] px-2 py-5 text-center text-[1rem] font-medium text-white/88 transition hover:text-white";
 }
 
 export default function RoleNavbar() {
   const location = useLocation();
-  const { account } = useUser();
-  const userRole = account?.role || null;
+  const { account, loading } = useUser();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!account) {
+    return null;
+  }
 
   return (
-    <div className="flex items-center justify-between w-full gap-6">
-      <div className="flex items-center gap-6">
-        {!userRole && (
-          <Link
-            to="/login"
-            className="px-4 py-2 text-sm font-medium border border-(--brand) text-(--brand) rounded-md hover:bg-(--brand) hover:text-white"
-          >
-            Iniciar sesión
-          </Link>
-        )}
-
-        {userRole === "VIEWER" && (
-          <ul className="flex gap-4 items-center">
-            {NAV_ITEMS_VIEWER.map(({ name, path }) => (
-              <li key={name}>
-                <Link to={path} className={getNavLinkClasses(location.pathname === path)}>
-                  {name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {(userRole === "ADMIN" || userRole === "MANAGER") && (
-          <Link
-            to={PANEL_ROUTES[userRole]}
-            className="text-sm text-gray-800 dark:text-white font-medium hover:underline"
-          >
-            Panel de Herramientas
-          </Link>
-        )}
+    <div className="absolute inset-0 flex items-center">
+      <div className="pointer-events-none absolute inset-x-0 flex justify-center">
+        <div className="pointer-events-auto">
+          <nav aria-label="Navegacion principal">
+            <ul className="flex items-center gap-10">
+              {NAV_ITEMS.map((item) => (
+                <li key={item.path}>
+                  <Link to={item.path} className={linkClasses(location.pathname === item.path)}>
+                    {item.label}
+                    <span
+                      className={
+                        location.pathname === item.path
+                          ? "absolute inset-x-2 bottom-3 h-0.5 rounded-full bg-[#22c76f]"
+                          : "absolute inset-x-2 bottom-3 h-0.5 rounded-full bg-transparent"
+                      }
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="relative z-10 ml-auto pr-6 md:pr-8">
         <ProfilePopover />
-        <ModeToggle />
       </div>
     </div>
   );

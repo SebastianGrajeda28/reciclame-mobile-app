@@ -23,14 +23,14 @@ export default function AdminConfigPage() {
             key={n}
             className="flex flex-col items-center gap-3 p-6 rounded-xl border hover:border-emerald-500 hover:shadow-md transition cursor-pointer"
           >
-            <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+            <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
               <img
                 src={`https://placehold.co/64x64/d1fae5/065f46?text=${n}`}
                 alt={`Opción ${n}`}
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <span className="text-sm font-semibold text-gray-700">
               Opción {n}
             </span>
           </div>

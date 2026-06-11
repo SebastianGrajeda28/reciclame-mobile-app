@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import HeroSection from '../components/PrincipalImage'
 import { useUser } from '../context/UserContext';
+import { buildBackendUrl } from '@/lib/backend-url';
 export default function Home() {
   const { account } = useUser();
   const userRole = account?.role || null;
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/healthcheck`)
+    fetch(buildBackendUrl("/auth/healthcheck"))
       .then(response => {
         if (!response.ok) {
           throw new Error('Error en la respuesta del servidor')

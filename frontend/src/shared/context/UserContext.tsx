@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { buildBackendUrl } from "@/lib/backend-url";
 import type { Session } from "@supabase/supabase-js";
 
 export interface Account {
@@ -21,7 +22,7 @@ const UserContext = createContext<UserContextValue | null>(null);
 async function fetchMe(accessToken: string): Promise<Account | null> {
   console.log("[UserContext] Llamando /api/me con access_token:", accessToken.slice(0, 20) + "...");
   try {
-    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/me`, {
+    const res = await fetch(buildBackendUrl("/api/me"), {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     console.log("[UserContext] /api/me status:", res.status);

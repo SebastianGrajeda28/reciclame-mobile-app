@@ -64,7 +64,7 @@ export const BulkUploadButton: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center p-4 bg-white rounded-lg dark:bg-cyan-950 shadow-md">
+    <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-md">
       <h3 className="text-lg font-semibold mb-4">Cargar Membresías y Miembros</h3>
       
       {/* Input para seleccionar el archivo */}

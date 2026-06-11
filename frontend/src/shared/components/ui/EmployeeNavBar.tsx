@@ -20,8 +20,8 @@ export default function EmployeeNavbar() {
 
   // Estilos
   const baseBtn = "flex items-center gap-2 h-auto p-0";
-  const activeBtn = "text-[#142e38] dark:text-[var(--brand)]";
-  const inactiveBtn = "text-[var(--brand)] hover:text-[#1e4e3e] dark:text-[var(--primary)]";
+  const activeBtn = "text-[#142e38]";
+  const inactiveBtn = "text-[var(--brand)] hover:text-[#1e4e3e]";
 
   if (loading || !account) return null; // aún cargando o no hay cuenta
 

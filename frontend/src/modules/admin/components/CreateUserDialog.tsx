@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useUser } from "@/shared/context/UserContext";
 import { AccountForm } from "./AccountForm";
+import { buildBackendUrl } from "@/lib/backend-url";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 
@@ -23,7 +24,7 @@ export default function CreateUserDialog({ onClose, onCreated }: Props) {
   const handleSubmit = async (data: AccountFormData) => {
     setSaving(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/provision`, {
+      const res = await fetch(buildBackendUrl("/api/users/provision"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session?.access_token}`,
@@ -52,7 +53,7 @@ export default function CreateUserDialog({ onClose, onCreated }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6 relative">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
