@@ -8,6 +8,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { buildBackendUrl } from "@/lib/backend-url";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 
@@ -34,14 +35,13 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
 
   const token = session?.access_token ?? "";
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-  const base = import.meta.env.VITE_BACKEND_URL;
 
   const loadData = async () => {
     setLoading(true);
     try {
       const [rolesRes, assignRes] = await Promise.all([
-        fetch(`${base}/api/roles`, { headers }),
-        fetch(`${base}/api/user-roles?userId=${userId}&includeInactive=false`, { headers }),
+        fetch(buildBackendUrl("/api/roles"), { headers }),
+        fetch(buildBackendUrl(`/api/user-roles?userId=${userId}&includeInactive=false`), { headers }),
       ]);
       const roles: Role[] = await rolesRes.json();
       const assignments: Assignment[] = await assignRes.json();
@@ -63,10 +63,10 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
     try {
       // Si ya tiene un rol, eliminarlo primero
       if (currentAssignment) {
-        await fetch(`${base}/api/user-roles/${currentAssignment.id}`, { method: "DELETE", headers });
+        await fetch(buildBackendUrl(`/api/user-roles/${currentAssignment.id}`), { method: "DELETE", headers });
       }
       // Asignar el nuevo rol
-      const res = await fetch(`${base}/api/user-roles`, {
+      const res = await fetch(buildBackendUrl("/api/user-roles"), {
         method: "POST",
         headers,
         body: JSON.stringify({ userId, roleId: pendingRoleId }),
@@ -89,8 +89,8 @@ export default function AssignRoleModal({ userId, userEmail, userIsActive, onClo
     setSaving(true);
     try {
       const endpoint = isActive
-        ? `${base}/api/users/${userId}`
-        : `${base}/api/users/${userId}/restore`;
+        ? buildBackendUrl(`/api/users/${userId}`)
+        : buildBackendUrl(`/api/users/${userId}/restore`);
       const method = isActive ? "DELETE" : "PATCH";
       const res = await fetch(endpoint, { method, headers });
       if (!res.ok) throw new Error();

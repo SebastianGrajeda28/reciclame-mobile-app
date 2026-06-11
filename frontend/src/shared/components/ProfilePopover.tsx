@@ -72,7 +72,6 @@ export default function ProfilePopover() {
         </PopoverTrigger>
 
         <PopoverContent align="end" className="w-72 p-0 overflow-hidden">
-          {/* Cabecera del perfil */}
           <div className="flex items-center gap-3 p-4 bg-gray-50 border-b">
             <Avatar className="w-12 h-12">
               <AvatarImage src="https://github.com/shadcn.png" />
@@ -89,7 +88,6 @@ export default function ProfilePopover() {
             </div>
           </div>
 
-          {/* Acciones */}
           <div className="p-2 flex flex-col gap-1">
             <Button
               variant="ghost"
@@ -118,7 +116,6 @@ export default function ProfilePopover() {
         </PopoverContent>
       </Popover>
 
-      {/* Diálogo cambiar contraseña */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>

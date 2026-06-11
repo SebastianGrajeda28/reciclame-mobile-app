@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Info, Recycle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,73 +28,56 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    console.log("[Google Login] Iniciando OAuth con Google...");
-    console.log("[Google Login] redirectTo:", `${window.location.origin}/auth/callback`);
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      console.error("[Google Login] Error al llamar signInWithOAuth:", error);
-      toast.error("Error al iniciar sesión con Google");
-      return;
-    }
-
-    console.log("[Google Login] signInWithOAuth OK, redirigiendo a:", data.url);
-  };
-
   return (
-    <div className="auth-background">
-      <div className="auth-card">
-        <div className="form-panel">
-          <h2 className="text-3xl font-bold mb-6">
-            Inicio de Sesión
-          </h2>
+    <main className="relative min-h-[calc(100dvh-5rem)] overflow-hidden bg-[#f7f8f6] px-6 py-6 text-slate-900 md:py-8">
+      <span
+        aria-hidden="true"
+        className="absolute right-0 top-24 h-28 w-28 rounded-full bg-emerald-100/80 md:h-36 md:w-36"
+      />
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full flex items-center gap-2"
-                onClick={handleGoogleLogin}
-              >
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                Continuar con Google
-              </Button>
-            </div>
+      <section className="mx-auto flex min-h-full max-w-[1180px] items-center justify-center">
+        <article className="w-full max-w-[420px] rounded-[22px] border border-slate-200/80 bg-[#f8faf9] px-6 py-8 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:px-10 md:py-10">
+          <header className="mb-8 flex flex-col items-center text-center">
+            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+              <Recycle className="h-6 w-6" />
+            </span>
+            <p className="text-sm font-semibold text-slate-900">Recíclame</p>
+            <h1 className="mt-4 max-w-[240px] text-[28px] font-semibold leading-8 text-slate-900">
+              Recicla, gana puntos y cuida el planeta
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">Inicia sesión para continuar</p>
+          </header>
 
-            <div className="relative flex items-center gap-2">
-              <div className="flex-1 border-t border-gray-300" />
-              <span className="text-xs text-gray-400">o</span>
-              <div className="flex-1 border-t border-gray-300" />
-            </div>
-
-            <div>
-              <Label htmlFor="email">Correo electrónico</Label>
-              <div className="relative mt-1">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <label htmlFor="email" className="block space-y-1.5">
+              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                Email
+              </span>
+              <span className="relative block">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="ariel@reciclame.pe"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="pl-10 bg-gray-100"
+                  className="h-11 rounded-lg border-slate-200 bg-white pl-9 text-sm shadow-none placeholder:text-slate-400 focus-visible:ring-emerald-500"
                 />
-              </div>
-            </div>
+              </span>
+            </label>
 
-            <div>
-              <Label htmlFor="password">Contraseña</Label>
-              <div className="relative mt-1">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Password
+                </Label>
+                <Link to="/forgot-password" className="text-xs font-medium text-emerald-700 hover:text-emerald-800">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -102,55 +85,41 @@ const Login: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pl-10 pr-10 bg-gray-100"
+                  className="h-11 rounded-lg border-slate-200 bg-white pl-9 pr-10 text-sm shadow-none placeholder:text-slate-400 focus-visible:ring-emerald-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
                   aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            <p className="text-sm text-right">
-              <Link to="/forgot-password" className="text-(--brand) hover:underline">
-                ¿Olvidaste la contraseña?
-              </Link>
-            </p>
-
             <Button
               type="submit"
-              className="w-full py-3 bg-(--brand) text-white rounded-full hover:bg-(--brand-light) transition"
+              className="mt-2 h-10 w-full rounded-lg bg-[#0f2f45] text-sm font-semibold text-white hover:bg-[#143a53]"
               disabled={loading}
             >
-              {loading ? "Ingresando…" : "Ingresar"}
+              {loading ? "Iniciando..." : "Iniciar Sesión"}
             </Button>
 
-            <p className="text-sm text-center">
-              ¿No tienes una cuenta?{" "}
-              <Link to="/register" className="text-(--brand) hover:underline">
-                Regístrate ahora
-              </Link>
-            </p>
-          </form>
-        </div>
+            <aside className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>Tu sesión se mantendrá iniciada mientras no cierres el navegador.</p>
+            </aside>
 
-        <div className="media-panel">
-          <video src={`${import.meta.env.VITE_BACKEND_URL_MEDIA}/login.mp4`} autoPlay loop muted />
-          <div className="media-overlay">
-            <h2 className="text-5xl md:text-6xl font-extrabold text-white mb-4">
-              Cada amigo es una nueva aventura.
-            </h2>
-            <p className="text-xl md:text-2xl font-bold text-white/90 mb-6">
-              Conectémonos
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+            <footer className="px-3 text-center text-[11px] leading-4 text-slate-400">
+              Al continuar aceptas nuestros{" "}
+              <span className="font-medium text-emerald-700">Términos de Servicio</span> y{" "}
+              <span className="font-medium text-emerald-700">Política de Privacidad</span>.
+            </footer>
+          </form>
+        </article>
+      </section>
+    </main>
   );
 };
 

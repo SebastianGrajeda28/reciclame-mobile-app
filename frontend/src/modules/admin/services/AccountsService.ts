@@ -1,12 +1,13 @@
 import { accountSchema, Account, RegisterAccountInput, registerAccountSchema, baseAuthSchema, BaseAuth, UpdateAccountInput } from "../schema/AccountSchema";
 import {z} from "zod";
 import { DefaultAccount, defaultAccountSchema } from "../schema/DefaultAccountSchema";
+import { buildBackendUrl } from "@/lib/backend-url";
 //---------GET ALL -------------------------
 export async function getAllAccounts(): Promise<{
   valid: Account[];
   invalid: { item: unknown; errors: z.ZodIssue[] }[];
 }> {
-  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/accounts`, {
+  const res = await fetch(buildBackendUrl("/auth/accounts"), {
     method: "GET",
     credentials: "include",
   });
@@ -33,7 +34,7 @@ export async function getAllAccounts(): Promise<{
 //---------DELETE -------------------------
 export async function logicalDeleteAccount(accountId: number): Promise<boolean> {
   const response = await fetch(
-    `${import.meta.env.VITE_BACKEND_URL}/auth/delete/${accountId}`,
+    buildBackendUrl(`/auth/delete/${accountId}`),
     {
       method: "DELETE",
       credentials: "include",
@@ -55,7 +56,7 @@ export async function logicalDeleteAccount(accountId: number): Promise<boolean> 
 
 //---------GET ONE -------------------------
 export async function getAccountById(accountId: number): Promise<DefaultAccount> {
-  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/${accountId}`, {
+  const res = await fetch(buildBackendUrl(`/auth/${accountId}`), {
     method: "GET",
     credentials: "include",
   });
@@ -73,7 +74,7 @@ export async function getAccountById(accountId: number): Promise<DefaultAccount>
 export async function updateAccount(updates: UpdateAccountInput): Promise<void> {
   console.log("[Service] Payload enviado:", JSON.stringify(updates));
   
-  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/updateAllDetails`, {
+  const res = await fetch(buildBackendUrl("/auth/updateAllDetails"), {
     method: "PUT",
     credentials: "include",
     headers: {
@@ -100,7 +101,7 @@ export async function registerAccount(registerData: RegisterAccountInput) {
         //console.log("data register",registerData);
         const parsedData = registerAccountSchema.parse(registerData);  // Aquí se valida que los datos estén en el formato correcto
         //console.log("data parsed",parsedData);
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/register`, {
+        const res = await fetch(buildBackendUrl("/auth/register"), {
         method: "POST",
         credentials: "include",
         headers: {
@@ -182,4 +183,3 @@ export function formatZodMessageFromString(message: string): string {
 
   return message || "Ocurrió un error inesperado.";
 }
-

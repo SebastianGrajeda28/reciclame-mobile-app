@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, UserPlus } from "lucide-react";
 import AssignRoleModal from "../components/AssignRoleModal";
 import CreateUserDialog from "../components/CreateUserDialog";
+import { buildBackendUrl } from "@/lib/backend-url";
 
 interface AppUser {
   id: string;
@@ -41,11 +42,10 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const headers = { Authorization: `Bearer ${session.access_token}` };
-      const base = import.meta.env.VITE_BACKEND_URL;
 
       const [usersRes, rolesRes] = await Promise.all([
-        fetch(`${base}/api/users?includeInactive=true`, { headers }),
-        fetch(`${base}/api/user-roles?includeInactive=false`, { headers }),
+        fetch(buildBackendUrl("/api/users?includeInactive=true"), { headers }),
+        fetch(buildBackendUrl("/api/user-roles?includeInactive=false"), { headers }),
       ]);
 
       if (!usersRes.ok) throw new Error(`Error ${usersRes.status}`);

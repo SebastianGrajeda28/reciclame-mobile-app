@@ -3,99 +3,81 @@ declare global {
     __forceSessionExpired?: () => void;
   }
 }
-import { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { UserProvider } from './shared/context/UserContext';
-import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import TitleSetter from './shared/components/TittleSetter';
-import Header from './shared/components/Header';
-import Footer from './shared/components/Footer';
-import SessionExpiredModal from './shared/modals/SessionExpiredModal';
-import { Toaster } from 'sonner';
 
-import Home from './shared/pages/Home';
-import Login from './shared/pages/Login';
-import Logout from './shared/pages/Logout';
-import AuthCallback from './shared/pages/AuthCallback';
-import AdminPanel from './shared/pages/AdminPanel';
-import ManagerPanel from './shared/pages/ManagerPanel';
-import ViewerPanel from './shared/pages/ViewerPanel';
-import UsersPage from './modules/admin/pages/UsersPage';
-import AdminConfigPage from './modules/admin/pages/AdminConfigPage';
-import ForgotPassword from './shared/pages/ForgotPassword';
-import ResetPassword from './shared/pages/ResetPassword';
-import MetricsDashboard from './shared/pages/MetricsDashboard';
-import { useUser } from './shared/context/UserContext';
+import { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
+import { UserProvider } from "./shared/context/UserContext";
+import { useUser } from "./shared/context/UserContext";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import TitleSetter from "./shared/components/TittleSetter";
+import Header from "./shared/components/Header";
+import SessionExpiredModal from "./shared/modals/SessionExpiredModal";
+import AppLoadingScreen from "./shared/components/AppLoadingScreen";
+import Login from "./shared/pages/Login";
+import Logout from "./shared/pages/Logout";
+import AuthCallback from "./shared/pages/AuthCallback";
+import ForgotPassword from "./shared/pages/ForgotPassword";
+import ResetPassword from "./shared/pages/ResetPassword";
+import MetricsDashboard from "./shared/pages/MetricsDashboard";
+import FunFactsPage from "./shared/pages/FunFactsPage";
+import InstructionsPage from "./shared/pages/InstructionsPage";
+import UserPage from "./shared/pages/UserPage";
 
 function RootEntry() {
   const { account, loading } = useUser();
 
-  if (loading) return <div className="p-6">Cargando...</div>;
+  if (loading) return <AppLoadingScreen />;
   if (!account) return <Navigate to="/login" replace />;
-  return <Navigate to="/metrics" replace />;
+  return <Navigate to="/metricas" replace />;
 }
 
 function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { account, loading } = useUser();
 
-  if (loading) return <div className="p-6">Cargando...</div>;
-  if (account) return <Navigate to="/metrics" replace />;
+  if (loading) return <AppLoadingScreen />;
+  if (account) return <Navigate to="/metricas" replace />;
   return <>{children}</>;
 }
 
 function AppShell() {
   const [sessionExpired, setSessionExpired] = useState(false);
-  const location = useLocation();
-  const isAuthRoute = ["/login", "/forgot-password", "/reset-password", "/auth/callback"].includes(location.pathname);
 
   useEffect(() => {
     window.__forceSessionExpired = () => setSessionExpired(true);
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen bg-[#f7f8f6] text-slate-900">
       <SessionExpiredModal open={sessionExpired} />
       <TitleSetter />
       <Header />
-      <main className={`flex-1 pt-20`}>
+      <main className="min-h-screen pt-20">
         <Routes>
-
-          {/* ── Rutas públicas ── */}
           <Route path="/" element={<RootEntry />} />
-          <Route path="/home" element={<Home />} />
           <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
           <Route path="/logout" element={<Logout />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
           <Route path="/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
 
-          <Route element={<ProtectedRoute allowedRoles={['VIEWER', 'MANAGER', 'ADMIN']} />}>
-            <Route path="/metrics" element={<MetricsDashboard />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/metricas" element={<MetricsDashboard />} />
+            <Route path="/fun-facts" element={<FunFactsPage />} />
+            <Route path="/instrucciones" element={<InstructionsPage />} />
+            <Route path="/mi-cuenta" element={<UserPage />} />
           </Route>
 
-          {/* ── VIEWER ── */}
-          <Route element={<ProtectedRoute allowedRoles={['VIEWER']} />}>
-            <Route path="/viewer" element={<ViewerPanel />} />
-          </Route>
-
-          {/* ── MANAGER ── */}
-          <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']} />}>
-            <Route path="/manager" element={<ManagerPanel />} />
-          </Route>
-
-          {/* ── ADMIN ── */}
-          <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/admin/accounts" element={<UsersPage />} />
-            <Route path="/admin/config" element={<AdminConfigPage />} />
-          </Route>
-
-          <Route path="/unauthorized" element={<p>Acceso denegado. No tienes permisos para ver esta página.</p>} />
+          <Route path="/metrics" element={<Navigate to="/metricas" replace />} />
+          <Route path="/instructions" element={<Navigate to="/instrucciones" replace />} />
+          <Route path="/admin" element={<Navigate to="/metricas" replace />} />
+          <Route path="/manager" element={<Navigate to="/metricas" replace />} />
+          <Route path="/viewer" element={<Navigate to="/metricas" replace />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
+          <Route path="/unauthorized" element={<Navigate to="/metricas" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-
         </Routes>
       </main>
-      {!isAuthRoute && <Footer />}
     </div>
   );
 }
