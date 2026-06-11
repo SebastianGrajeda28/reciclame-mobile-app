@@ -135,7 +135,7 @@ export default function UsersPage() {
               filtered.map((user) => (
                 <TableRow
                   key={user.id}
-                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="cursor-pointer hover:bg-gray-50"
                   onClick={() => setSelectedUser(user)}
                 >
                   <TableCell className="font-medium">{user.email}</TableCell>

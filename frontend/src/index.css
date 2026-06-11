@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -6,13 +6,12 @@
 html,
 body,
 #root {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--ds-font-sans);
   min-height: 100%;
   margin: 0;
   padding: 0;
 }
 
-@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -53,57 +52,43 @@ body,
 }
 
 :root {
-  --brand: #318161;
-  /* Club Bedrock */
-  --brand-light: #6C886E;
-  /* botón “Ver más” */
-  --bg-light: #F4F4F4;
-  /* color por defecto en light */
-  --bg-light-alt: #F3F0EA;
-  /* fondo claro alterno */
-  --bg-info: #C1DEB1;
-  /* Para botones informativos */
-  --bg-dark: #142E38;
-  /* fondo medio celeste */
+  --brand: var(--ds-color-primary);
+  --brand-light: var(--ds-color-primary-pressed);
+  --bg-light: var(--ds-color-background);
+  --bg-light-alt: var(--ds-color-surface-muted);
+  --bg-info: var(--ds-color-info-bg);
+  --bg-dark: var(--ds-color-secondary);
 
-  --text-light: #F4F4F4;
-  /* texto blanco */
-  --text-light-alt: #F3F0EA;
-  /* texto blanco alterno */
-  --text-dark: #142E38;
-  /* texto oscuro */
+  --text-light: var(--ds-color-text-inverse);
+  --text-light-alt: var(--ds-color-surface-muted);
+  --text-dark: var(--ds-color-text-primary);
 
-  --nav-bg: #F3F0EA;
-  /* fondo blanco */
-  --nav-text: #142E38;
-  /* tu “media azul” */
-  --nav-hover: #318161;
-  /* color al pasar el ratón */
+  --nav-bg: var(--ds-color-surface);
+  --nav-text: var(--ds-color-text-primary);
+  --nav-hover: var(--ds-color-primary);
 
-  --footer-bg: #F3F0EA;
-  /* fondo claro */
-  --footer-text: #142E38;
-  /* texto “media azul” */
+  --footer-bg: var(--ds-color-surface);
+  --footer-text: var(--ds-color-text-primary);
 
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: var(--ds-color-background);
+  --foreground: var(--ds-color-text-primary);
+  --card: var(--ds-color-surface);
+  --card-foreground: var(--ds-color-text-primary);
+  --popover: var(--ds-color-surface);
+  --popover-foreground: var(--ds-color-text-primary);
+  --primary: var(--ds-color-secondary);
+  --primary-foreground: var(--ds-color-text-inverse);
+  --secondary: var(--ds-color-surface-muted);
+  --secondary-foreground: var(--ds-color-text-primary);
+  --muted: var(--ds-color-surface-muted);
+  --muted-foreground: var(--ds-color-text-secondary);
+  --accent: var(--ds-color-surface-muted);
+  --accent-foreground: var(--ds-color-text-primary);
+  --destructive: var(--ds-color-danger);
+  --border: var(--ds-color-border);
+  --input: var(--ds-color-border);
+  --ring: var(--ds-color-primary);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -120,54 +105,6 @@ body,
 
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --nav-bg: var(--bg-dark);
-  /* #142E38 */
-  --nav-text: var(--text-light);
-  /* #F4F4F4 */
-  --nav-hover: var(--brand-light);
-  /* #6C886E */
-
-  --footer-bg: var(--bg-dark);
-  /* #142E38 */
-  --footer-text: var(--text-light);
-  /* #F4F4F4 */
-
-  --brand: #3ea87e;
-  /* Club Bedrock */
-  --brand-light: #93b094;
-}
 
 @layer base {
   html, body {
@@ -263,52 +200,45 @@ body,
 
   /* Fondo de página */
   .auth-background {
-    @apply flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900;
+    @apply flex items-center justify-center min-h-screen bg-gray-100;
   }
 
   .auth-card {
-    @apply w-[90vw] max-w-7xl h-150 mx-auto bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl grid grid-cols-1 md:grid-cols-2;
+    @apply w-[90vw] max-w-7xl h-150 mx-auto bg-white rounded-2xl overflow-hidden shadow-xl grid grid-cols-1 md:grid-cols-2;
     gap: 0;
     /* sin gap en móvil */
   }
 
   .navigate-custom {
-    @apply flex items-center gap-2 p-3 bg-[#e6f1ec] rounded-[10px] text-[#142e38] dark:bg-gray-800 dark:text-primary dark:hover:bg-gray-600 shadow;
+    @apply flex items-center gap-2 p-3 bg-[#e6f1ec] rounded-[10px] text-[#142e38] shadow;
   }
 
   .background-custom {
-  /* Color de fondo claro */
-  @apply bg-[#f3f0ea] shadow-[0_0_10px_8px_rgba(0,0,0,0.1)] dark:bg-gray-800 dark:shadow-black dark:shadow-[0_0_30px_5px_rgba(0,0,0,0.1)];
+    @apply bg-[#f3f0ea] shadow-[0_0_10px_8px_rgba(0,0,0,0.1)];
   }
-  
 
   .card-custom {
-  /* Color de fondo claro */
-  @apply  dark:bg-gray-900 shadow-gray-400 shadow-[0_0_10px_0px_rgba(0,0,0,0)]  dark:shadow-slate-700
+    @apply shadow-gray-400 shadow-[0_0_10px_0px_rgba(0,0,0,0)];
   }
 
   .button-custom {
-  /* Color de fondo claro */
-  @apply bg-[#142e38] hover:bg-gray-600 dark:bg-gray-800 dark:hover:bg-gray-600
+    @apply bg-[#142e38] hover:bg-gray-600;
   }
-  
+
   .collapsible-custom {
-    @apply bg-[#142e38] shadow-gray-300 shadow-[0_0_5px_0px_rgba(0,0,0,0)] dark:shadow-slate-700
+    @apply bg-[#142e38] shadow-gray-300 shadow-[0_0_5px_0px_rgba(0,0,0,0)];
   }
 
   .button2-custom {
-  /* Color de fondo claro */
-  @apply bg-[#142e38] hover:bg-gray-600 dark:bg-gray-900 dark:hover:bg-gray-600
+    @apply bg-[#142e38] hover:bg-gray-600;
   }
 
   .button3-custom {
-  /* Color de fondo claro */
-  @apply bg-[#318161] hover:bg-[#3ea87e] shadow-[0_0_5px_0px_rgba(0,0,0,0)] shadow-gray-500 
+    @apply bg-[#318161] hover:bg-[#3ea87e] shadow-[0_0_5px_0px_rgba(0,0,0,0)] shadow-gray-500;
   }
 
   .button4-custom {
-  /* Color de fondo claro */
-  @apply bg-[#142e38] hover:bg-gray-600 dark:bg-gray-900 dark:hover:bg-gray-600 shadow-[0_0_5px_0px_rgba(0,0,0,0)] shadow-gray-500
+    @apply bg-[#142e38] hover:bg-gray-600 shadow-[0_0_5px_0px_rgba(0,0,0,0)] shadow-gray-500;
   }
 
   .image-custom {
@@ -361,7 +291,7 @@ body,
     @apply relative                     /* ancla para sombras si hicieras spinner */
            w-[90vw] max-w-5xl           /* ancho responsivo */
            max-h-[90vh] overflow-y-auto /* ✔ evita desbordar y mantiene centrado */
-           bg-(--bg-light-alt) dark:bg-(--bg-dark)
+           bg-(--bg-light-alt)
            p-8 rounded-2xl border-none shadow-xl;
   }
 
@@ -377,7 +307,7 @@ body,
 
     /* — aspecto — */
            p-6 rounded-xl
-           bg-(--bg-light-alt) dark:bg-(--bg-dark)
+           bg-(--bg-light-alt)
            border-none shadow-xl;
   }
 

@@ -73,7 +73,7 @@ export default function ProfilePopover() {
 
         <PopoverContent align="end" className="w-72 p-0 overflow-hidden">
           {/* Cabecera del perfil */}
-          <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 border-b">
+          <div className="flex items-center gap-3 p-4 bg-gray-50 border-b">
             <Avatar className="w-12 h-12">
               <AvatarImage src="https://github.com/shadcn.png" />
               <AvatarFallback className="text-lg">{initials}</AvatarFallback>

@@ -4,8 +4,7 @@ declare global {
   }
 }
 import { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from './components/ui/theme-provider';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { UserProvider } from './shared/context/UserContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import TitleSetter from './shared/components/TittleSetter';
@@ -25,59 +24,89 @@ import UsersPage from './modules/admin/pages/UsersPage';
 import AdminConfigPage from './modules/admin/pages/AdminConfigPage';
 import ForgotPassword from './shared/pages/ForgotPassword';
 import ResetPassword from './shared/pages/ResetPassword';
+import MetricsDashboard from './shared/pages/MetricsDashboard';
+import { useUser } from './shared/context/UserContext';
 
-export default function App() {
+function RootEntry() {
+  const { account, loading } = useUser();
+
+  if (loading) return <div className="p-6">Cargando...</div>;
+  if (!account) return <Navigate to="/login" replace />;
+  return <Navigate to="/metrics" replace />;
+}
+
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { account, loading } = useUser();
+
+  if (loading) return <div className="p-6">Cargando...</div>;
+  if (account) return <Navigate to="/metrics" replace />;
+  return <>{children}</>;
+}
+
+function AppShell() {
   const [sessionExpired, setSessionExpired] = useState(false);
+  const location = useLocation();
+  const isAuthRoute = ["/login", "/forgot-password", "/reset-password", "/auth/callback"].includes(location.pathname);
+
   useEffect(() => {
     window.__forceSessionExpired = () => setSessionExpired(true);
   }, []);
 
   return (
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <UserProvider>
-        <div className="flex flex-col min-h-screen">
-          <SessionExpiredModal open={sessionExpired} />
-          <Router>
-            <TitleSetter />
-            <Header />
-            <main className="flex-1 dark:bg-gray-900 pt-20">
-              <Routes>
+    <div className="flex min-h-screen flex-col">
+      <SessionExpiredModal open={sessionExpired} />
+      <TitleSetter />
+      <Header />
+      <main className={`flex-1 pt-20`}>
+        <Routes>
 
-                {/* ── Rutas públicas ── */}
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/logout" element={<Logout />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
+          {/* ── Rutas públicas ── */}
+          <Route path="/" element={<RootEntry />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+          <Route path="/logout" element={<Logout />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
+          <Route path="/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
 
-                {/* ── VIEWER ── */}
-                <Route element={<ProtectedRoute allowedRoles={['VIEWER']} />}>
-                  <Route path="/viewer" element={<ViewerPanel />} />
-                </Route>
+          <Route element={<ProtectedRoute allowedRoles={['VIEWER', 'MANAGER', 'ADMIN']} />}>
+            <Route path="/metrics" element={<MetricsDashboard />} />
+          </Route>
 
-                {/* ── MANAGER ── */}
-                <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']} />}>
-                  <Route path="/manager" element={<ManagerPanel />} />
-                </Route>
+          {/* ── VIEWER ── */}
+          <Route element={<ProtectedRoute allowedRoles={['VIEWER']} />}>
+            <Route path="/viewer" element={<ViewerPanel />} />
+          </Route>
 
-                {/* ── ADMIN ── */}
-                <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-                  <Route path="/admin" element={<AdminPanel />} />
-                  <Route path="/admin/accounts" element={<UsersPage />} />
-                  <Route path="/admin/config" element={<AdminConfigPage />} />
-                </Route>
+          {/* ── MANAGER ── */}
+          <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']} />}>
+            <Route path="/manager" element={<ManagerPanel />} />
+          </Route>
 
-                <Route path="/unauthorized" element={<p>Acceso denegado. No tienes permisos para ver esta página.</p>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+          {/* ── ADMIN ── */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin/accounts" element={<UsersPage />} />
+            <Route path="/admin/config" element={<AdminConfigPage />} />
+          </Route>
 
-              </Routes>
-            </main>
-            <Footer />
-          </Router>
-        </div>
-        <Toaster richColors />
-      </UserProvider>
-    </ThemeProvider>
+          <Route path="/unauthorized" element={<p>Acceso denegado. No tienes permisos para ver esta página.</p>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+
+        </Routes>
+      </main>
+      {!isAuthRoute && <Footer />}
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <UserProvider>
+      <Router>
+        <AppShell />
+      </Router>
+      <Toaster richColors />
+    </UserProvider>
   );
 }

@@ -1,5 +1,4 @@
 import { Link, useLocation } from "react-router-dom";
-import { ModeToggle } from "@/components/ui/mode-toggle";
 import { useUser } from "../context/UserContext";
 import ProfilePopover from "./ProfilePopover";
 
@@ -18,9 +17,9 @@ const PANEL_ROUTES: Record<string, string> = {
 
 function getNavLinkClasses(isActive: boolean) {
   if (isActive) {
-    return "bg-white text-[#0e2a32] dark:bg-[#f3f0ea] dark:text-[#0e2a32] px-3 py-1 rounded-md text-sm font-medium";
+    return "bg-white text-[#0e2a32] px-3 py-1 rounded-md text-sm font-medium";
   }
-  return "text-gray-600 dark:text-white hover:text-black dark:hover:text-[#b9e0d8] px-3 py-1 rounded-md text-sm font-medium";
+  return "text-gray-600 hover:text-black px-3 py-1 rounded-md text-sm font-medium";
 }
 
 export default function RoleNavbar() {
@@ -55,7 +54,7 @@ export default function RoleNavbar() {
         {(userRole === "ADMIN" || userRole === "MANAGER") && (
           <Link
             to={PANEL_ROUTES[userRole]}
-            className="text-sm text-gray-800 dark:text-white font-medium hover:underline"
+            className="text-sm text-gray-800 font-medium hover:underline"
           >
             Panel de Herramientas
           </Link>
@@ -64,7 +63,6 @@ export default function RoleNavbar() {
 
       <div className="flex items-center gap-4">
         <ProfilePopover />
-        <ModeToggle />
       </div>
     </div>
   );

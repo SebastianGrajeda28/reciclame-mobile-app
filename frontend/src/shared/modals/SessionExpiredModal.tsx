@@ -12,7 +12,7 @@ export default function SessionExpiredModal({ open }: Props) {
       <div className="background-custom rounded-xl w-md sm:w-4/5 sm:max-w-md relative p-6 text-center">
 
         {/* Título */}
-        <h2 className="text-xl font-bold mb-4 text-[var(--brand)] dark:text-[var(--brand)]">
+        <h2 className="text-xl font-bold mb-4 text-[var(--brand)]">
           Sesión expirada
         </h2>
 
