@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useUser } from "@/shared/context/UserContext";
-import FunFactCard, { type FunFact, type WasteType } from "../components/FunFactCard";
+import FunFactCard, { type FunFact } from "../components/FunFactCard";
 import {
   createFunFact,
   deactivateFunFact,
@@ -18,26 +18,15 @@ import {
   updateFunFact as updateFunFactRequest,
   type FunFactPayload,
 } from "../services/FunFactsService";
+import { getWasteTypes, type WasteType } from "../services/WasteTypesService";
 
 type FunFactsTab = "active" | "inactive";
 
-const wasteTypes: WasteType[] = [
-  { id: "11111111-1111-1111-1111-000000000001", label: "Cartón" },
-  { id: "11111111-1111-1111-1111-000000000002", label: "Plásticos PET" },
-  { id: "11111111-1111-1111-1111-000000000003", label: "Residuos generales" },
-  { id: "11111111-1111-1111-1111-000000000004", label: "Vidrio" },
-  { id: "11111111-1111-1111-1111-000000000005", label: "Pilas" },
-  { id: "11111111-1111-1111-1111-000000000006", label: "RAEE" },
-  { id: "11111111-1111-1111-1111-000000000007", label: "Otros Plásticos" },
-  { id: "11111111-1111-1111-1111-000000000008", label: "Metales" },
-  { id: "11111111-1111-1111-1111-000000000009", label: "Papel" },
-  { id: "11111111-1111-1111-1111-000000000010", label: "Residuos orgánicos" },
-];
-
 const FUN_FACTS_QUERY_KEY = ["admin-fun-facts"];
+const WASTE_TYPES_QUERY_KEY = ["admin-waste-types"];
 
-function getWasteTypeLabel(wasteTypeId: string) {
-  return wasteTypes.find((type) => type.id === wasteTypeId)?.label ?? "Sin tipo";
+function getWasteTypeName(wasteTypes: WasteType[], wasteTypeId: string) {
+  return wasteTypes.find((type) => type.id === wasteTypeId)?.name ?? "Sin tipo";
 }
 
 function FunFactsSkeleton() {
@@ -73,7 +62,7 @@ function FunFactsSkeleton() {
 export default function FunFactsPage() {
   const { session } = useUser();
   const queryClient = useQueryClient();
-  const [wasteTypeId, setWasteTypeId] = useState(wasteTypes[0]?.id ?? "");
+  const [wasteTypeId, setWasteTypeId] = useState("");
   const [text, setText] = useState("");
   const [selectedTab, setSelectedTab] = useState<FunFactsTab>("active");
   const [savingFactId, setSavingFactId] = useState<string | null>(null);
@@ -88,6 +77,18 @@ export default function FunFactsPage() {
     queryFn: () => getFunFacts(session!.access_token),
     enabled: !!session,
     staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const {
+    data: wasteTypes = [],
+    isLoading: isWasteTypesLoading,
+    error: wasteTypesError,
+  } = useQuery({
+    queryKey: WASTE_TYPES_QUERY_KEY,
+    queryFn: () => getWasteTypes(session!.access_token),
+    enabled: !!session,
+    staleTime: 30 * 60_000,
     refetchOnWindowFocus: false,
   });
 
@@ -144,10 +145,15 @@ export default function FunFactsPage() {
   const displayedFacts = selectedTab === "active" ? activeFacts : inactiveFacts;
   const isCreating = createMutation.isPending;
   const isMutating = isCreating || updateMutation.isPending || statusMutation.isPending;
-  const canSubmit = wasteTypeId.trim().length > 0 && text.trim().length > 0 && !isCreating;
+  const canSubmit =
+    wasteTypeId.trim().length > 0 &&
+    text.trim().length > 0 &&
+    !isCreating &&
+    !isWasteTypesLoading &&
+    !wasteTypesError;
 
   function resetCreateForm() {
-    setWasteTypeId(wasteTypes[0]?.id ?? "");
+    setWasteTypeId("");
     setText("");
   }
 
@@ -201,18 +207,23 @@ export default function FunFactsPage() {
               <label htmlFor="waste-type" className="text-sm font-medium">
                 Tipo de residuo
               </label>
-              <Select value={wasteTypeId} onValueChange={setWasteTypeId} disabled={isCreating}>
+              <Select value={wasteTypeId} onValueChange={setWasteTypeId} disabled={isCreating || isWasteTypesLoading || !!wasteTypesError}>
                 <SelectTrigger id="waste-type" className="bg-white dark:bg-gray-900">
-                  <SelectValue placeholder="Selecciona un tipo de residuo" />
+                  <SelectValue placeholder={isWasteTypesLoading ? "Cargando tipos..." : "Selecciona un tipo de residuo"} />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-900">
                   {wasteTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
-                      {type.label}
+                      {type.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {wasteTypesError && (
+                <p className="text-sm text-red-600 dark:text-red-300">
+                  No se pudieron cargar los tipos de residuo.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -287,7 +298,7 @@ export default function FunFactsPage() {
                     key={fact.id}
                     fact={fact}
                     wasteTypes={wasteTypes}
-                    getWasteTypeLabel={getWasteTypeLabel}
+                    getWasteTypeLabel={(id) => getWasteTypeName(wasteTypes, id)}
                     isSaving={savingFactId === fact.id}
                     onUpdate={updateFunFact}
                     onChangeStatus={changeFunFactStatus}

@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export type WasteType = {
   id: string;
-  label: string;
+  name: string;
 };
 
 export type FunFact = {
@@ -114,7 +114,7 @@ export default function FunFactCard({
                 <SelectContent className="bg-white dark:bg-gray-900">
                   {wasteTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
-                      {type.label}
+                      {type.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
