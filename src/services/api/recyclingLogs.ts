@@ -25,6 +25,12 @@ function normalizeUntilDate(untilDate: string | Date): string {
  * @throws Error si la inserción falla (red, RLS, restricciones de FK, etc.).
  */
 export async function createRecyclingLog(input: RecyclingLogInput): Promise<RecyclingLog> {
+  const { data: wasteType } = await supabase
+    .from('waste_types')
+    .select('estimated_weight_g')
+    .eq('id', input.wasteTypeId)
+    .single();
+
   const { data, error } = await supabase
     .from('recycling_records')
     .insert({
@@ -34,9 +40,10 @@ export async function createRecyclingLog(input: RecyclingLogInput): Promise<Recy
       recycling_point_id: input.recyclingPointId,
       detection_type: input.detectionType ?? null,
       confidence_score: input.confidenceScore ?? null,
+      estimated_weight: wasteType?.estimated_weight_g ?? null,
       status: 'confirmed',
     })
-    .select('id, user_id, waste_type_id, bin_type_id, recycling_point_id, detection_type, confidence_score, created_at')
+    .select('id, user_id, waste_type_id, bin_type_id, recycling_point_id, detection_type, confidence_score, estimated_weight, created_at')
     .single();
 
   if (error || !data) {
