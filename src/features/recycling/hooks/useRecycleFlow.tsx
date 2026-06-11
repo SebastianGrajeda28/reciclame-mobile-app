@@ -12,6 +12,7 @@ import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import {
   advanceStep,
+  clearPendingSession,
   flushAndStartNewSession,
   flushSession,
   type FlowStep,
@@ -130,7 +131,12 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
   const resetFlow = useCallback(async (outcome: 'abandoned' | 'failed' = 'abandoned') => {
     if (sessionRef.current && !sessionRef.current.outcome) {
       sessionRef.current.outcome = outcome;
-      await flushSession(sessionRef.current);
+      await savePendingSession(sessionRef.current);
+      const flushed = await flushSession(sessionRef.current);
+      if (flushed) {
+        await clearPendingSession();
+      }
+      // if flush failed: AsyncStorage retains it, flushAndStartNewSession retries next flow
     }
     sessionRef.current = null;
     setState({});

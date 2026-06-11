@@ -73,10 +73,10 @@ export function createNewSession(userId: string | null): LocalRecyclingSession {
   };
 }
 
-export async function flushSession(session: LocalRecyclingSession): Promise<void> {
-  if (!session.outcome) return;
+export async function flushSession(session: LocalRecyclingSession): Promise<boolean> {
+  if (!session.outcome) return false;
   try {
-    await supabase.from('recycling_sessions').insert({
+    const { error } = await supabase.from('recycling_sessions').insert({
       id: session.sessionId,
       user_id: session.userId,
       outcome: session.outcome,
@@ -91,8 +91,9 @@ export async function flushSession(session: LocalRecyclingSession): Promise<void
       started_at: session.startedAt,
       ended_at: new Date().toISOString(),
     });
+    return !error;
   } catch {
-    // silent — metrics are best-effort, never block the user
+    return false;
   }
 }
 
@@ -102,8 +103,11 @@ export async function flushAndStartNewSession(userId: string | null): Promise<Lo
     pending.outcome = 'abandoned';
   }
   if (pending) {
-    await flushSession(pending);
-    await clearPendingSession();
+    const flushed = await flushSession(pending);
+    if (flushed) {
+      await clearPendingSession();
+    }
+    // if flush failed (no network): leave in AsyncStorage, retry next time
   }
   const next = createNewSession(userId);
   await savePendingSession(next);
