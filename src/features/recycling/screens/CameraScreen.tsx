@@ -10,15 +10,22 @@ import { useCameraCapture } from '@/src/features/recycling/hooks/useCameraCaptur
 import { useCancelCapture } from '@/src/features/recycling/hooks/useCancelCapture';
 import { useGalleryPicker } from '@/src/features/recycling/hooks/useGalleryPicker';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useAuth } from '@/src/hooks/useAuth';
 import { AppText, theme } from '@/src/ui';
 
 export function CameraScreen() {
   const navigation = useNavigation();
-  const { setCapturedPhotoUri, resetFlow } = useRecycleFlow();
+  const { setCapturedPhotoUri, resetFlow, startNewFlow, markStep } = useRecycleFlow();
+  const { session } = useAuth();
+
+  useEffect(() => {
+    startNewFlow(session?.user.id ?? null);
+    markStep('camera');
+  }, []);
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {
-      resetFlow();
+      resetFlow('abandoned');
     });
   }, [navigation, resetFlow]);
   const { cameraRef, flash, toggleFlash, capture } = useCameraCapture();

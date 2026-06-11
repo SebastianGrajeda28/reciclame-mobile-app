@@ -22,7 +22,7 @@ import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ProcessingScreen() {
   const navigation = useNavigation();
-  const { state, setPrediction, clearPrediction, clearSelectedContainer } = useRecycleFlow();
+  const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { fact } = useRotatingFunFact();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
@@ -39,6 +39,10 @@ export function ProcessingScreen() {
       }
     });
   }, [navigation, clearPrediction]);
+
+  useEffect(() => {
+    markStep('processing');
+  }, [markStep]);
 
   useEffect(() => {
     if (state.finalWasteTypeId) {
