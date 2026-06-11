@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Edit, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,38 +10,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
-export type WasteType = {
-  id: string;
-  name: string;
-};
-
-export type FunFact = {
-  id: string;
-  text: string;
-  wasteTypeId: string;
-  isActive: boolean;
-};
+import type { FunFact, FunFactPayload } from "../services/FunFactsService";
+import type { WasteType } from "../services/WasteTypesService";
 
 type PendingAction = "edit" | "deactivate" | "restore" | null;
 
 type FunFactCardProps = {
   fact: FunFact;
   wasteTypes: WasteType[];
-  getWasteTypeLabel: (wasteTypeId: string) => string;
   isSaving?: boolean;
-  onUpdate: (id: string, values: Pick<FunFact, "text" | "wasteTypeId">) => Promise<void> | void;
+  onUpdate: (id: string, values: FunFactPayload) => Promise<void> | void;
   onChangeStatus: (id: string, isActive: boolean) => Promise<void> | void;
 };
 
 export default function FunFactCard({
   fact,
   wasteTypes,
-  getWasteTypeLabel,
   isSaving = false,
   onUpdate,
   onChangeStatus,
@@ -51,6 +38,8 @@ export default function FunFactCard({
   const [editText, setEditText] = useState(fact.text);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
+  const wasteTypeName =
+    wasteTypes.find((type) => type.id === fact.wasteTypeId)?.name ?? "Sin tipo";
   const canSave = editWasteTypeId.trim().length > 0 && editText.trim().length > 0;
 
   function cancelEdit() {
@@ -62,10 +51,7 @@ export default function FunFactCard({
   async function confirmPendingAction() {
     try {
       if (pendingAction === "edit") {
-        await onUpdate(fact.id, {
-          text: editText.trim(),
-          wasteTypeId: editWasteTypeId,
-        });
+        await onUpdate(fact.id, { text: editText.trim(), wasteTypeId: editWasteTypeId });
         setIsEditing(false);
       }
 
@@ -80,7 +66,7 @@ export default function FunFactCard({
 
       setPendingAction(null);
     } catch {
-      // El toast de error se muestra desde la mutación de la página.
+      // El error se notifica desde la mutación.
     }
   }
 
@@ -100,18 +86,18 @@ export default function FunFactCard({
 
   return (
     <>
-      <div className={`rounded-xl border p-5 shadow-sm ${fact.isActive ? "bg-slate-50 dark:bg-gray-800/60" : "bg-white dark:bg-gray-900 opacity-80"}`}>
+      <article
+        className={`rounded-2xl bg-[#eef3f8] px-5 py-5 shadow-[0_3px_0_rgba(15,23,42,0.08)] ${fact.isActive ? "" : "opacity-80"}`}
+      >
         {isEditing ? (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor={`edit-waste-type-${fact.id}`}>
-                Tipo de residuo
-              </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-[#0b2f4e]">Tipo de residuo</span>
               <Select value={editWasteTypeId} onValueChange={setEditWasteTypeId} disabled={isSaving}>
-                <SelectTrigger id={`edit-waste-type-${fact.id}`} className="bg-white dark:bg-gray-900">
+                <SelectTrigger className="w-full border-[#d9dee2] bg-white">
                   <SelectValue placeholder="Selecciona un tipo de residuo" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-900">
+                <SelectContent className="bg-white">
                   {wasteTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name}
@@ -119,71 +105,86 @@ export default function FunFactCard({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </label>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor={`edit-text-${fact.id}`}>
-                Texto del dato curioso
-              </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-[#0b2f4e]">Texto del fun fact</span>
               <Textarea
-                id={`edit-text-${fact.id}`}
                 value={editText}
                 onChange={(event) => setEditText(event.target.value)}
                 disabled={isSaving}
-                className="min-h-24 bg-white dark:bg-gray-900"
+                className="min-h-24 resize-none border-[#d9dee2] bg-white shadow-none focus-visible:ring-emerald-500"
               />
-            </div>
+            </label>
 
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" disabled={!canSave || isSaving} onClick={() => setPendingAction("edit")}>
-                <Check className="w-4 h-4" />
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                className="bg-[#18b566] text-white hover:bg-[#129a56]"
+                disabled={!canSave || isSaving}
+                onClick={() => setPendingAction("edit")}
+              >
+                <Check className="h-4 w-4" />
                 Confirmar cambio
               </Button>
-              <Button type="button" variant="outline" size="sm" disabled={isSaving} onClick={cancelEdit}>
-                <X className="w-4 h-4" />
+              <Button type="button" variant="outline" disabled={isSaving} onClick={cancelEdit}>
+                <X className="h-4 w-4" />
                 Cancelar
               </Button>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-3">
-              <p className="text-sm leading-6 text-gray-800 dark:text-gray-100">
-                {fact.text}
-              </p>
-              <Badge
-                variant={fact.isActive ? "secondary" : "outline"}
-                className={fact.isActive ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100" : undefined}
-              >
-                Tipo de residuo: {getWasteTypeLabel(fact.wasteTypeId)}
-              </Badge>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
+              <p className="text-lg leading-6 text-slate-900">{fact.text}</p>
+              <span className="mt-3 inline-flex rounded-full bg-[#d7f5e7] px-3 py-1 text-xs font-medium text-[#0b7a4b]">
+                Tipo de residuo: {wasteTypeName}
+              </span>
             </div>
 
-            <div className="flex gap-2 sm:shrink-0">
+            <div className="flex shrink-0 items-center gap-3">
               {fact.isActive ? (
                 <>
-                  <Button type="button" variant="outline" size="sm" disabled={isSaving} onClick={() => setIsEditing(true)}>
-                    <Edit className="w-4 h-4" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 border-[#9bb7cf] text-[#0b2f4e]"
+                    disabled={isSaving}
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
                     Editar
                   </Button>
-                  <Button type="button" variant="destructive" size="sm" disabled={isSaving} onClick={() => setPendingAction("deactivate")}>
-                    <Trash2 className="w-4 h-4" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    disabled={isSaving}
+                    onClick={() => setPendingAction("deactivate")}
+                  >
+                    <Trash2 className="h-4 w-4" />
                     Desactivar
                   </Button>
                 </>
               ) : (
-                <Button type="button" variant="outline" size="sm" disabled={isSaving} onClick={() => setPendingAction("restore")}>
-                  <RotateCcw className="w-4 h-4" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 border-[#9bb7cf] text-[#0b2f4e]"
+                  disabled={isSaving}
+                  onClick={() => setPendingAction("restore")}
+                >
+                  <RotateCcw className="h-4 w-4" />
                   Restaurar
                 </Button>
               )}
             </div>
           </div>
         )}
-      </div>
+      </article>
 
       <AlertDialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
-        <AlertDialogContent className="bg-white dark:bg-gray-900">
+        <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>{actionTitle}</AlertDialogTitle>
             <AlertDialogDescription>{actionDescription}</AlertDialogDescription>
