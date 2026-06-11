@@ -1,74 +1,109 @@
-import { useMemo, useState } from "react";
-import { CalendarIcon, ChevronDown, Package2, Recycle, Scale, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
+import { CalendarIcon, CheckCircle2, ScanSearch, Scale, Users } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
+import { fetchDashboard, type DashboardResponse } from "@/modules/dashboard/services/dashboardService";
+import { useUser } from "../context/UserContext";
 import { AppPage, AppSurface } from "../components/AppPage";
 
 type DatePreset = "last7" | "last30" | "historical" | "custom";
+type DashboardTab = "flow" | "results";
 
-const recyclingMetrics = [
+const kpiMetrics = [
   {
-    title: "Eventos de reciclaje",
-    value: "567",
-    subtitle: "eventos completados",
-    delta: "+10% este mes",
-    detail: "32 esta semana",
-    icon: Recycle,
+    title: "Reciclajes totales",
+    value: "1,284",
+    subtitle: "Acciones de reciclaje confirmadas",
+    delta: "43 confirmados esta semana",
+    icon: CheckCircle2,
   },
   {
-    title: "Peso reciclado",
-    value: "16.2 kg",
-    subtitle: "material recolectado",
-    delta: "+10% este mes",
-    detail: "124 items",
+    title: "Kg reciclados",
+    value: "38.5 kg",
+    subtitle: "Peso total reciclado en el periodo",
+    delta: "PET lidera con 8.1 kg",
     icon: Scale,
   },
   {
-    title: "Promedio de items",
-    value: "2.5",
-    subtitle: "por evento de reciclaje",
-    delta: "+1% este mes",
-    detail: "1.9 kg promedio",
-    icon: Package2,
+    title: "Usuarios activos",
+    value: "142",
+    subtitle: "Usuarios con actividad en el periodo",
+    delta: "12 usuarios nuevos",
+    icon: Users,
+  },
+  {
+    title: "Tasa de confirmación",
+    value: "87%",
+    subtitle: "Sesiones que terminaron en confirmación",
+    delta: "43 de 52 llegaron a confirmar",
+    icon: ScanSearch,
   },
 ];
 
-const categoryMetrics = [
-  { key: "plastico", name: "Plástico", weightKg: 42.8, events: 182, share: 42, trend: "+12%" },
-  { key: "papel", name: "Papel", weightKg: 27.3, events: 143, share: 27, trend: "+7%" },
-  { key: "vidrio", name: "Vidrio", weightKg: 18.9, events: 94, share: 18, trend: "+4%" },
-  { key: "metal", name: "Metal", weightKg: 12.7, events: 71, share: 13, trend: "+3%" },
-  { key: "carton", name: "Cartón", weightKg: 11.1, events: 63, share: 11, trend: "+6%" },
-  { key: "tetrapak", name: "Tetra Pak", weightKg: 9.8, events: 51, share: 10, trend: "+5%" },
-  { key: "electronicos", name: "Electrónicos", weightKg: 8.4, events: 26, share: 8, trend: "+9%" },
-  { key: "textiles", name: "Textiles", weightKg: 6.2, events: 19, share: 6, trend: "+2%" },
-  { key: "organicos", name: "Orgánicos", weightKg: 5.5, events: 14, share: 5, trend: "+4%" },
+const topResidues = [
+  { key: "pet", name: "Plásticos PET", scans: 312, confirmed: 271, rate: 87, kilograms: 8.1 },
+  { key: "carton", name: "Cartón", scans: 198, confirmed: 165, rate: 83, kilograms: 24.8 },
+  { key: "papel", name: "Papel mixto", scans: 174, confirmed: 146, rate: 84, kilograms: 3.9 },
+  { key: "tetrapak", name: "Tetra Pak", scans: 129, confirmed: 101, rate: 78, kilograms: 1.8 },
+  { key: "vidrio", name: "Vidrio", scans: 118, confirmed: 97, rate: 82, kilograms: 5.1 },
+  { key: "latas", name: "Latas", scans: 93, confirmed: 76, rate: 81, kilograms: 2.4 },
 ];
 
-const residueOptions = categoryMetrics.map(({ key, name }) => ({ key, name }));
+const recognitionQuality = [
+  { name: "Alta confianza", value: 71, color: "#22c76f" },
+  { name: "Baja confianza", value: 16, color: "#f4b740" },
+  { name: "Corregidos por usuario", value: 13, color: "#0b2f4e" },
+];
+
+const funnelSteps = [
+  { label: "Iniciaron", value: 100, color: "#0b2f4e" },
+  { label: "Processing", value: 91, color: "#1c8fdf" },
+  { label: "Mapa", value: 67, color: "#22c76f" },
+  { label: "Instrucciones", value: 52, color: "#3ed08b" },
+  { label: "Confirmaron", value: 43, color: "#129a56" },
+];
+
+const weeklyTrend = [
+  { label: "sem. 06", value: 41 },
+  { label: "sem. 07", value: 46 },
+  { label: "sem. 08", value: 52 },
+  { label: "sem. 09", value: 49 },
+  { label: "sem. 10", value: 61 },
+  { label: "sem. 11", value: 58 },
+  { label: "sem. 12", value: 64 },
+  { label: "sem. 13", value: 67 },
+];
+
+const detailRows = [
+  { residue: "Plásticos PET", scans: 312, confirmed: 271, rate: "87%", kilograms: "8.1 kg" },
+  { residue: "Cartón", scans: 198, confirmed: 165, rate: "83%", kilograms: "24.8 kg" },
+  { residue: "Papel mixto", scans: 174, confirmed: 146, rate: "84%", kilograms: "3.9 kg" },
+  { residue: "Tetra Pak", scans: 129, confirmed: 101, rate: "78%", kilograms: "1.8 kg" },
+  { residue: "Vidrio", scans: 118, confirmed: 97, rate: "82%", kilograms: "5.1 kg" },
+  { residue: "Latas", scans: 93, confirmed: 76, rate: "81%", kilograms: "2.4 kg" },
+];
 
 const categoryChartConfig = {
-  share: {
-    label: "Participación",
+  confirmed: {
+    label: "Confirmados",
     color: "#22c76f",
   },
 } satisfies ChartConfig;
 
 const weeklyChartConfig = {
   value: {
-    label: "Eventos",
+    label: "Confirmados",
+    color: "#22c76f",
+  },
+} satisfies ChartConfig;
+
+const qualityChartConfig = {
+  value: {
+    label: "Participación",
     color: "#22c76f",
   },
 } satisfies ChartConfig;
@@ -78,29 +113,26 @@ function SummaryCard({
   value,
   subtitle,
   delta,
-  detail,
   icon: Icon,
 }: {
   title: string;
   value: string;
   subtitle: string;
   delta: string;
-  detail: string;
   icon: typeof Users;
 }) {
   return (
-    <article className="relative min-h-[176px] overflow-hidden rounded-lg bg-[#0b2f4e] px-6 py-5 text-white shadow-[0_10px_28px_rgba(11,47,78,0.18)]">
-      <div className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#22c76f] text-[#08324f]">
+    <article className="relative min-h-[154px] overflow-hidden rounded-lg bg-[#0b2f4e] px-5 py-4 text-white shadow-[0_10px_28px_rgba(11,47,78,0.18)]">
+      <div className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#22c76f] text-[#08324f]">
         <Icon className="h-5 w-5" />
       </div>
 
       <p className="pr-14 text-sm font-extrabold uppercase tracking-[0.02em]">{title}</p>
-      <p className="mt-4 text-[2.2rem] font-extrabold leading-9">{value}</p>
-      <p className="mt-2 text-sm text-white/76">{subtitle}</p>
+      <p className="mt-3 text-[2rem] font-extrabold leading-8">{value}</p>
+      <p className="mt-1.5 text-sm text-white/76">{subtitle}</p>
 
-      <div className="mt-6 flex items-center gap-2 text-[11px]">
-        <span className="rounded-full bg-[#0f8f57] px-2 py-1 font-medium text-[#9ff5c6]">{delta}</span>
-        <span className="text-white/72">{detail}</span>
+      <div className="mt-4 text-[11px]">
+        <span className="inline-flex rounded-full bg-[#0f8f57] px-2 py-1 font-medium text-[#9ff5c6]">{delta}</span>
       </div>
     </article>
   );
@@ -130,168 +162,114 @@ function differenceInDaysInclusive(dateFrom: Date, dateTo: Date) {
   return Math.max(1, Math.floor((end - start) / 86400000) + 1);
 }
 
-function formatShortDay(date: Date) {
-  return new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short" }).format(date);
-}
-
-function formatShortMonth(date: Date) {
-  return new Intl.DateTimeFormat("es-PE", { month: "short", year: "2-digit" }).format(date);
-}
-
-function buildMockValue(seed: number, weight = 0) {
-  const wave = Math.sin(seed * 1.35 + weight) * 8;
-  const pulse = ((seed * 11) % 17) + 14;
-  return Math.max(8, Math.round(pulse + wave));
-}
-
-function buildActivitySeries(dateFrom: Date, dateTo: Date, selectedResidues: string[]) {
-  const totalDays = differenceInDaysInclusive(dateFrom, dateTo);
-  const residueWeight = selectedResidues.reduce((sum, residue, index) => sum + residue.length + index * 3, 0) || 11;
-  const selectionFactor = Math.max(0.5, selectedResidues.length / residueOptions.length);
-  const buildSeriesValue = (seed: number, weight: number, offset = 0) =>
-    Math.max(4, Math.round((buildMockValue(seed, weight + residueWeight / 10) + offset) * selectionFactor));
-
-  if (totalDays <= 14) {
-    return {
-      mode: "bar" as const,
-      granularityLabel: "Vista diaria",
-      description: `Eventos procesados durante los ultimos ${totalDays} dias.`,
-      data: Array.from({ length: totalDays }, (_, index) => {
-        const current = addDays(dateFrom, index);
-        return {
-          label: formatShortDay(current),
-          value: buildSeriesValue(index, totalDays / 3),
-        };
-      }),
-    };
-  }
-
-  if (totalDays <= 90) {
-    const buckets = [];
-    let cursor = startOfDay(dateFrom);
-    let bucketIndex = 0;
-
-    while (cursor <= dateTo) {
-      const bucketStart = cursor;
-      const bucketEnd = addDays(bucketStart, 6) > dateTo ? dateTo : addDays(bucketStart, 6);
-      buckets.push({
-        label: `${formatShortDay(bucketStart)} - ${formatShortDay(bucketEnd)}`,
-        value: buildSeriesValue(bucketIndex, totalDays / 5, 18),
-      });
-      cursor = addDays(bucketEnd, 1);
-      bucketIndex += 1;
-    }
-
-    return {
-      mode: "line" as const,
-      granularityLabel: "Vista semanal",
-      description: "Eventos agregados por semana dentro del rango seleccionado.",
-      data: buckets,
-    };
-  }
-
-  const buckets = [];
-  const cursor = new Date(dateFrom.getFullYear(), dateFrom.getMonth(), 1);
-  let bucketIndex = 0;
-
-  while (cursor <= dateTo) {
-    buckets.push({
-      label: formatShortMonth(cursor),
-      value: buildSeriesValue(bucketIndex, totalDays / 7, 26),
-    });
-    cursor.setMonth(cursor.getMonth() + 1);
-    bucketIndex += 1;
-  }
-
-  return {
-    mode: "line" as const,
-    granularityLabel: "Vista mensual",
-    description: "Eventos agregados por mes dentro del rango seleccionado.",
-    data: buckets,
-  };
-}
-
 function formatRangeLabel(dateFrom: Date, dateTo: Date) {
   return `${formatDate(dateFrom)} - ${formatDate(dateTo)}`;
 }
 
-function ResidueMultiSelect({
-  selectedResidues,
-  onToggle,
-}: {
-  selectedResidues: string[];
-  onToggle: (key: string) => void;
-}) {
-  const allSelected = selectedResidues.length === residueOptions.length;
-  const buttonLabel = allSelected ? "Todos los residuos" : `${selectedResidues.length} residuos`;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-2 rounded-full border border-[#d7e6f2] bg-[#eef3f8] px-3 text-xs font-semibold text-[#0b2f4e] transition hover:border-[#bdd3e4]"
-        >
-          {buttonLabel}
-          <ChevronDown className="h-3.5 w-3.5" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Residuos visibles</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {residueOptions.map((residue) => (
-          <DropdownMenuCheckboxItem
-            key={residue.key}
-            checked={selectedResidues.includes(residue.key)}
-            onSelect={(event) => event.preventDefault()}
-            onCheckedChange={() => onToggle(residue.key)}
-          >
-            {residue.name}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 export default function MetricsDashboard() {
+  const { session } = useUser();
   const [dateFrom, setDateFrom] = useState<Date>(new Date(2026, 5, 1));
   const [dateTo, setDateTo] = useState<Date>(new Date(2026, 5, 11));
   const [datePreset, setDatePreset] = useState<DatePreset>("last7");
-  const [selectedResidues, setSelectedResidues] = useState<string[]>(() => residueOptions.map((item) => item.key));
-  const filteredCategoryMetrics = useMemo(
-    () => categoryMetrics.filter((metric) => selectedResidues.includes(metric.key)),
-    [selectedResidues]
-  );
-  const activitySeries = useMemo(
-    () => buildActivitySeries(dateFrom, dateTo, selectedResidues),
-    [dateFrom, dateTo, selectedResidues]
-  );
+  const [activeTab, setActiveTab] = useState<DashboardTab>("flow");
+  const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const totalDays = useMemo(() => differenceInDaysInclusive(dateFrom, dateTo), [dateFrom, dateTo]);
-  const usersMetric = useMemo(
-    () => ({
-      title: "Usuarios registrados",
-      value: "1234",
-      subtitle: "base total registrada en la plataforma",
-      delta: `+${Math.max(5, Math.round(totalDays * 1.6))} nuevos`,
-      detail: formatRangeLabel(dateFrom, dateTo),
-      icon: Users,
-    }),
-    [dateFrom, dateTo, totalDays]
+  const topResidueChartHeight = Math.max(220, (dashboardData?.topResidues.length ?? topResidues.length) * 30 + 20);
+
+  useEffect(() => {
+    if (!session?.access_token) {
+      return;
+    }
+
+    let cancelled = false;
+
+    fetchDashboard(session.access_token, dateFrom.toISOString(), dateTo.toISOString())
+      .then((data) => {
+        if (!cancelled) {
+          setDashboardData(data);
+        }
+      })
+      .catch((error) => {
+        console.error("[MetricsDashboard] No se pudo cargar dashboard real:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.access_token, dateFrom, dateTo]);
+
+  const renderedKpis = useMemo(
+    () =>
+      dashboardData
+        ? [
+            {
+              title: "Reciclajes totales",
+              value: dashboardData.kpis.totalRecyclings.toLocaleString("es-PE"),
+              subtitle: "Acciones de reciclaje confirmadas",
+              delta: `${dashboardData.funnel[4]?.value ?? 0} confirmados en el periodo`,
+              icon: CheckCircle2,
+            },
+            {
+              title: "Kg reciclados",
+              value: `${dashboardData.kpis.totalKg.toFixed(1)} kg`,
+              subtitle: "Peso total reciclado en el periodo",
+              delta:
+                dashboardData.detailRows[0] != null
+                  ? `${dashboardData.detailRows[0].residue} lidera con ${dashboardData.detailRows[0].kilograms.toFixed(1)} kg`
+                  : "Sin registros en el periodo",
+              icon: Scale,
+            },
+            {
+              title: "Usuarios activos",
+              value: dashboardData.kpis.activeUsersInPeriod.toLocaleString("es-PE"),
+              subtitle: "Usuarios con actividad en el periodo",
+              delta: `${dashboardData.kpis.newUsersInPeriod} usuarios nuevos`,
+              icon: Users,
+            },
+            {
+              title: "Tasa de confirmación",
+              value: `${dashboardData.kpis.confirmationRate}%`,
+              subtitle: "Sesiones que terminaron en confirmación",
+              delta: `${dashboardData.funnel[4]?.value ?? 0} de ${dashboardData.funnel[0]?.value ?? 0} sesiones confirmadas`,
+              icon: ScanSearch,
+            },
+          ]
+        : kpiMetrics,
+    [dashboardData, dateFrom, dateTo]
   );
-  const categoryChartHeight = Math.max(360, filteredCategoryMetrics.length * 44 + 44);
 
-  const toggleResidue = (key: string) => {
-    setSelectedResidues((current) => {
-      const exists = current.includes(key);
+  const renderedFunnel = dashboardData?.funnel.map((step, index) => ({
+    ...step,
+    color: funnelSteps[index]?.color ?? "#0b2f4e",
+  })) ?? funnelSteps;
 
-      if (exists) {
-        return current.length === 1 ? current : current.filter((item) => item !== key);
-      }
+  const renderedTopResidues =
+    dashboardData?.topResidues.map((row, index) => ({
+      key: `${row.name}-${index}`,
+      name: row.name,
+      confirmed: row.confirmed,
+    })) ?? topResidues;
 
-      return [...current, key];
-    });
-  };
+  const renderedRecognitionQuality =
+    dashboardData?.recognitionQuality.map((row) => ({
+      name: row.name,
+      value: row.percentage,
+      count: row.count,
+      color: row.color,
+    })) ?? recognitionQuality.map((row) => ({ ...row, count: row.value }));
+
+  const renderedTrend = dashboardData?.trend ?? weeklyTrend;
+
+  const renderedDetailRows =
+    dashboardData?.detailRows.map((row) => ({
+      residue: row.residue,
+      scans: row.scans,
+      confirmed: row.confirmed,
+      rate: `${row.rate}%`,
+      kilograms: `${row.kilograms.toFixed(1)} kg`,
+    })) ?? detailRows;
+
+  const funnelMaxValue = Math.max(...renderedFunnel.map((step) => step.value), 1);
 
   const applyPreset = (preset: DatePreset) => {
     setDatePreset(preset);
@@ -320,12 +298,12 @@ export default function MetricsDashboard() {
 
   return (
     <AppPage>
-      <div className="flex flex-col gap-4 md:min-h-[88px] md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:min-h-[72px] md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">
-            Metricas consolidadas
+            Métricas
           </h1>
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-500">
             Vista general del rendimiento de reciclaje y participacion dentro de la plataforma.
           </p>
         </div>
@@ -428,174 +406,274 @@ export default function MetricsDashboard() {
         </div>
       </div>
 
-      <AppSurface className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {recyclingMetrics.map((metric) => (
+      <AppSurface className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {renderedKpis.map((metric) => (
           <SummaryCard key={metric.title} {...metric} />
         ))}
-        <SummaryCard {...usersMetric} />
       </AppSurface>
 
-      <AppSurface className="mt-8 grid gap-6 xl:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-[#0b2f4e]">Reciclaje por categoria</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Distribucion porcentual del peso reciclado por tipo de residuo.
-              </p>
+      <AppSurface className="mt-5">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DashboardTab)}>
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 px-5 py-3">
+              <TabsList className="bg-slate-50">
+                <TabsTrigger value="flow">Flujo y calidad</TabsTrigger>
+                <TabsTrigger value="results">Resultados</TabsTrigger>
+              </TabsList>
             </div>
-            <ResidueMultiSelect selectedResidues={selectedResidues} onToggle={toggleResidue} />
-          </div>
 
-          <div className="mt-6">
-            <ChartContainer
-              config={categoryChartConfig}
-              className="w-full aspect-auto"
-              style={{ height: `${categoryChartHeight}px` }}
-            >
-              <BarChart
-                accessibilityLayer
-                data={filteredCategoryMetrics}
-                layout="vertical"
-                margin={{ top: 8, right: 36, left: 12, bottom: 8 }}
-                barCategoryGap={18}
-              >
-                <CartesianGrid horizontal={false} stroke="#e5edf5" />
-                <XAxis type="number" hide domain={[0, 50]} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  width={82}
-                  tick={{ fill: "#0b2f4e", fontSize: 14, fontWeight: 600 }}
-                />
-                <Bar
-                  dataKey="share"
-                  radius={999}
-                  barSize={18}
-                  fill="var(--color-share)"
-                  isAnimationActive={false}
-                  activeBar={false}
-                >
-                  <LabelList
-                    dataKey="share"
-                    position="right"
-                    offset={10}
-                    formatter={(value: number) => `${value}%`}
-                    className="fill-[#0b2f4e] text-xs font-semibold"
-                  />
-                </Bar>
-              </BarChart>
-            </ChartContainer>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-[#0b2f4e]">Actividad del periodo</h2>
-              <p className="mt-1 text-sm text-slate-500">{activitySeries.description}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                {activitySeries.granularityLabel}
-              </span>
-              <ResidueMultiSelect selectedResidues={selectedResidues} onToggle={toggleResidue} />
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <ChartContainer config={weeklyChartConfig} className="h-[280px] w-full aspect-auto">
-              {activitySeries.mode === "bar" ? (
-                <BarChart
-                  accessibilityLayer
-                  data={activitySeries.data}
-                  margin={{ top: 16, right: 8, left: 8, bottom: 0 }}
-                >
-                  <CartesianGrid vertical={false} stroke="#e5edf5" />
-                  <XAxis
-                    dataKey="label"
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={12}
-                    tick={{ fill: "#0b2f4e", fontSize: 14, fontWeight: 500 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={10}
-                    width={28}
-                    tick={{ fill: "#6b7c93", fontSize: 12 }}
-                  />
-                  <Bar
-                    dataKey="value"
-                    radius={[14, 14, 0, 0]}
-                    fill="var(--color-value)"
-                    maxBarSize={56}
-                    isAnimationActive={false}
-                    activeBar={false}
-                  >
-                    <LabelList position="top" offset={8} className="fill-[#6b7c93] text-xs font-medium" />
-                  </Bar>
-                </BarChart>
-              ) : (
-                <LineChart
-                  accessibilityLayer
-                  data={activitySeries.data}
-                  margin={{ top: 16, right: 16, left: 8, bottom: 0 }}
-                >
-                  <CartesianGrid vertical={false} stroke="#e5edf5" />
-                  <XAxis
-                    dataKey="label"
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={12}
-                    minTickGap={24}
-                    tick={{ fill: "#0b2f4e", fontSize: 12, fontWeight: 500 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={10}
-                    width={28}
-                    tick={{ fill: "#6b7c93", fontSize: 12 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="var(--color-value)"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: "#22c76f", strokeWidth: 0 }}
-                    activeDot={{ r: 5, fill: "#22c76f", strokeWidth: 0 }}
-                    isAnimationActive={false}
-                  >
-                    <LabelList position="top" offset={10} className="fill-[#6b7c93] text-xs font-medium" />
-                  </Line>
-                </LineChart>
-              )}
-            </ChartContainer>
-          </div>
-        </section>
-      </AppSurface>
-
-      <AppSurface className="mt-6">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {filteredCategoryMetrics.map((metric) => (
-              <div key={metric.key} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
+            <TabsContent value="flow" className="px-5 pb-5">
+              <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+              <section className="flex h-[380px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-[#0b2f4e]">{metric.name}</p>
-                    <p className="mt-1 text-xs text-slate-500">{metric.events} eventos</p>
+                    <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Embudo del flujo</h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Sesiones que avanzaron por cada etapa del flujo de reciclaje.
+                    </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-[#0b2f4e]">{metric.weightKg.toFixed(1)} kg</p>
-                    <p className="text-xs font-semibold text-emerald-600">{metric.trend}</p>
+                  <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
+                    {formatRangeLabel(dateFrom, dateTo)}
+                  </span>
+                </div>
+
+                <div className="mt-4 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center gap-1.5">
+                    {renderedFunnel.map((step) => {
+                      const width = Math.max(32, Math.round((step.value / funnelMaxValue) * 100));
+
+                      return (
+                        <div key={step.label} className="flex flex-col items-center">
+                          <div
+                            className="flex h-[42px] items-center justify-between rounded-2xl px-4 text-white shadow-sm transition"
+                            style={{
+                              width: `${width}%`,
+                              backgroundColor: step.color,
+                            }}
+                          >
+                            <span className="text-sm font-semibold">{step.label}</span>
+                            <span className="text-[1.55rem] font-extrabold leading-none">{step.value}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
+              </section>
+
+              <section className="flex h-[380px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Calidad del reconocimiento IA</h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Alta confianza, baja confianza y correcciones manuales del usuario.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    calidad de clasificacion
+                  </span>
+                </div>
+
+                <div className="mt-4 grid flex-1 gap-4 overflow-hidden lg:grid-cols-[minmax(0,0.8fr)_minmax(260px,1.2fr)] lg:items-center">
+                  <div className="grid gap-2">
+                    {renderedRecognitionQuality.map((entry) => (
+                      <div key={entry.name} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: entry.color }} />
+                            <span className="text-sm font-medium text-[#0b2f4e]">{entry.name}</span>
+                          </div>
+                          <span className="text-lg font-extrabold leading-none text-[#0b2f4e]">{entry.value}%</span>
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-end text-xs text-slate-500">
+                          <span className="font-semibold text-[#0b2f4e]">{entry.count}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex h-full min-h-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    {renderedRecognitionQuality.some((entry) => entry.count > 0) ? (
+                      <ChartContainer config={qualityChartConfig} className="h-[220px] w-full max-w-[280px] aspect-auto">
+                        <PieChart>
+                          <Pie
+                            data={renderedRecognitionQuality}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={52}
+                            outerRadius={86}
+                            paddingAngle={3}
+                            strokeWidth={0}
+                            isAnimationActive={false}
+                            label={({ percent }) => `${Math.round((percent || 0) * 100)}%`}
+                            labelLine={false}
+                          >
+                            {renderedRecognitionQuality.map((entry) => (
+                              <Cell key={entry.name} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ChartContainer>
+                    ) : (
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-[#0b2f4e]">Sin clasificaciones</p>
+                        <p className="mt-1 text-xs text-slate-500">No hay datos para el periodo seleccionado.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
               </div>
-            ))}
+            </TabsContent>
+
+            <TabsContent value="results" className="px-5 pb-5">
+              <div className="grid gap-4 xl:grid-cols-2">
+              <section className="flex h-[380px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Residuos mas reciclados</h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Comparativo de residuos con mas confirmaciones en el periodo.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
+                    {renderedTopResidues.length} residuos
+                  </span>
+                </div>
+
+                <div className="mt-4 flex-1">
+                  <ChartContainer
+                    config={categoryChartConfig}
+                    className="w-full aspect-auto"
+                    style={{ height: `${topResidueChartHeight}px` }}
+                  >
+                    <BarChart
+                      accessibilityLayer
+                      data={renderedTopResidues}
+                      layout="vertical"
+                      margin={{ top: 4, right: 28, left: 8, bottom: 4 }}
+                      barCategoryGap={14}
+                    >
+                      <CartesianGrid horizontal={false} stroke="#e5edf5" />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        width={108}
+                        tick={{ fill: "#0b2f4e", fontSize: 14, fontWeight: 600 }}
+                      />
+                      <Bar
+                        dataKey="confirmed"
+                        radius={999}
+                        barSize={14}
+                        fill="var(--color-confirmed)"
+                        isAnimationActive={false}
+                        activeBar={false}
+                      >
+                        <LabelList
+                          dataKey="confirmed"
+                          position="right"
+                          offset={10}
+                          formatter={(value: number) => `${value}`}
+                          className="fill-[#0b2f4e] text-xs font-semibold"
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              </section>
+
+              <section className="flex h-[380px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Tendencia temporal</h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Evolucion de reciclajes confirmados a lo largo del tiempo.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
+                    Periodo de {totalDays} dias
+                  </span>
+                </div>
+
+                <div className="mt-4 flex-1">
+                  <ChartContainer config={weeklyChartConfig} className="h-[260px] w-full aspect-auto">
+                    <LineChart accessibilityLayer data={renderedTrend} margin={{ top: 16, right: 20, left: 8, bottom: 0 }}>
+                      <CartesianGrid vertical={false} stroke="#e5edf5" />
+                      <XAxis
+                        dataKey="label"
+                        axisLine={false}
+                        tickLine={false}
+                        tickMargin={12}
+                        tick={{ fill: "#0b2f4e", fontSize: 12, fontWeight: 500 }}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tickMargin={10}
+                        width={34}
+                        tick={{ fill: "#6b7c93", fontSize: 12 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="var(--color-value)"
+                        strokeWidth={3}
+                        dot={{ r: 4, fill: "#22c76f", strokeWidth: 0 }}
+                        activeDot={{ r: 5, fill: "#22c76f", strokeWidth: 0 }}
+                        isAnimationActive={false}
+                      >
+                        <LabelList position="top" offset={10} className="fill-[#6b7c93] text-xs font-medium" />
+                      </Line>
+                    </LineChart>
+                  </ChartContainer>
+                </div>
+              </section>
+              </div>
+            </TabsContent>
+          </section>
+        </Tabs>
+      </AppSurface>
+
+      <AppSurface className="mt-5">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Residuos por detalle</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Resumen detallado por tipo de residuo para el periodo seleccionado.
+              </p>
+            </div>
+            <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
+              {renderedDetailRows.length} residuos
+            </span>
+          </div>
+
+          <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+            <table className="min-w-full border-collapse text-left">
+              <thead className="bg-slate-50">
+                <tr className="text-sm text-slate-600">
+                  <th className="px-4 py-3 font-semibold">Residuo</th>
+                  <th className="px-4 py-3 font-semibold">Escaneos</th>
+                  <th className="px-4 py-3 font-semibold">Confirmados</th>
+                  <th className="px-4 py-3 font-semibold">Tasa</th>
+                  <th className="px-4 py-3 font-semibold">Kg totales</th>
+                </tr>
+              </thead>
+              <tbody>
+                {renderedDetailRows.map((row) => (
+                  <tr key={row.residue} className="border-t border-slate-200 text-sm text-[#0b2f4e]">
+                    <td className="px-4 py-3 font-medium">{row.residue}</td>
+                    <td className="px-4 py-3">{row.scans}</td>
+                    <td className="px-4 py-3">{row.confirmed}</td>
+                    <td className="px-4 py-3">{row.rate}</td>
+                    <td className="px-4 py-3">{row.kilograms}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       </AppSurface>

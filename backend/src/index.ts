@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authMiddleware } from "./middleware/auth";
 import educationalContent from "./modules/educational-content/routes";
+import dashboardRoutes from "./modules/dashboard/routes";
 import funFactsRoutes from "./modules/fun_facts/routes";
 import userRolesRoutes from "./modules/user_roles/routes";
 import usersRoutes from "./modules/users/routes";
@@ -48,6 +49,7 @@ app.get("/api/me", (c) => {
 });
 
 app.route("/api/educational-content", educationalContent);
+app.route("/api/dashboard", dashboardRoutes);
 app.route("/api/fun-facts", funFactsRoutes);
 app.route("/api/user-roles", userRolesRoutes);
 app.route("/api/users", usersRoutes);
