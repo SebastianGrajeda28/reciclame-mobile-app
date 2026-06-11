@@ -1,6 +1,18 @@
 import { supabase } from '@/src/services/supabase/client';
 import type { RecyclingLog, RecyclingLogInput, RecyclingLogListItem } from '@/src/types/recycling';
 
+function normalizeUntilDate(untilDate: string | Date): string {
+  if (untilDate instanceof Date) {
+    return untilDate.toISOString();
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(untilDate)) {
+    return `${untilDate}T23:59:59.999Z`;
+  }
+
+  return untilDate;
+}
+
 /**
  * Guarda el registro final de una acción de segregación en Supabase.
  *
@@ -43,12 +55,49 @@ export async function createRecyclingLog(input: RecyclingLogInput): Promise<Recy
   };
 }
 
-export async function getRecyclingLogs(userId: string): Promise<RecyclingLogListItem[]> {
+export async function getRecyclingLogs(
+  userId: string,
+): Promise<RecyclingLogListItem[]> {
   const { data, error } = await supabase
     .from('recycling_records')
     .select('id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
+
+  if (error || !data) {
+    throw new Error(error?.message ?? 'No se pudo obtener el historial de reciclaje.');
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    wasteTypeName: (row.waste_types as unknown as { name: string } | null)?.name ?? 'Desconocido',
+    recyclingPointName: (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
+    detectionType: row.detection_type ?? undefined,
+    confidenceScore: row.confidence_score ?? undefined,
+    status: row.status ?? undefined,
+  }));
+}
+
+export async function getRecyclingLogsFiltered(
+  userId: string,
+  untilDate: string | Date | null = null,
+  wasteTypeId: string | null = null,
+): Promise<RecyclingLogListItem[]> {
+  let query = supabase
+    .from('recycling_records')
+    .select('id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)')
+    .eq('user_id', userId);
+
+  if (untilDate) {
+    query = query.lte('created_at', normalizeUntilDate(untilDate));
+  }
+
+  if (wasteTypeId) {
+    query = query.eq('waste_type_id', wasteTypeId);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error || !data) {
     throw new Error(error?.message ?? 'No se pudo obtener el historial de reciclaje.');

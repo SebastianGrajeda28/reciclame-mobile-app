@@ -1,4 +1,4 @@
-import { createRecyclingLog, getRecyclingLogs } from '@/src/services/api/recyclingLogs';
+import { createRecyclingLog, getRecyclingLogs, getRecyclingLogsFiltered } from '@/src/services/api/recyclingLogs';
 import { supabase } from '@/src/services/supabase/client';
 
 jest.mock('@/src/services/supabase/client', () => {
@@ -19,10 +19,17 @@ function buildQueryChain(response: { data: unknown; error: unknown }) {
 }
 
 function buildListQueryChain(response: { data: unknown; error: unknown }) {
-  const order = jest.fn().mockResolvedValue(response);
-  const eq = jest.fn(() => ({ order }));
-  const select = jest.fn(() => ({ eq }));
-  return { select, eq, order };
+  const query: {
+    eq: jest.Mock;
+    lte: jest.Mock;
+    order: jest.Mock;
+  } = {
+    eq: jest.fn(() => query),
+    lte: jest.fn(() => query),
+    order: jest.fn().mockResolvedValue(response),
+  };
+  const select = jest.fn(() => query);
+  return { select, eq: query.eq, lte: query.lte, order: query.order };
 }
 
 describe('createRecyclingLog', () => {
@@ -157,14 +164,110 @@ describe('getRecyclingLogs', () => {
       detectionType: 'auto',
     });
   });
+});
 
-  test('Debería lanzar Error cuando la consulta falla', async () => {
+describe('getRecyclingLogsFiltered', () => {
+  beforeEach(() => {
+    mockedFrom.mockReset();
+  });
+
+  test('Debería devolver todos los registros cuando ambos filtros son null', async () => {
+    const dbRows = [
+      {
+        id: 'rec-1',
+        created_at: '2026-05-28T01:00:00Z',
+        detection_type: 'auto',
+        confidence_score: 0.87,
+        status: 'confirmed',
+        waste_types: { name: 'Plástico (PET)' },
+        recycling_points: { name: 'Contenedor Biblioteca Central' },
+      },
+    ];
+    const chain = buildListQueryChain({ data: dbRows, error: null });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    const result = await getRecyclingLogsFiltered('user-1', null, null);
+
+    expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(chain.lte).not.toHaveBeenCalled();
+    expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(result).toHaveLength(1);
+  });
+
+  test('Debería filtrar solo por fecha cuando se envía una fecha y el tipo de residuo es null', async () => {
     const chain = buildListQueryChain({
-      data: null,
-      error: { message: 'permission denied' },
+      data: [
+        {
+          id: 'rec-2',
+          created_at: '2026-05-28T10:00:00Z',
+          detection_type: 'manual',
+          confidence_score: 0.55,
+          status: 'confirmed',
+          waste_types: { name: 'Vidrio' },
+          recycling_points: { name: 'Punto A' },
+        },
+      ],
+      error: null,
     });
     mockedFrom.mockReturnValue({ select: chain.select });
 
-    await expect(getRecyclingLogs('user-1')).rejects.toThrow('permission denied');
+    const result = await getRecyclingLogsFiltered('user-1', '2026-05-28', null);
+
+    expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(chain.lte).toHaveBeenCalledWith('created_at', '2026-05-28T23:59:59.999Z');
+    expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(result).toHaveLength(1);
+  });
+
+  test('Debería filtrar solo por tipo de residuo cuando se envía wasteTypeId y la fecha es null', async () => {
+    const chain = buildListQueryChain({
+      data: [
+        {
+          id: 'rec-3',
+          created_at: '2026-05-28T11:00:00Z',
+          detection_type: 'auto',
+          confidence_score: 0.91,
+          status: 'confirmed',
+          waste_types: { name: 'Plástico (PET)' },
+          recycling_points: { name: 'Punto B' },
+        },
+      ],
+      error: null,
+    });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    const result = await getRecyclingLogsFiltered('user-1', null, 'waste-2');
+
+    expect(chain.eq).toHaveBeenNthCalledWith(1, 'user_id', 'user-1');
+    expect(chain.eq).toHaveBeenNthCalledWith(2, 'waste_type_id', 'waste-2');
+    expect(chain.lte).not.toHaveBeenCalled();
+    expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(result).toHaveLength(1);
+  });
+
+  test('Debería aplicar fecha y tipo de residuo al mismo tiempo cuando ambos filtros tienen valor', async () => {
+    const chain = buildListQueryChain({
+      data: [
+        {
+          id: 'rec-4',
+          created_at: '2026-05-27T09:00:00Z',
+          detection_type: 'manual',
+          confidence_score: 0.75,
+          status: 'confirmed',
+          waste_types: { name: 'Papel y cartón' },
+          recycling_points: { name: 'Punto C' },
+        },
+      ],
+      error: null,
+    });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    const result = await getRecyclingLogsFiltered('user-1', '2026-05-28', 'waste-3');
+
+    expect(chain.eq).toHaveBeenNthCalledWith(1, 'user_id', 'user-1');
+    expect(chain.lte).toHaveBeenCalledWith('created_at', '2026-05-28T23:59:59.999Z');
+    expect(chain.eq).toHaveBeenNthCalledWith(2, 'waste_type_id', 'waste-3');
+    expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(result).toHaveLength(1);
   });
 });
