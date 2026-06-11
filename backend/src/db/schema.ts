@@ -81,3 +81,39 @@ export const funFacts = pgTable("fun_facts", {
 
 export type FunFact = typeof funFacts.$inferSelect;
 export type NewFunFact = typeof funFacts.$inferInsert;
+
+export const wasteTypes = pgTable("waste_types", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+});
+
+export type WasteType = typeof wasteTypes.$inferSelect;
+export type NewWasteType = typeof wasteTypes.$inferInsert;
+
+export const instructions = pgTable("instructions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  body: text("body"),
+  imageUrl: text("image_url"),
+  wasteTypeId: uuid("waste_type_id"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+});
+export type Instruction = typeof instructions.$inferSelect;
+export type NewInstruction = typeof instructions.$inferInsert;
+
+export const instructionSteps = pgTable("instruction_steps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  instructionId: uuid("instruction_id").notNull().references(() => instructions.id),
+  text: text("text").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
+});
+export type InstructionStep = typeof instructionSteps.$inferSelect;
+export type NewInstructionStep = typeof instructionSteps.$inferInsert;

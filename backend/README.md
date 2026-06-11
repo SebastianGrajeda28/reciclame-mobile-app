@@ -143,6 +143,32 @@ Contenido educativo sobre reciclaje.
 | `created_at` | timestamptz | |
 | `updated_at` | timestamptz | |
 
+### `instructions`
+Instrucciones de segregación de residuos por tipo de residuo.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | uuid PK | |
+| `title` | text NOT NULL | Título de la instrucción |
+| `body` | text | Contenido / descripción detallada |
+| `image_url` | text | URL de imagen ilustrativa opcional |
+| `waste_type_id` | uuid FK → waste_types.id | Tipo de residuo al que aplica (nullable) |
+| `is_active` | boolean | Eliminación lógica (default `true`) |
+| `created_at` | timestamptz | |
+| `updated_at` | timestamptz | |
+
+### `instruction_steps`
+Pasos individuales asociados a una instrucción (relación 1:N).
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | uuid PK | |
+| `instruction_id` | uuid FK → instructions.id | Instrucción padre (cascade delete) |
+| `text` | text NOT NULL | Texto del paso |
+| `is_active` | boolean | Eliminación lógica (default `true`) |
+| `created_at` | timestamptz | |
+| `updated_at` | timestamptz | |
+
 ---
 
 ## Autenticación
@@ -270,14 +296,63 @@ Todos los endpoints requieren rol `ADMIN`.
 
 ---
 
+### Instrucciones de segregación — `/api/instructions`
+
+Todos los endpoints requieren rol `ADMIN`.
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/instructions` | Lista instrucciones activas. `?includeInactive=true` para incluir inactivas |
+| GET | `/api/instructions/:id` | Obtiene una instrucción por ID |
+| POST | `/api/instructions` | Crea una instrucción |
+| PUT | `/api/instructions/:id` | Actualiza una instrucción |
+| DELETE | `/api/instructions/:id` | Desactiva la instrucción (eliminación lógica) |
+| PATCH | `/api/instructions/:id/restore` | Reactiva una instrucción desactivada |
+
+**Body para POST:**
+```json
+{
+  "title": "Cómo segregar plástico PET",
+  "body": "Descripción detallada...",
+  "imageUrl": "https://...",
+  "wasteTypeId": "uuid-del-tipo-de-residuo"
+}
+```
+
+---
+
+### Pasos de instrucción — `/api/instruction-steps`
+
+Todos los endpoints requieren rol `ADMIN`.
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/instruction-steps` | Lista pasos. `?instructionId=uuid` filtra por instrucción; `?includeInactive=true` incluye inactivos |
+| GET | `/api/instruction-steps/:id` | Obtiene un paso por ID |
+| POST | `/api/instruction-steps` | Crea un paso (verifica que la instrucción padre exista) |
+| PUT | `/api/instruction-steps/:id` | Actualiza el texto del paso |
+| DELETE | `/api/instruction-steps/:id` | Desactiva el paso (eliminación lógica) |
+| PATCH | `/api/instruction-steps/:id/restore` | Reactiva un paso desactivado |
+
+**Body para POST:**
+```json
+{ "instructionId": "uuid-de-la-instruccion", "text": "Enjuaga el envase antes de desechar" }
+```
+
+---
+
 ## Eliminación lógica
 
-Las tablas `users` y `user_roles` usan eliminación lógica mediante el campo `is_active`. Los registros nunca se borran de la base de datos; se marcan como inactivos.
+Las tablas `users`, `user_roles`, `instructions` e `instruction_steps` usan eliminación lógica mediante el campo `is_active`. Los registros nunca se borran de la base de datos; se marcan como inactivos.
 
 - `DELETE /api/users/:id` → `is_active = false`
 - `PATCH /api/users/:id/restore` → `is_active = true`
 - `DELETE /api/user-roles/:id` → `is_active = false`
 - `PATCH /api/user-roles/:id/restore` → `is_active = true`
+- `DELETE /api/instructions/:id` → `is_active = false`
+- `PATCH /api/instructions/:id/restore` → `is_active = true`
+- `DELETE /api/instruction-steps/:id` → `is_active = false`
+- `PATCH /api/instruction-steps/:id/restore` → `is_active = true`
 
 ---
 
