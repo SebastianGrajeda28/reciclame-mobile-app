@@ -4,11 +4,20 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
+import {
+  advanceStep,
+  flushAndStartNewSession,
+  flushSession,
+  type FlowStep,
+  type LocalRecyclingSession,
+  savePendingSession,
+} from '@/src/services/api/recyclingSessions';
 
 type RecycleFlowState = {
   capturedPhotoUri?: string;
@@ -27,49 +36,88 @@ type RecycleFlowContextValue = {
   clearSelectedContainer: () => void;
   clearFinalWasteType: () => void;
   clearPrediction: () => void;
-  resetFlow: () => void;
+  resetFlow: (outcome?: 'abandoned' | 'failed') => void;
+  startNewFlow: (userId: string | null) => Promise<void>;
+  markStep: (step: FlowStep) => void;
+  markConfirmed: (recyclingRecordId: string) => void;
 };
 
 const RecycleFlowContext = createContext<RecycleFlowContextValue | undefined>(undefined);
 
 export function RecycleFlowProvider({ children }: PropsWithChildren) {
   const [state, setState] = useState<RecycleFlowState>({});
+  const sessionRef = useRef<LocalRecyclingSession | null>(null);
+
+  const updateSession = useCallback(async (patch: Partial<LocalRecyclingSession>) => {
+    if (!sessionRef.current) return;
+    sessionRef.current = { ...sessionRef.current, ...patch };
+    await savePendingSession(sessionRef.current);
+  }, []);
+
+  const markStep = useCallback((step: FlowStep) => {
+    if (!sessionRef.current) return;
+    const next = advanceStep(sessionRef.current.furthestStep, step);
+    if (next !== sessionRef.current.furthestStep) {
+      updateSession({ furthestStep: next });
+    }
+  }, [updateSession]);
+
+  const markConfirmed = useCallback((recyclingRecordId: string) => {
+    updateSession({ outcome: 'confirmed', recyclingRecordId, furthestStep: 'success' });
+  }, [updateSession]);
+
+  const startNewFlow = useCallback(async (userId: string | null) => {
+    const session = await flushAndStartNewSession(userId);
+    sessionRef.current = session;
+  }, []);
 
   const setCapturedPhotoUri = useCallback((uri?: string) => {
-// console.log('[Flow] setCapturedPhotoUri:', uri?.slice(-30));
     setState((prev) => ({ ...prev, capturedPhotoUri: uri }));
   }, []);
 
   const setPrediction = useCallback((wasteTypeId: string, confidence: number) => {
-// console.log('[Flow] setPrediction:', wasteTypeId, confidence);
-    setState((prev) => {
-// console.log('[Flow] setPrediction — prev.selectedContainerId:', prev.selectedContainerId);
-      return { ...prev, predictedWasteTypeId: wasteTypeId, predictionConfidence: confidence, finalWasteTypeId: wasteTypeId };
+    setState((prev) => ({
+      ...prev,
+      predictedWasteTypeId: wasteTypeId,
+      predictionConfidence: confidence,
+      finalWasteTypeId: wasteTypeId,
+    }));
+    updateSession({
+      predictedWasteTypeId: wasteTypeId,
+      finalWasteTypeId: wasteTypeId,
+      confidenceScore: confidence,
+      detectionType: 'auto',
     });
-  }, []);
+  }, [updateSession]);
 
   const setFinalWasteTypeId = useCallback((wasteTypeId: string) => {
-// console.log('[Flow] setFinalWasteTypeId:', wasteTypeId);
-    setState((prev) => ({ ...prev, finalWasteTypeId: wasteTypeId }));
-  }, []);
+    setState((prev) => {
+      const overridden =
+        prev.predictedWasteTypeId !== undefined &&
+        prev.predictedWasteTypeId !== wasteTypeId;
+      updateSession({
+        finalWasteTypeId: wasteTypeId,
+        detectionType: 'manual',
+        wasteTypeOverridden: overridden,
+      });
+      return { ...prev, finalWasteTypeId: wasteTypeId };
+    });
+  }, [updateSession]);
 
   const setSelectedContainerId = useCallback((containerId: string) => {
-// console.log('[Flow] setSelectedContainerId:', containerId);
     setState((prev) => ({ ...prev, selectedContainerId: containerId }));
-  }, []);
+    updateSession({ recyclingPointId: containerId });
+  }, [updateSession]);
 
   const clearSelectedContainer = useCallback(() => {
-// console.log('[Flow] clearSelectedContainer');
     setState((prev) => ({ ...prev, selectedContainerId: undefined }));
   }, []);
 
   const clearFinalWasteType = useCallback(() => {
-// console.log('[Flow] clearFinalWasteType');
     setState((prev) => ({ ...prev, finalWasteTypeId: undefined }));
   }, []);
 
   const clearPrediction = useCallback(() => {
-// console.log('[Flow] clearPrediction');
     setState((prev) => ({
       ...prev,
       capturedPhotoUri: undefined,
@@ -79,8 +127,12 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     }));
   }, []);
 
-  const resetFlow = useCallback(() => {
-// console.log('[Flow] resetFlow');
+  const resetFlow = useCallback(async (outcome: 'abandoned' | 'failed' = 'abandoned') => {
+    if (sessionRef.current && !sessionRef.current.outcome) {
+      sessionRef.current.outcome = outcome;
+      await flushSession(sessionRef.current);
+    }
+    sessionRef.current = null;
     setState({});
   }, []);
 
@@ -95,10 +147,14 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       clearFinalWasteType,
       clearPrediction,
       resetFlow,
+      startNewFlow,
+      markStep,
+      markConfirmed,
     }),
     [
       state,
       resetFlow,
+      startNewFlow,
       setCapturedPhotoUri,
       setFinalWasteTypeId,
       setPrediction,
@@ -106,6 +162,8 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       clearSelectedContainer,
       clearFinalWasteType,
       clearPrediction,
+      markStep,
+      markConfirmed,
     ],
   );
 

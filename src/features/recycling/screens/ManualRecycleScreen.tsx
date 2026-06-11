@@ -9,7 +9,11 @@ import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 export function ManualRecycleScreen() {
   const navigation = useNavigation();
   const [selectedWasteTypeId, setSelectedWasteTypeId] = useState<string | undefined>();
-  const { setFinalWasteTypeId, clearFinalWasteType } = useRecycleFlow();
+  const { setFinalWasteTypeId, clearFinalWasteType, markStep } = useRecycleFlow();
+
+  useEffect(() => {
+    markStep('manual');
+  }, [markStep]);
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {

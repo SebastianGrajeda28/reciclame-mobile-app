@@ -14,7 +14,7 @@ import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
-  const { state, clearSelectedContainer } = useRecycleFlow();
+  const { state, clearSelectedContainer, markStep, markConfirmed } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
     state.finalWasteTypeId,
@@ -25,6 +25,10 @@ export function InstructionsScreen() {
   const [showAgain, setShowAgain] = useState(() => !(settings?.skipRecyclingInstructions ?? false));
   const autoSubmitted = useRef(false);
   const initialSkip = useRef(settings?.skipRecyclingInstructions ?? false);
+
+  useEffect(() => {
+    markStep('instructions');
+  }, [markStep]);
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {
@@ -62,7 +66,7 @@ export function InstructionsScreen() {
       const usedManual =
         state.predictedWasteTypeId !== undefined &&
         state.predictedWasteTypeId !== state.finalWasteTypeId;
-      await createRecyclingLog({
+      const log = await createRecyclingLog({
         userId: session.user.id,
         wasteTypeId: finalWasteType.id,
         binTypeId: '33333333-3333-3333-3333-000000000001',//esto es un parche, se deberia ver que datos se pone realmente en este log.
@@ -70,6 +74,7 @@ export function InstructionsScreen() {
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,
       });
+      markConfirmed(log.id);
       router.replace('/recycle/success');
     } catch (err) {
       console.error('[InstructionsScreen] createRecyclingLog failed:', err);

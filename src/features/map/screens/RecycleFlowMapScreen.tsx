@@ -36,12 +36,16 @@ export function RecycleFlowMapScreen() {
   const navigation = useNavigation();
   const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
-  const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
+  const { state, setSelectedContainerId, clearSelectedContainer, markStep } = useRecycleFlow();
   const { finalWasteType } = useResolvedRecycleSelection();
   const autoSelected = useRef(false);
   const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
     state.finalWasteTypeId,
   );
+
+  useEffect(() => {
+    markStep('map');
+  }, [markStep]);
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {
