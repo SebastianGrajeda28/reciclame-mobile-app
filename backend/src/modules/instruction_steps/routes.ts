@@ -61,15 +61,19 @@ app.post("/", requireRole("ADMIN"), async (c) => {
 
 // PUT /api/instruction-steps/:id
 app.put("/:id", requireRole("ADMIN"), async (c) => {
-  const body = await c.req.json<Partial<Pick<NewInstructionStep, "text">>>();
+  const body = await c.req.json<Partial<Pick<NewInstructionStep, "text" | "imageUrl">>>();
 
-  if (!body.text) {
-    return c.json({ error: "text es requerido" }, 400);
+  if (!body.text && body.imageUrl === undefined) {
+    return c.json({ error: "Se requiere al menos text o imageUrl" }, 400);
   }
+
+  const patch: Partial<NewInstructionStep> = { updatedAt: new Date() };
+  if (body.text !== undefined) patch.text = body.text;
+  if (body.imageUrl !== undefined) patch.imageUrl = body.imageUrl;
 
   const [updated] = await db
     .update(instructionSteps)
-    .set({ text: body.text, updatedAt: new Date() })
+    .set(patch)
     .where(eq(instructionSteps.id, c.req.param("id")))
     .returning();
 

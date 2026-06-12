@@ -11,10 +11,27 @@ export type Instruction = {
   updatedAt: string | null;
 };
 
+export type StepOrderBody = { stepOrder: string[] };
+
 export type InstructionPayload = {
-  title: string;
+  title?: string;
   wasteTypeId?: string | null;
+  body?: string | null;
 };
+
+export function parseStepOrder(instruction: Instruction): string[] {
+  if (!instruction.body) return [];
+  try {
+    const parsed = JSON.parse(instruction.body) as StepOrderBody;
+    return Array.isArray(parsed.stepOrder) ? parsed.stepOrder : [];
+  } catch {
+    return [];
+  }
+}
+
+export function encodeStepOrder(ids: string[]): string {
+  return JSON.stringify({ stepOrder: ids } satisfies StepOrderBody);
+}
 
 export async function getInstructions(accessToken: string): Promise<Instruction[]> {
   const res = await fetch(buildBackendUrl("/api/instructions?includeInactive=true"), {

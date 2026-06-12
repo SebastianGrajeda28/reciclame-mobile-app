@@ -4,6 +4,7 @@ export type InstructionStep = {
   id: string;
   instructionId: string;
   text: string;
+  imageUrl: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
@@ -38,14 +39,18 @@ export async function createInstructionStep(
   return res.json();
 }
 
-export async function updateInstructionStep(accessToken: string, id: string, text: string) {
+export async function updateInstructionStep(
+  accessToken: string,
+  id: string,
+  patch: { text?: string; imageUrl?: string | null },
+) {
   const res = await fetch(buildBackendUrl(`/api/instruction-steps/${id}`), {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(patch),
   });
 
   if (!res.ok) throw new Error(`Error actualizar paso ${res.status}`);
