@@ -1,3 +1,4 @@
+import { Asset } from 'expo-asset';
 import * as ImageManipulator from 'expo-image-manipulator';
 import jpeg from 'jpeg-js';
 import { loadTensorflowModel, TensorflowModel } from 'react-native-fast-tflite';
@@ -12,12 +13,45 @@ const INPUT_SIZE = 224;
 
 let modelPromise: Promise<TensorflowModel> | undefined;
 
+/**
+ * Carga el modelo TFLite.
+ *
+ * `react-native-fast-tflite` carga el modelo internamente con
+ * `new URL(uri).openStream()` (Java), que solo entiende:
+ *  - rutas reales del sistema de archivos (`file:///data/...`)
+ *  - URLs `http(s)://`
+ *
+ * NO entiende `file:///android_asset/...` (eso requiere AssetManager de Android,
+ * no java.net.URL) — por eso esa variante falla con FileNotFoundException.
+ *
+ * Solución: usar `expo-asset` para copiar el modelo empaquetado a un archivo
+ * real dentro del almacenamiento de la app (`Asset.downloadAsync()` rellena
+ * `localUri` con un `file://...` real), y pasar esa ruta a `loadTensorflowModel`.
+ */
 function getModel(): Promise<TensorflowModel> {
   if (modelPromise) {
+    console.log('🔥 TFLITE: usando modelo ya cargado (cache)');
     return modelPromise;
   }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const loaded = loadTensorflowModel(require('../../../../../../assets/model/model.tflite'), []);
+  console.log('🔥 TFLITE: iniciando carga de asset...');
+  const loaded = (async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const asset = Asset.fromModule(require('../../../../../../assets/model/model.tflite'));
+    await asset.downloadAsync();
+
+    const uri = asset.localUri ?? asset.uri;
+    console.log('🔥 TFLITE: asset listo, localUri =', asset.localUri, ' uri =', asset.uri);
+
+    if (!uri) {
+      throw new Error('No se pudo resolver la URI del modelo TFLite.');
+    }
+
+    return loadTensorflowModel({ url: uri }, []);
+  })();
+
+  loaded
+    .then(() => console.log('🔥 TFLITE: modelo cargado OK'))
+    .catch((e) => console.log('🔥 TFLITE: ERROR cargando modelo:', String(e)));
   modelPromise = loaded;
   return loaded;
 }
@@ -69,12 +103,26 @@ export async function imageUriToRgbBytes(uri: string): Promise<Uint8Array> {
  * @throws Si el modelo no puede cargarse o la imagen no puede procesarse.
  */
 async function classify(imageUri: string): Promise<ClassificationPrediction> {
+  console.log('🔥 TFLITE: classify() iniciado, imageUri =', imageUri);
+
+  console.log('🔥 TFLITE: esperando getModel()...');
   const model = await getModel();
+  console.log('🔥 TFLITE: getModel() resuelto');
+
+  console.log('🔥 TFLITE: convirtiendo imagen a RGB...');
   const rgb = await imageUriToRgbBytes(imageUri);
+  console.log('🔥 TFLITE: imagen convertida, bytes =', rgb.byteLength);
+
   const inputBuffer = new ArrayBuffer(rgb.byteLength);
   new Uint8Array(inputBuffer).set(rgb);
+
+  console.log('🔥 TFLITE: ejecutando model.run()...');
   const output = await model.run([inputBuffer]);
-  return buildPredictionFromOutput(new Float32Array(output[0]), labels as string[]);
+  console.log('🔥 TFLITE: model.run() resuelto, output =', JSON.stringify(output?.[0]?.byteLength));
+
+  const prediction = buildPredictionFromOutput(new Float32Array(output[0]), labels as string[]);
+  console.log('🔥 TFLITE: predicción final =', JSON.stringify(prediction));
+  return prediction;
 }
 
 export const onDeviceWasteClassifier: WasteClassifier = {
