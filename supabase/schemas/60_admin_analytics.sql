@@ -31,18 +31,6 @@ ALTER TABLE "public"."metric_snapshots" OWNER TO "postgres";
 
 ALTER TABLE "public"."system_config" OWNER TO "postgres";
 
-ALTER TABLE ONLY "public"."health_check"
-    ADD CONSTRAINT "health_check_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."metric_snapshots"
-    ADD CONSTRAINT "metric_snapshots_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."system_config"
-    ADD CONSTRAINT "system_config_key_key" UNIQUE ("key");
-
-ALTER TABLE ONLY "public"."system_config"
-    ADD CONSTRAINT "system_config_pkey" PRIMARY KEY ("id");
-
 ALTER TABLE "public"."metric_snapshots" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."system_config" ENABLE ROW LEVEL SECURITY;

@@ -334,30 +334,6 @@ GRANT ALL ON TABLE "public"."waste_types" TO "authenticated";
 
 GRANT ALL ON TABLE "public"."waste_types" TO "service_role";
 
-GRANT ALL ON SEQUENCES TO "postgres";
-
-GRANT ALL ON SEQUENCES TO "anon";
-
-GRANT ALL ON SEQUENCES TO "authenticated";
-
-GRANT ALL ON SEQUENCES TO "service_role";
-
-GRANT ALL ON FUNCTIONS TO "postgres";
-
-GRANT ALL ON FUNCTIONS TO "anon";
-
-GRANT ALL ON FUNCTIONS TO "authenticated";
-
-GRANT ALL ON FUNCTIONS TO "service_role";
-
-GRANT ALL ON TABLES TO "postgres";
-
-GRANT ALL ON TABLES TO "anon";
-
-GRANT ALL ON TABLES TO "authenticated";
-
-GRANT ALL ON TABLES TO "service_role";
-
 revoke all on function app_auth.get_current_account() from public, anon, authenticated;
 
 grant usage on schema app_auth to postgres, service_role;

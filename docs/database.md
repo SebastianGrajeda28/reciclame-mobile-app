@@ -39,12 +39,13 @@ Las migraciones existentes no se reescriben. Los cambios futuros parten de `supa
 6. `40_recycling_flow.sql`
 7. `50_education.sql`
 8. `60_admin_analytics.sql`
-9. `70_functions_auth_admin.sql`
-10. `71_functions_education.sql`
-11. `72_functions_gamification.sql`
-12. `73_functions_social.sql`
-13. `74_functions_analytics.sql`
-14. `80_rls_and_grants.sql`
+9. `65_constraints.sql`
+10. `70_functions_auth_admin.sql`
+11. `71_functions_education.sql`
+12. `72_functions_gamification.sql`
+13. `73_functions_social.sql`
+14. `74_functions_analytics.sql`
+15. `80_rls_and_grants.sql`
 
 ## Regla operativa
 

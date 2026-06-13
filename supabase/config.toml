@@ -22,6 +22,7 @@ schema_paths = [
   "./schemas/40_recycling_flow.sql",
   "./schemas/50_education.sql",
   "./schemas/60_admin_analytics.sql",
+  "./schemas/65_constraints.sql",
   "./schemas/70_functions_auth_admin.sql",
   "./schemas/71_functions_education.sql",
   "./schemas/72_functions_gamification.sql",

@@ -41,37 +41,4 @@ ALTER TABLE "public"."recycling_records" OWNER TO "postgres";
 
 ALTER TABLE "public"."recycling_sessions" OWNER TO "postgres";
 
-ALTER TABLE ONLY "public"."recycling_records"
-    ADD CONSTRAINT "recycling_records_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."recycling_sessions"
-    ADD CONSTRAINT "recycling_sessions_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."recycling_records"
-    ADD CONSTRAINT "recycling_records_bin_type_id_fkey" FOREIGN KEY ("bin_type_id") REFERENCES "public"."bin_types"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."recycling_records"
-    ADD CONSTRAINT "recycling_records_recycling_point_id_fkey" FOREIGN KEY ("recycling_point_id") REFERENCES "public"."recycling_points"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."recycling_records"
-    ADD CONSTRAINT "recycling_records_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."recycling_records"
-    ADD CONSTRAINT "recycling_records_waste_type_id_fkey" FOREIGN KEY ("waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."recycling_sessions"
-    ADD CONSTRAINT "recycling_sessions_final_waste_type_id_fkey" FOREIGN KEY ("final_waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."recycling_sessions"
-    ADD CONSTRAINT "recycling_sessions_predicted_waste_type_id_fkey" FOREIGN KEY ("predicted_waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."recycling_sessions"
-    ADD CONSTRAINT "recycling_sessions_recycling_point_id_fkey" FOREIGN KEY ("recycling_point_id") REFERENCES "public"."recycling_points"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."recycling_sessions"
-    ADD CONSTRAINT "recycling_sessions_recycling_record_id_fkey" FOREIGN KEY ("recycling_record_id") REFERENCES "public"."recycling_records"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."recycling_sessions"
-    ADD CONSTRAINT "recycling_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL;
-
 ALTER TABLE "public"."recycling_records" ENABLE ROW LEVEL SECURITY;

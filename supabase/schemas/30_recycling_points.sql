@@ -63,48 +63,6 @@ ALTER TABLE "public"."recycling_point_bins" OWNER TO "postgres";
 
 ALTER TABLE "public"."recycling_points" OWNER TO "postgres";
 
-ALTER TABLE ONLY "public"."cached_resources"
-    ADD CONSTRAINT "cached_resources_pkey" PRIMARY KEY ("resource_name");
-
-ALTER TABLE ONLY "public"."map_waste_type_bin_types"
-    ADD CONSTRAINT "map_waste_type_bin_types_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."map_waste_type_bin_types"
-    ADD CONSTRAINT "map_waste_type_bin_types_university_id_waste_type_id_bin_ty_key" UNIQUE ("university_id", "waste_type_id", "bin_type_id");
-
-ALTER TABLE ONLY "public"."pending_operations"
-    ADD CONSTRAINT "pending_operations_pkey" PRIMARY KEY ("local_id");
-
-ALTER TABLE ONLY "public"."recycling_point_bins"
-    ADD CONSTRAINT "recycling_point_bins_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."recycling_point_bins"
-    ADD CONSTRAINT "recycling_point_bins_recycling_point_id_bin_type_id_key" UNIQUE ("recycling_point_id", "bin_type_id");
-
-ALTER TABLE ONLY "public"."recycling_points"
-    ADD CONSTRAINT "recycling_points_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."map_waste_type_bin_types"
-    ADD CONSTRAINT "map_waste_type_bin_types_bin_type_id_fkey" FOREIGN KEY ("bin_type_id") REFERENCES "public"."bin_types"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."map_waste_type_bin_types"
-    ADD CONSTRAINT "map_waste_type_bin_types_university_id_fkey" FOREIGN KEY ("university_id") REFERENCES "public"."universities"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."map_waste_type_bin_types"
-    ADD CONSTRAINT "map_waste_type_bin_types_waste_type_id_fkey" FOREIGN KEY ("waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."pending_operations"
-    ADD CONSTRAINT "pending_operations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."recycling_point_bins"
-    ADD CONSTRAINT "recycling_point_bins_bin_type_id_fkey" FOREIGN KEY ("bin_type_id") REFERENCES "public"."bin_types"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."recycling_point_bins"
-    ADD CONSTRAINT "recycling_point_bins_recycling_point_id_fkey" FOREIGN KEY ("recycling_point_id") REFERENCES "public"."recycling_points"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."recycling_points"
-    ADD CONSTRAINT "recycling_points_campus_id_fkey" FOREIGN KEY ("campus_id") REFERENCES "public"."campuses"("id") ON DELETE CASCADE;
-
 ALTER TABLE "public"."cached_resources" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."map_waste_type_bin_types" ENABLE ROW LEVEL SECURITY;

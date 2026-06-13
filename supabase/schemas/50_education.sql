@@ -52,30 +52,6 @@ ALTER TABLE "public"."instruction_steps" OWNER TO "postgres";
 
 ALTER TABLE "public"."instructions" OWNER TO "postgres";
 
-ALTER TABLE ONLY "public"."educational_content"
-    ADD CONSTRAINT "educational_content_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."fun_facts"
-    ADD CONSTRAINT "fun_facts_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."instruction_steps"
-    ADD CONSTRAINT "instruction_steps_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."instructions"
-    ADD CONSTRAINT "instructions_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."educational_content"
-    ADD CONSTRAINT "educational_content_waste_type_id_fkey" FOREIGN KEY ("waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."fun_facts"
-    ADD CONSTRAINT "fun_facts_waste_type_id_fkey" FOREIGN KEY ("waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."instruction_steps"
-    ADD CONSTRAINT "instruction_steps_instruction_id_fkey" FOREIGN KEY ("instruction_id") REFERENCES "public"."instructions"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."instructions"
-    ADD CONSTRAINT "instructions_waste_type_id_fkey" FOREIGN KEY ("waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE SET NULL;
-
 ALTER TABLE "public"."fun_facts" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."instruction_steps" ENABLE ROW LEVEL SECURITY;

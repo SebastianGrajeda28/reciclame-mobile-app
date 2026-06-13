@@ -92,6 +92,7 @@ const outputs = new Map([
   ["40_recycling_flow.sql", `-- Recycling sessions and confirmed recycling records.\n`],
   ["50_education.sql", `-- Educational content, instructions and fun facts.\n`],
   ["60_admin_analytics.sql", `-- Admin-facing analytics and operational configuration.\n`],
+  ["65_constraints.sql", `-- Cross-table constraints, primary keys, unique keys and foreign keys.\n`],
   ["70_functions_auth_admin.sql", `-- Public and compatibility functions for auth/admin/profile contracts.\n`],
   ["71_functions_education.sql", `-- Public education RPC contracts.\n`],
   ["72_functions_gamification.sql", `-- Public gamification and progress contracts.\n`],
@@ -130,7 +131,7 @@ collect(/ALTER TABLE "public"\."([^"]+)" OWNER TO "postgres";\n/gi, (block, matc
 
 collect(/ALTER TABLE ONLY "public"\."([^"]+)"[\s\S]*?;\n/gi, (block, match) => {
   const file = tableDomain.get(match[1]);
-  if (file) append(file, block);
+  if (file) append("65_constraints.sql", block);
 });
 
 collect(/CREATE OR REPLACE FUNCTION "public"\."([^"]+)"\([\s\S]*?\$\$;\n/gi, (block, match) => {
@@ -149,6 +150,9 @@ collect(/ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";\n/gi, (block
 });
 
 collect(/GRANT [\s\S]*?;\n/gi, (block) => {
+  if (/GRANT ALL ON SEQUENCES TO/i.test(block)) return;
+  if (/GRANT ALL ON FUNCTIONS TO/i.test(block)) return;
+  if (/GRANT ALL ON TABLES TO/i.test(block)) return;
   append("80_rls_and_grants.sql", block);
 });
 

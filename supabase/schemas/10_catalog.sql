@@ -99,54 +99,6 @@ ALTER TABLE "public"."universities" OWNER TO "postgres";
 
 ALTER TABLE "public"."waste_types" OWNER TO "postgres";
 
-ALTER TABLE ONLY "public"."achievements"
-    ADD CONSTRAINT "achievements_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."avatars"
-    ADD CONSTRAINT "avatars_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."avatars"
-    ADD CONSTRAINT "avatars_user_id_key" UNIQUE ("user_id");
-
-ALTER TABLE ONLY "public"."bin_types"
-    ADD CONSTRAINT "bin_types_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."campuses"
-    ADD CONSTRAINT "campuses_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."rewards"
-    ADD CONSTRAINT "rewards_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."roles"
-    ADD CONSTRAINT "roles_name_key" UNIQUE ("name");
-
-ALTER TABLE ONLY "public"."roles"
-    ADD CONSTRAINT "roles_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."universities"
-    ADD CONSTRAINT "universities_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."waste_types"
-    ADD CONSTRAINT "waste_types_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."achievements"
-    ADD CONSTRAINT "achievements_reward_id_fkey" FOREIGN KEY ("reward_id") REFERENCES "public"."rewards"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."avatars"
-    ADD CONSTRAINT "avatars_accessory_reward_id_fkey" FOREIGN KEY ("accessory_reward_id") REFERENCES "public"."rewards"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."avatars"
-    ADD CONSTRAINT "avatars_frame_reward_id_fkey" FOREIGN KEY ("frame_reward_id") REFERENCES "public"."rewards"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."avatars"
-    ADD CONSTRAINT "avatars_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."bin_types"
-    ADD CONSTRAINT "bin_types_university_id_fkey" FOREIGN KEY ("university_id") REFERENCES "public"."universities"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."campuses"
-    ADD CONSTRAINT "campuses_university_id_fkey" FOREIGN KEY ("university_id") REFERENCES "public"."universities"("id") ON DELETE CASCADE;
-
 ALTER TABLE "public"."achievements" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."avatars" ENABLE ROW LEVEL SECURITY;
