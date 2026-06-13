@@ -16,18 +16,28 @@
 - creación de `.env.example` por superficie relevante
 - documentación base de arquitectura, autorización, base de datos, operaciones y onboarding
 - migración aditiva `20260613010000_domain_function_schemas.sql` para empezar a separar implementación SQL por dominio sin romper RPC públicos
+- migración aditiva `20260613020000_expand_domain_function_schemas.sql` para ampliar domains internos a admin, profile y gamification
+- incorporación de `supabase/schemas/` como fuente declarativa legible por dominio
+- configuración de `schema_paths` en `supabase/config.toml`
+- script reproducible `scripts/generate-supabase-schemas.mjs` para regenerar la vista declarativa desde el dump base y las migraciones de domain schemas
 
-## Validación ejecutada`r`n`r`n- `bun install``r`n- `bun run admin-web:build``r`n- `bun run mobile:lint``r`n- `bunx supabase gen types typescript --local``r`n- `bun run db:test:contracts`
+## Validación ejecutada
+
+- `bun install`
+- `bun run admin-web:build`
+- `bun run mobile:lint`
+- `bunx supabase gen types typescript --local`
+- `bun run db:test:contracts`
+- `node scripts/generate-supabase-schemas.mjs`
 
 ## Pendientes
 
-- terminar de mover más funciones SQL a schemas por dominio siguiendo el mismo patrón
-- decidir si `apps/admin-web` se renombra a `apps/admin-web` en el corte real
+- revisar manualmente y refinar la granularidad de `supabase/schemas/*` cuando crezcan más contratos
 - agregar pruebas de RLS y contratos críticos
-- formatear y tipar mejor el paquete de tipos generado si se incorpora al flujo diario
+- decidir si se reemplaza el script de bootstrap por una extracción más precisa desde un schema local ya reseteado
 
 ## Riesgos pendientes
 
-- la nueva migración SQL todavía debe probarse con `db reset` en la copia rehearsal antes del corte real
-- el paquete `database-types` hoy contiene salida generada cruda; sirve, pero conviene normalizar su formato
+- `schema.sql` sigue siendo un dump crudo de apoyo; si el remoto cambia mucho, conviene refrescarlo antes de regenerar `supabase/schemas/`
+- algunas grants provenientes del dump son amplias y deben auditarse contra el modelo final de seguridad antes del corte real
 - aún hay warnings de lint preexistentes en mobile, aunque sin errores

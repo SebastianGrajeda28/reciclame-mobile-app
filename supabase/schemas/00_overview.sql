@@ -1,0 +1,4 @@
+-- Declarative schema source for Reciclame.
+-- Edit files in this directory, then generate additive migrations with:
+--   supabase db diff -f <change_name>
+-- Do not rewrite files under supabase/migrations after they are applied.

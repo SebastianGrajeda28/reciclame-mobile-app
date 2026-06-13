@@ -20,6 +20,8 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:migrate": "supabase db push",
+    "db:diff": "supabase db diff",
+    "db:schemas:refresh": "node scripts/generate-supabase-schemas.mjs",
     "test:coverage": "bun run mobile:test:coverage",
     "db:types": "bunx supabase gen types typescript --local > packages/database-types/src/database.types.ts",
     "admin-web:dev": "bun run --cwd apps/admin-web dev",

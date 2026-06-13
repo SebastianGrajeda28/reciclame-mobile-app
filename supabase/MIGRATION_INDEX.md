@@ -2,6 +2,13 @@
 
 This file groups existing migrations by domain so contributors do not have to infer intent from timestamps alone.
 
+## Current authoring model
+
+- readable desired backend shape: `supabase/schemas/`
+- immutable applied history: `supabase/migrations/`
+
+New database work should start in `supabase/schemas/*` and then generate additive migrations with `supabase db diff -f <change_name>`.
+
 ## Ops
 
 - `20240517000000_health_check.sql` — simple backend health check helper

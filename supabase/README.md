@@ -23,16 +23,18 @@ There should not be a second backend owner under `apps/admin-web` or `apps/mobil
 ## Reading order for a new contributor
 
 1. `ARCHITECTURE.md`
-2. `domains/README.md`
-3. `contracts/README.md`
-4. `config.toml`
-5. `MIGRATION_INDEX.md`
-6. `migrations/README.md`
-7. `functions/README.md`
-8. the concrete migration or function for the domain you are changing
+2. `schemas/README.md`
+3. `domains/README.md`
+4. `contracts/README.md`
+5. `config.toml`
+6. `MIGRATION_INDEX.md`
+7. `migrations/README.md`
+8. `functions/README.md`
+9. the concrete schema file or migration for the domain you are changing
 
 ## Directory structure
 
+- `schemas/`: declarative desired backend shape by domain for future changes
 - `domains/`: service/domain-oriented reading map
 - `contracts/`: client-facing backend contracts by consumer
 - `migrations/`: schema evolution, RLS, RPC/SQL functions, triggers and seed-related SQL
@@ -67,6 +69,23 @@ Examples:
 - `20260613010000_domain_function_schemas.sql`
 - `20260614110000_education_fun_facts_crud_policies.sql`
 
+## Declarative workflow from now on
+
+The repo now has two complementary layers:
+
+- `supabase/schemas/*`: readable desired state by domain
+- `supabase/migrations/*`: immutable applied history
+
+Recommended flow for new database work:
+
+1. edit the relevant file in `supabase/schemas/`
+2. generate a migration with `bun run db:diff -- -f <change_name>`
+3. review the generated SQL under `supabase/migrations/`
+4. apply locally with `supabase migration up` or `bun run db:reset`
+5. regenerate database types with `bun run db:types`
+
+`supabase/schema.sql` is only a raw dump snapshot used to bootstrap or refresh the declarative files. It is not the place where future manual edits should happen.
+
 ## Safety rules
 
 - do not rename or rewrite already-applied migrations just for cleanliness
@@ -75,4 +94,4 @@ Examples:
 - document new backend contracts in the index files when they become part of app behavior
 ## Local contract verification
 
-Run un run db:test:contracts after un run db:reset to verify that the local backend structure still matches the logical model.
+Run `bun run db:test:contracts` after `bun run db:reset` to verify that the local backend structure still matches the logical model.

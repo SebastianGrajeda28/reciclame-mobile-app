@@ -20,6 +20,7 @@ bun run admin-web:dev
 bun run db:start
 bun run db:reset
 bun run db:migrate
+bun run db:diff -- -f <nombre_del_cambio>
 bun run db:types
 ```
 
@@ -38,10 +39,29 @@ bun run db:start
 bun run db:status
 bun run db:reset
 bun run db:migrate
+bun run db:schemas:refresh
+bun run db:diff -- -f <nombre_del_cambio>
 bun run db:types
 bun run db:stop
 ```
 
 Requiere Docker Desktop.
 
-## Lectura recomendada`r`n`r`n1. `docs/architecture.md``r`n2. `docs/backend-logical-model.md``r`n3. `docs/database.md``r`n4. `docs/authorization.md``r`n5. `docs/backend-operations.md``r`n6. `docs/onboarding.md``r`n7. `supabase/README.md`
+## Workflow de backend
+
+- editar `supabase/schemas/*.sql` por dominio
+- generar migración aditiva con `bun run db:diff -- -f <nombre_del_cambio>`
+- aplicar localmente con `bun run db:reset` o `supabase migration up`
+- regenerar tipos con `bun run db:types`
+
+`supabase/migrations/` sigue siendo historial inmutable; el punto de edición humano ahora es `supabase/schemas/`.
+
+## Lectura recomendada
+
+1. `docs/architecture.md`
+2. `docs/backend-logical-model.md`
+3. `docs/database.md`
+4. `docs/authorization.md`
+5. `docs/backend-operations.md`
+6. `docs/onboarding.md`
+7. `supabase/README.md`
