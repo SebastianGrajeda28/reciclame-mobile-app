@@ -5,7 +5,7 @@ Aplicacion web administrativa de Reciclame dentro del monorepo.
 ## Desarrollo
 
 ```sh
-bun run web:dev
+bun run admin-web:dev
 ```
 
 ## Variables de entorno

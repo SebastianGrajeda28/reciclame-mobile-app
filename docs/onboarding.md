@@ -10,8 +10,8 @@
 
 1. `bun install`
 2. `bun run db:start`
-3. copiar `apps/mobile/.env.example` o `apps/web/.env.example` según corresponda
-4. `bun run mobile:dev` o `bun run web:dev`
+3. copiar `apps/mobile/.env.example` o `apps/admin-web/.env.example` según corresponda
+4. `bun run mobile:dev` o `bun run admin-web:dev`
 
 ## Cambios de base de datos
 

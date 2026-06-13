@@ -1,5 +1,5 @@
 {
-  "name": "@reciclame/web",
+  "name": "@reciclame/admin-web",
   "private": true,
   "version": "0.0.0",
   "type": "module",

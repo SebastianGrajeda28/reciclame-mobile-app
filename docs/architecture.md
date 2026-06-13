@@ -3,7 +3,7 @@
 `reciclame` es un monorepo con dos aplicaciones cliente y un backend 100% Supabase.
 
 - `apps/mobile`: app para estudiantes.
-- `apps/web`: portal administrativo.
+- `apps/admin-web`: portal administrativo.
 - `supabase/`: backend gestionado como código.
 - `packages/database-types`: tipos compartidos de base de datos.
 - `packages/shared-domain`: contratos compartidos livianos entre clientes.

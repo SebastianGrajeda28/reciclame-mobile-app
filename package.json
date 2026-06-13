@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": [
     "apps/mobile",
-    "apps/web",
+    "apps/admin-web",
     "packages/*"
   ],
   "scripts": {
@@ -15,16 +15,19 @@
     "mobile:web": "bun run --cwd apps/mobile web",
     "mobile:lint": "bun run --cwd apps/mobile lint",
     "mobile:test:coverage": "bun run --cwd apps/mobile test:coverage",
-    "web:dev": "bun run --cwd apps/web dev",
-    "web:build": "bun run --cwd apps/web build",
-    "web:lint": "bun run --cwd apps/web lint",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:migrate": "supabase db push",
     "test:coverage": "bun run mobile:test:coverage",
-    "db:types": "bunx supabase gen types typescript --local > packages/database-types/src/database.types.ts"
+    "db:types": "bunx supabase gen types typescript --local > packages/database-types/src/database.types.ts",
+    "admin-web:dev": "bun run --cwd apps/admin-web dev",
+    "admin-web:build": "bun run --cwd apps/admin-web build",
+    "admin-web:lint": "bun run --cwd apps/admin-web lint",
+    "web:dev": "bun run admin-web:dev",
+    "web:build": "bun run admin-web:build",
+    "web:lint": "bun run admin-web:lint"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",

@@ -16,9 +16,9 @@ Reciclame uses Supabase as a managed backend:
 The apps are clients of this backend surface:
 
 - `apps/mobile` consumes auth, content, recycling flow, progress and profile data
-- `apps/web` consumes admin/auth/analytics/content contracts for the dashboard and admin views
+- `apps/admin-web` consumes admin/auth/analytics/content contracts for the dashboard and admin views
 
-There should not be a second backend owner under `apps/web` or `apps/mobile`.
+There should not be a second backend owner under `apps/admin-web` or `apps/mobile`.
 
 ## Reading order for a new contributor
 

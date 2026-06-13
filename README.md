@@ -5,7 +5,7 @@ Monorepo de Recíclame con dos clientes y un backend 100% Supabase.
 ## Aplicaciones
 
 - `apps/mobile`: app móvil para estudiantes
-- `apps/web`: portal web administrativo
+- `apps/admin-web`: portal web administrativo
 - `supabase`: backend gestionado como código
 - `packages/database-types`: tipos generados desde la base
 - `packages/shared-domain`: contratos livianos compartidos entre clientes
@@ -16,7 +16,7 @@ Monorepo de Recíclame con dos clientes y un backend 100% Supabase.
 ```sh
 bun install
 bun run mobile:dev
-bun run web:dev
+bun run admin-web:dev
 bun run db:start
 bun run db:reset
 bun run db:migrate
@@ -26,7 +26,7 @@ bun run db:types
 ## Variables de entorno
 
 - `apps/mobile/.env`
-- `apps/web/.env`
+- `apps/admin-web/.env`
 - `supabase/functions/.env`
 
 Usa los `.env.example` de cada superficie como punto de partida.

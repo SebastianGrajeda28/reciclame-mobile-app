@@ -3,7 +3,7 @@
 ## Current rehearsal status
 
 - Root workspace install works with `bun install`.
-- Root web build works with `bun run web:build`.
+- Root web build works with `bun run admin-web:build`.
 - Mobile code still validates from `apps/mobile`; current lint output is warnings only, no errors.
 - The imported standalone web backend is no longer part of the runtime shape of the rehearsal.
 
@@ -56,6 +56,6 @@ That means the imported backend is preserved in git history but does not need to
 ## Rehearsal validation evidence
 
 - `bun install` at repo root: passes
-- `bun run web:build` at repo root: passes
+- `bun run admin-web:build` at repo root: passes
 - `bun run --cwd apps/mobile lint`: passes with warnings only
 

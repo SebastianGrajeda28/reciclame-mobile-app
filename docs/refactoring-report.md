@@ -9,7 +9,7 @@
 
 ## Cambios aplicados
 
-- monorepo con `apps/mobile`, `apps/web`, `supabase/`, `packages/` y `docs/`
+- monorepo con `apps/mobile`, `apps/admin-web`, `supabase/`, `packages/` y `docs/`
 - consolidación del backend del web hacia Supabase
 - extracción de auth, cuenta, provisionamiento y storage del admin web a servicios por dominio
 - creación de `packages/database-types` y `packages/shared-domain`
@@ -20,14 +20,14 @@
 ## Validación ejecutada
 
 - `bun install`
-- `bun run web:build`
+- `bun run admin-web:build`
 - `bun run mobile:lint`
 - `bunx supabase gen types typescript --local`
 
 ## Pendientes
 
 - terminar de mover más funciones SQL a schemas por dominio siguiendo el mismo patrón
-- decidir si `apps/web` se renombra a `apps/admin-web` en el corte real
+- decidir si `apps/admin-web` se renombra a `apps/admin-web` en el corte real
 - agregar pruebas de RLS y contratos críticos
 - formatear y tipar mejor el paquete de tipos generado si se incorpora al flujo diario
 
