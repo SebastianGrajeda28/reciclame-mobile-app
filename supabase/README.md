@@ -73,3 +73,6 @@ Examples:
 - do not rename deployed Edge Functions without coordinating clients and deployment
 - prefer additive migrations over editing history
 - document new backend contracts in the index files when they become part of app behavior
+## Local contract verification
+
+Run un run db:test:contracts after un run db:reset to verify that the local backend structure still matches the logical model.

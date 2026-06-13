@@ -44,11 +44,4 @@ bun run db:stop
 
 Requiere Docker Desktop.
 
-## Lectura recomendada
-
-1. `docs/architecture.md`
-2. `docs/database.md`
-3. `docs/authorization.md`
-4. `docs/backend-operations.md`
-5. `docs/onboarding.md`
-6. `supabase/README.md`
+## Lectura recomendada`r`n`r`n1. `docs/architecture.md``r`n2. `docs/backend-logical-model.md``r`n3. `docs/database.md``r`n4. `docs/authorization.md``r`n5. `docs/backend-operations.md``r`n6. `docs/onboarding.md``r`n7. `supabase/README.md`

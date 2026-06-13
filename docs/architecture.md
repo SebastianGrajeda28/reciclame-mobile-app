@@ -18,3 +18,7 @@
 La trazabilidad buscada es:
 
 Pantalla -> hook/contexto -> servicio de feature -> query/RPC/Edge Function -> migración / función SQL / política.
+
+## Modelo lógico visual
+
+Ver docs/backend-logical-model.md para el mapa visual entre clientes, contratos públicos, schemas por dominio y migraciones.

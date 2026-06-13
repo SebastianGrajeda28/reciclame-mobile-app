@@ -27,7 +27,8 @@
     "admin-web:lint": "bun run --cwd apps/admin-web lint",
     "web:dev": "bun run admin-web:dev",
     "web:build": "bun run admin-web:build",
-    "web:lint": "bun run admin-web:lint"
+    "web:lint": "bun run admin-web:lint",
+    "db:test:contracts": "node scripts/run-supabase-contract-tests.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",

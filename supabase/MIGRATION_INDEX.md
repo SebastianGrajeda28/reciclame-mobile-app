@@ -60,3 +60,8 @@ This file groups existing migrations by domain so contributors do not have to in
 ## Notes on current disorder
 
 There are clear revisions and overlapping attempts in the auth-trigger area. That history should not be rewritten during migration. Instead, new work should follow the domain naming convention from `README.md` and be documented here.
+
+## Domain schema refactor
+
+- 20260613010000_domain_function_schemas.sql — introduce first internal domain schemas with public wrappers
+- 20260613020000_expand_domain_function_schemas.sql — expand internal domain schemas for admin, profile, gamification and auth trigger ownership

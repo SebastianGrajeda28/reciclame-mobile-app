@@ -17,12 +17,7 @@
 - documentación base de arquitectura, autorización, base de datos, operaciones y onboarding
 - migración aditiva `20260613010000_domain_function_schemas.sql` para empezar a separar implementación SQL por dominio sin romper RPC públicos
 
-## Validación ejecutada
-
-- `bun install`
-- `bun run admin-web:build`
-- `bun run mobile:lint`
-- `bunx supabase gen types typescript --local`
+## Validación ejecutada`r`n`r`n- `bun install``r`n- `bun run admin-web:build``r`n- `bun run mobile:lint``r`n- `bunx supabase gen types typescript --local``r`n- `bun run db:test:contracts`
 
 ## Pendientes
 
