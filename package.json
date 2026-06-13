@@ -3,15 +3,33 @@
   "private": true,
   "workspaces": [
     "apps/mobile",
-    "apps/web/frontend"
+    "apps/web",
+    "packages/*"
   ],
   "scripts": {
-    "mobile:dev": "bun --cwd apps/mobile run dev",
-    "mobile:start": "bun --cwd apps/mobile run start",
-    "mobile:android": "bun --cwd apps/mobile run android",
-    "mobile:ios": "bun --cwd apps/mobile run ios",
-    "mobile:web": "bun --cwd apps/mobile run web",
-    "web:dev": "bun --cwd apps/web/frontend run dev",
-    "web:build": "bun --cwd apps/web/frontend run build"
+    "prepare": "husky install",
+    "mobile:dev": "bun run --cwd apps/mobile dev",
+    "mobile:start": "bun run --cwd apps/mobile start",
+    "mobile:android": "bun run --cwd apps/mobile android",
+    "mobile:ios": "bun run --cwd apps/mobile ios",
+    "mobile:web": "bun run --cwd apps/mobile web",
+    "mobile:lint": "bun run --cwd apps/mobile lint",
+    "mobile:test:coverage": "bun run --cwd apps/mobile test:coverage",
+    "web:dev": "bun run --cwd apps/web dev",
+    "web:build": "bun run --cwd apps/web build",
+    "web:lint": "bun run --cwd apps/web lint",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset",
+    "db:migrate": "supabase db push",
+    "test:coverage": "bun run mobile:test:coverage",
+    "db:types": "bunx supabase gen types typescript --local > packages/database-types/src/database.types.ts"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "husky": "^8.0.0",
+    "supabase": "^2.101.0"
   }
 }

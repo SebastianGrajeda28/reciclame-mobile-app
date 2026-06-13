@@ -1,28 +1,54 @@
 # reciclame
 
-Monorepo de Reciclame.
+Monorepo de Recíclame con dos clientes y un backend 100% Supabase.
 
-## Estructura
+## Aplicaciones
 
-- pps/mobile: aplicacion movil Expo
-- pps/web/frontend: aplicacion web administrativa
-- supabase: backend centralizado, migraciones y funciones
+- `apps/mobile`: app móvil para estudiantes
+- `apps/web`: portal web administrativo
+- `supabase`: backend gestionado como código
+- `packages/database-types`: tipos generados desde la base
+- `packages/shared-domain`: contratos livianos compartidos entre clientes
+- `docs`: arquitectura, base de datos, autorización y onboarding
 
-## Instalacion
+## Comandos principales
 
-`sh
+```sh
 bun install
-`
-
-## Desarrollo
-
-`sh
 bun run mobile:dev
 bun run web:dev
-`
+bun run db:start
+bun run db:reset
+bun run db:migrate
+bun run db:types
+```
 
 ## Variables de entorno
 
-- pps/mobile/.env para variables de la app movil
-- pps/web/frontend/.env para variables de la app web
-- supabase/ permanece como fuente de verdad del backend
+- `apps/mobile/.env`
+- `apps/web/.env`
+- `supabase/functions/.env`
+
+Usa los `.env.example` de cada superficie como punto de partida.
+
+## Supabase local
+
+```sh
+bun run db:start
+bun run db:status
+bun run db:reset
+bun run db:migrate
+bun run db:types
+bun run db:stop
+```
+
+Requiere Docker Desktop.
+
+## Lectura recomendada
+
+1. `docs/architecture.md`
+2. `docs/database.md`
+3. `docs/authorization.md`
+4. `docs/backend-operations.md`
+5. `docs/onboarding.md`
+6. `supabase/README.md`
