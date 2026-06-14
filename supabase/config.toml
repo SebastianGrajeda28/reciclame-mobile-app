@@ -15,20 +15,18 @@ major_version = 17
 [db.migrations]
 schema_paths = [
   "./schemas/00_overview.sql",
-  "./schemas/01_internal_schemas.sql",
-  "./schemas/10_catalog.sql",
-  "./schemas/20_profiles_social.sql",
-  "./schemas/30_recycling_points.sql",
-  "./schemas/40_recycling_flow.sql",
-  "./schemas/50_education.sql",
-  "./schemas/60_admin_analytics.sql",
-  "./schemas/65_constraints.sql",
-  "./schemas/70_functions_auth_admin.sql",
-  "./schemas/71_functions_education.sql",
-  "./schemas/72_functions_gamification.sql",
-  "./schemas/73_functions_social.sql",
-  "./schemas/74_functions_analytics.sql",
-  "./schemas/80_rls_and_grants.sql",
+  "./schemas/01_schemas.sql",
+  "./schemas/10_reference_data.sql",
+  "./schemas/20_identity_access.sql",
+  "./schemas/30_profile.sql",
+  "./schemas/35_social.sql",
+  "./schemas/40_geo_infrastructure.sql",
+  "./schemas/45_offline_sync.sql",
+  "./schemas/50_recycling_flow.sql",
+  "./schemas/60_education_content.sql",
+  "./schemas/70_gamification.sql",
+  "./schemas/80_admin_analytics.sql",
+  "./schemas/95_permissions.sql",
 ]
 
 [realtime]

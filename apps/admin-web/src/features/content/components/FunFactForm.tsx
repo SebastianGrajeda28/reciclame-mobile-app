@@ -17,6 +17,7 @@ import type { WasteType } from "../services/WasteTypesService";
 
 export const FUN_FACT_MAX_LENGTH = 255;
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const funFactFormSchema = z.object({
   wasteTypeId: z.string().min(1, "Selecciona un tipo de residuo."),
   text: z

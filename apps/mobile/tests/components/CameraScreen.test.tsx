@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
-import { router } from 'expo-router';
 
 import { CameraScreen } from '@/src/features/recycling/screens/CameraScreen';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';

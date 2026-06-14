@@ -32,3 +32,7 @@ bun run db:test:rls
 ```
 
 Both use the local Docker container created by `supabase start`.
+
+## Declarative test helpers
+
+Functions prefixed with `test_` are intentionally excluded from `supabase/schemas/`. Keep them under `supabase/tests/` or ad hoc fixtures instead of treating them as production schema.

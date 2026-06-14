@@ -12,7 +12,7 @@ export type InvalidUser = {
     name?: string;
     lastname?: string;
     documentID?: string;
-    [key: string]: any; // soporte extendido
+    [key: string]: string | number | boolean | null | undefined;
   };
   errors: Issue[];
 };

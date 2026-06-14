@@ -31,6 +31,7 @@
     "web:dev": "bun run admin-web:dev",
     "web:build": "bun run admin-web:build",
     "web:lint": "bun run admin-web:lint",
+    "lint": "bun run mobile:lint && bun run admin-web:lint",
     "db:test:contracts": "node scripts/run-supabase-contract-tests.mjs",
     "db:test:rls": "node scripts/run-supabase-rls-tests.mjs"
   },

@@ -2,12 +2,18 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export function EditUserForm({ initialData, onClose }: { initialData: any; onClose: () => void }) {
+interface UserFormData {
+  name?: string;
+  lastname?: string;
+  documentID?: string;
+}
+
+export function EditUserForm({ initialData, onClose }: { initialData: UserFormData; onClose: () => void }) {
   const { register, handleSubmit } = useForm({
     defaultValues: initialData,
   });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: UserFormData) => {
     console.log("Datos corregidos:", data);
     // Aquí podrías hacer una llamada API, validar con Zod o actualizar estado global
     onClose(); // cerrar modal

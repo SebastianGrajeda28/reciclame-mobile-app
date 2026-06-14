@@ -16,7 +16,7 @@ export function InstructionsScreen() {
   const navigation = useNavigation();
   const { state, clearSelectedContainer, markStep, markConfirmed } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
-  const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
+  const { binType: resolvedBinType } = useResolvedBinType(
     state.finalWasteTypeId,
   );
   const { session } = useAuth();

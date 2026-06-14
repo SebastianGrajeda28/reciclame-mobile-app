@@ -274,7 +274,7 @@ describe('Loading Screen Components - Type Safety', () => {
     });
 
     test('StateIndicatorProps - todos los tamaños disponibles', () => {
-      const sizes: Array<'sm' | 'md' | 'lg'> = ['sm', 'md', 'lg'];
+      const sizes: ('sm' | 'md' | 'lg')[] = ['sm', 'md', 'lg'];
 
       sizes.forEach((size) => {
         const props: StateIndicatorProps = {
@@ -297,7 +297,7 @@ describe('Loading Screen Components - Type Safety', () => {
 
   describe('RecognitionLoadingState Type Coverage', () => {
     test('Todos los estados soportados', () => {
-      const states: Array<'loading' | 'processing' | 'complete' | 'error'> = [
+      const states: ('loading' | 'processing' | 'complete' | 'error')[] = [
         'loading',
         'processing',
         'complete',
@@ -317,7 +317,7 @@ describe('Loading Screen Components - Type Safety', () => {
 
   describe('Content Type Coverage', () => {
     test('Todos los tipos de contenido soportados', () => {
-      const types: Array<'fact' | 'tip' | 'guide' | 'instruction'> = [
+      const types: ('fact' | 'tip' | 'guide' | 'instruction')[] = [
         'fact',
         'tip',
         'guide',

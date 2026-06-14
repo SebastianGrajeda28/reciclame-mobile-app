@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { MapScreen } from '../../src/features/map/screens/MapScreen';
 import { RecycleFlowProvider } from '../../src/features/recycling/hooks/useRecycleFlow';
 
@@ -55,7 +56,6 @@ describe('MapScreen', () => {
   });
 
   it('navigates to camera when CTA button pressed', () => {
-    const { router } = require('expo-router');
     renderWithProvider(<MapScreen />);
     fireEvent.press(screen.getByText('Escanear tu residuo'));
     expect(router.push).toHaveBeenCalledWith('/recycle/camera');

@@ -52,10 +52,9 @@ export default function InstructionsPage() {
     refetchOnWindowFocus: false,
   });
 
-  // Auto-select first waste type once loaded
   useEffect(() => {
     if (wasteTypes.length > 0 && !selectedWasteTypeId) {
-      setSelectedWasteTypeId(wasteTypes[0].id);
+      setSelectedWasteTypeId(wasteTypes[0].id); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [wasteTypes, selectedWasteTypeId]);
 
@@ -189,7 +188,6 @@ export default function InstructionsPage() {
                       {activeInstructionForType ? (
                         <ActiveEditor
                           instruction={activeInstructionForType}
-                          wasteTypeName={wasteTypes.find((wt) => wt.id === selectedWasteTypeId)?.name}
                           onDeactivate={() =>
                             statusMutation.mutate({ id: activeInstructionForType.id, isActive: false })
                           }
@@ -283,12 +281,10 @@ export default function InstructionsPage() {
 
 function ActiveEditor({
   instruction,
-  wasteTypeName,
   onDeactivate,
   isMutating,
 }: {
   instruction: Instruction;
-  wasteTypeName?: string;
   onDeactivate: () => void;
   isMutating: boolean;
 }) {

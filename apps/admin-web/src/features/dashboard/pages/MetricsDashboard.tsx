@@ -241,7 +241,7 @@ export default function MetricsDashboard() {
             },
           ]
         : kpiMetrics,
-    [dashboardData, dateFrom, dateTo]
+    [dashboardData]
   );
 
   const renderedFunnel = dashboardData?.funnel.map((step, index) => ({
