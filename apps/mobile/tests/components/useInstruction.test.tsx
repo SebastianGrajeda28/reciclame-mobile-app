@@ -3,9 +3,9 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useInstructionByWasteTypeId } from '@/src/features/recycling/hooks/useInstruction';
 import type { Instruction } from '@/src/types/instruction';
 
-import { fetchInstructionWithStepsByWasteTypeId } from '@/src/services/api/content';
+import { fetchInstructionWithStepsByWasteTypeId } from '@/src/features/recycling/api/content';
 
-jest.mock('@/src/services/api/content', () => ({
+jest.mock('@/src/features/recycling/api/content', () => ({
   fetchInstructionWithStepsByWasteTypeId: jest.fn(),
 }));
 
@@ -16,19 +16,20 @@ const sampleInstruction: Instruction = {
   id: 'inst-1',
   title: 'Lava el envase',
   body: 'Pasos para limpiar',
-  imageUrl: undefined,
+  imageUrl: null,
   wasteTypeId: 'waste-1',
   isActive: true,
-  createdAt: new Date('2026-05-30T01:00:00Z'),
-  updatedAt: new Date('2026-05-30T02:00:00Z'),
+  createdAt: '2026-05-30T01:00:00Z',
+  updatedAt: '2026-05-30T02:00:00Z',
   steps: [
     {
       id: 'step-1',
       instructionId: 'inst-1',
       text: 'Enjuaga con agua',
+      imageUrl: null,
       isActive: true,
-      createdAt: new Date('2026-05-30T01:05:00Z'),
-      updatedAt: new Date('2026-05-30T01:06:00Z'),
+      createdAt: '2026-05-30T01:05:00Z',
+      updatedAt: '2026-05-30T01:06:00Z',
     },
   ],
 };

@@ -2,9 +2,9 @@ import { act, renderHook } from '@testing-library/react-native';
 
 import { useFriends } from '@/src/features/friends/hooks/useFriends';
 import type { FriendSummary } from '@/src/types/friend';
-import { getFriends } from '@/src/services/api/friends';
+import { getFriends } from '@/src/features/friends/api/friends';
 
-jest.mock('@/src/services/api/friends', () => ({
+jest.mock('@/src/features/friends/api/friends', () => ({
   getFriends: jest.fn(),
 }));
 
@@ -15,7 +15,7 @@ const sampleFriend: FriendSummary = {
   name: 'Ana Recicladora',
   currentStreak: 5,
   avatarUrl: 'https://cdn.example.com/avatar-1.png',
-  lastActivityAt: new Date('2026-06-01T14:30:00Z'),
+  lastActivityAt: '2026-06-01T14:30:00Z',
   featuredMedals: [
     {
       id: 'bbbbbbbb-0000-0000-0000-000000000001',

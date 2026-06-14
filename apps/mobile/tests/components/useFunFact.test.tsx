@@ -3,9 +3,9 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useFunFactByWasteTypeId, useRandomFunFact } from '@/src/features/recycling/hooks/useFunFact';
 import type { FunFact } from '@/src/types/funFact';
 
-import { fetchRandomFunFact, fetchRandomFunFactByWasteTypeId } from '@/src/services/api/content';
+import { fetchRandomFunFact, fetchRandomFunFactByWasteTypeId } from '@/src/features/recycling/api/content';
 
-jest.mock('@/src/services/api/content', () => ({
+jest.mock('@/src/features/recycling/api/content', () => ({
   fetchRandomFunFact: jest.fn(),
   fetchRandomFunFactByWasteTypeId: jest.fn(),
 }));
@@ -18,7 +18,6 @@ const sampleFunFact: FunFact = {
   text: 'Dato curioso',
   wasteTypeId: 'waste-1',
   isActive: true,
-  createdAt: new Date('2026-05-30T01:00:00Z'),
 };
 
 afterEach(() => {

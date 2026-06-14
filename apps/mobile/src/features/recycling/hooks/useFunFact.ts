@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { fetchFunFacts, fetchRandomFunFact, fetchRandomFunFactByWasteTypeId } from '@/src/services/api/content';
+import { fetchFunFacts, fetchRandomFunFact, fetchRandomFunFactByWasteTypeId } from '../api/content';
 import type { FunFact } from '@/src/types/funFact';
 
 type FunFactState = {

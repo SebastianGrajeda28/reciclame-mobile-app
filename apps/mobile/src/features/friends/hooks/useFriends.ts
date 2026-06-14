@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { getFriends } from '@/src/services/api/friends';
+import { getFriends } from '../api/friends';
 import type { FriendSummary } from '@/src/types/friend';
 
 /**

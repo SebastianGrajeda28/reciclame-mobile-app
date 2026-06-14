@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { fetchInstructionWithStepsByWasteTypeId } from '@/src/services/api/content';
+import { fetchInstructionWithStepsByWasteTypeId } from '../api/content';
 import type { Instruction } from '@/src/types/instruction';
 
 type InstructionState = {

@@ -1,7 +1,1 @@
-export type Reward = {
-  id: string;
-  name: string;
-  description: string;
-  rewardType: string;
-  assetUrl?: string;
-};
+export type { Reward } from "@reciclame/shared-domain";

@@ -1,5 +1,1 @@
-export type University = {
-  id: string;
-  name: string;
-  isActive: boolean;
-};
+export type { University } from "@reciclame/shared-domain";

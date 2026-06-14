@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { getCurrentAccount, type Account } from "@/shared/services/accountService";
-import { getCurrentSession, onAuthStateChanged } from "@/shared/services/authService";
+import { getCurrentAccount, type Account } from "@/features/account/services/accountService";
+import { getCurrentSession, onAuthStateChanged } from "@/features/auth/services/authService";
 
 interface UserContextValue {
   account: Account | null;

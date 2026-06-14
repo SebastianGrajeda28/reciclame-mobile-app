@@ -18,7 +18,7 @@ import {
   type FlowStep,
   type LocalRecyclingSession,
   savePendingSession,
-} from '@/src/services/api/recyclingSessions';
+} from '../api/recyclingSessions';
 
 type RecycleFlowState = {
   capturedPhotoUri?: string;

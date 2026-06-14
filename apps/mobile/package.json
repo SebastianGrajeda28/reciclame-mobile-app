@@ -60,7 +60,9 @@
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
     "react-test-renderer": "19.1.0",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "@reciclame/shared-domain": "workspace:*",
+    "@reciclame/database-types": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/react-native": "^13.3.3",

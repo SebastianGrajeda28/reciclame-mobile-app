@@ -13,6 +13,76 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
+CREATE SCHEMA IF NOT EXISTS "app_admin";
+
+
+ALTER SCHEMA "app_admin" OWNER TO "postgres";
+
+
+COMMENT ON SCHEMA "app_admin" IS 'Domain implementation functions for administrative authorization and operations.';
+
+
+
+CREATE SCHEMA IF NOT EXISTS "app_analytics";
+
+
+ALTER SCHEMA "app_analytics" OWNER TO "postgres";
+
+
+COMMENT ON SCHEMA "app_analytics" IS 'Domain implementation functions for analytics and admin reporting.';
+
+
+
+CREATE SCHEMA IF NOT EXISTS "app_auth";
+
+
+ALTER SCHEMA "app_auth" OWNER TO "postgres";
+
+
+COMMENT ON SCHEMA "app_auth" IS 'Domain implementation functions for authentication/account contracts.';
+
+
+
+CREATE SCHEMA IF NOT EXISTS "app_education";
+
+
+ALTER SCHEMA "app_education" OWNER TO "postgres";
+
+
+COMMENT ON SCHEMA "app_education" IS 'Domain implementation functions for educational content contracts.';
+
+
+
+CREATE SCHEMA IF NOT EXISTS "app_gamification";
+
+
+ALTER SCHEMA "app_gamification" OWNER TO "postgres";
+
+
+COMMENT ON SCHEMA "app_gamification" IS 'Domain implementation functions for medals, rewards and progression-facing contracts.';
+
+
+
+CREATE SCHEMA IF NOT EXISTS "app_profile";
+
+
+ALTER SCHEMA "app_profile" OWNER TO "postgres";
+
+
+COMMENT ON SCHEMA "app_profile" IS 'Domain implementation functions for profile and avatar operations.';
+
+
+
+CREATE SCHEMA IF NOT EXISTS "app_social";
+
+
+ALTER SCHEMA "app_social" OWNER TO "postgres";
+
+
+COMMENT ON SCHEMA "app_social" IS 'Domain implementation functions for social/friends contracts.';
+
+
+
 CREATE EXTENSION IF NOT EXISTS "pg_cron" WITH SCHEMA "pg_catalog";
 
 
@@ -50,6 +120,545 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 
+
+
+CREATE OR REPLACE FUNCTION "app_admin"."is_current_user_admin"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.roles r on r.id = ur.role_id
+    where ur.user_id = auth.uid()
+      and ur.is_active = true
+      and r.is_active = true
+      and r.name = 'ADMIN'
+  );
+$$;
+
+
+ALTER FUNCTION "app_admin"."is_current_user_admin"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_analytics"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_is_admin boolean;
+  v_result jsonb;
+begin
+  if p_start is null or p_end is null then
+    raise exception 'p_start and p_end are required';
+  end if;
+
+  if p_start > p_end then
+    raise exception 'p_start must be less than or equal to p_end';
+  end if;
+
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.roles r on r.id = ur.role_id
+    where ur.user_id = v_uid
+      and ur.is_active = true
+      and r.is_active = true
+      and r.name = 'ADMIN'
+  )
+  into v_is_admin;
+
+  if not coalesce(v_is_admin, false) then
+    raise exception 'admin role required';
+  end if;
+
+  with session_scope as (
+    select *
+    from public.recycling_sessions
+    where started_at >= p_start
+      and started_at <= p_end
+  ),
+  record_scope as (
+    select *
+    from public.recycling_records
+    where created_at >= p_start
+      and created_at <= p_end
+  ),
+  kpis as (
+    select jsonb_build_object(
+      'totalRecyclings', (select count(*)::int from record_scope),
+      'totalKg', coalesce((select round(sum(estimated_weight)::numeric / 1000, 1) from record_scope), 0),
+      'activeUsersInPeriod', (
+        select count(*)::int
+        from public.users u
+        where u.last_login_at >= p_start
+          and u.last_login_at <= p_end
+      ),
+      'newUsersInPeriod', (
+        select count(*)::int
+        from public.users u
+        where u.created_at >= p_start
+          and u.created_at <= p_end
+      ),
+      'confirmationRate', coalesce((
+        select round(
+          100.0 * count(*) filter (where outcome = 'confirmed') / nullif(count(*), 0),
+          0
+        )
+        from session_scope
+      ), 0)
+    ) as data
+  ),
+  funnel as (
+    select jsonb_agg(
+      jsonb_build_object('label', label, 'value', value)
+      order by sort_order
+    ) as data
+    from (
+      select 1 as sort_order, 'Iniciaron' as label, count(*)::int as value from session_scope
+      union all
+      select 2, 'Processing', count(*) filter (where furthest_step in ('processing', 'manual', 'map', 'instructions', 'success'))::int from session_scope
+      union all
+      select 3, 'Mapa', count(*) filter (where furthest_step in ('map', 'instructions', 'success'))::int from session_scope
+      union all
+      select 4, 'Instrucciones', count(*) filter (where furthest_step in ('instructions', 'success'))::int from session_scope
+      union all
+      select 5, 'Confirmaron', count(*) filter (where outcome = 'confirmed')::int from session_scope
+    ) stages
+  ),
+  top_residues as (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'name', name,
+          'confirmed', confirmed
+        )
+        order by confirmed desc, name asc
+      ),
+      '[]'::jsonb
+    ) as data
+    from (
+      select
+        coalesce(wt.name, 'Desconocido') as name,
+        count(*)::int as confirmed
+      from public.recycling_records rr
+      left join public.waste_types wt on wt.id = rr.waste_type_id
+      where rr.created_at >= p_start
+        and rr.created_at <= p_end
+      group by wt.name
+      order by confirmed desc, name asc
+      limit 6
+    ) rows
+  ),
+  quality_base as (
+    select
+      count(*) filter (
+        where confidence_score is not null
+          and confidence_score >= 0.8
+          and coalesce(waste_type_overridden, false) = false
+      )::int as high_confidence,
+      count(*) filter (
+        where confidence_score is not null
+          and confidence_score < 0.8
+          and coalesce(waste_type_overridden, false) = false
+      )::int as low_confidence,
+      count(*) filter (
+        where coalesce(waste_type_overridden, false) = true
+      )::int as overridden
+    from session_scope
+  ),
+  recognition_quality as (
+    select jsonb_agg(
+      jsonb_build_object(
+        'name', name,
+        'count', count_value,
+        'percentage', case when total = 0 then 0 else round(100.0 * count_value / total) end,
+        'color', color
+      )
+      order by sort_order
+    ) as data
+    from (
+      select 1 as sort_order, 'Alta confianza' as name, high_confidence as count_value, '#22c76f' as color,
+             (high_confidence + low_confidence + overridden) as total
+      from quality_base
+      union all
+      select 2, 'Baja confianza', low_confidence, '#f4b740', (high_confidence + low_confidence + overridden)
+      from quality_base
+      union all
+      select 3, 'Corregidos por usuario', overridden, '#0b2f4e', (high_confidence + low_confidence + overridden)
+      from quality_base
+    ) rows
+  ),
+  trend as (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object('label', label, 'value', value)
+        order by period_start
+      ),
+      '[]'::jsonb
+    ) as data
+    from (
+      select
+        date_trunc('week', created_at) as period_start,
+        to_char(date_trunc('week', created_at), '"sem. "IW') as label,
+        count(*)::int as value
+      from public.recycling_records
+      where created_at >= p_start
+        and created_at <= p_end
+      group by date_trunc('week', created_at)
+      order by date_trunc('week', created_at)
+    ) rows
+  ),
+  detail_rows as (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'residue', residue,
+          'scans', scans,
+          'confirmed', confirmed,
+          'rate', rate,
+          'kilograms', kilograms
+        )
+        order by confirmed desc, scans desc, residue asc
+      ),
+      '[]'::jsonb
+    ) as data
+    from (
+      with scans as (
+        select
+          final_waste_type_id as waste_type_id,
+          count(*)::int as scans
+        from session_scope
+        where final_waste_type_id is not null
+        group by final_waste_type_id
+      ),
+      confirmed as (
+        select
+          waste_type_id,
+          count(*)::int as confirmed,
+          coalesce(round(sum(estimated_weight)::numeric / 1000, 1), 0) as kilograms
+        from record_scope
+        group by waste_type_id
+      )
+      select
+        coalesce(wt.name, 'Desconocido') as residue,
+        coalesce(scans.scans, 0)::int as scans,
+        coalesce(confirmed.confirmed, 0)::int as confirmed,
+        case
+          when coalesce(scans.scans, 0) = 0 then 0
+          else round(100.0 * coalesce(confirmed.confirmed, 0) / scans.scans, 0)
+        end as rate,
+        coalesce(confirmed.kilograms, 0) as kilograms
+      from public.waste_types wt
+      left join scans on scans.waste_type_id = wt.id
+      left join confirmed on confirmed.waste_type_id = wt.id
+      where coalesce(scans.scans, 0) > 0
+         or coalesce(confirmed.confirmed, 0) > 0
+      order by coalesce(confirmed.confirmed, 0) desc, coalesce(scans.scans, 0) desc, coalesce(wt.name, 'Desconocido') asc
+      limit 10
+    ) rows
+  )
+  select jsonb_build_object(
+    'filters', jsonb_build_object('start', p_start, 'end', p_end),
+    'kpis', kpis.data,
+    'funnel', coalesce(funnel.data, '[]'::jsonb),
+    'topResidues', top_residues.data,
+    'recognitionQuality', coalesce(recognition_quality.data, '[]'::jsonb),
+    'trend', trend.data,
+    'detailRows', detail_rows.data
+  )
+  into v_result
+  from kpis, funnel, top_residues, recognition_quality, trend, detail_rows;
+
+  return v_result;
+end;
+$$;
+
+
+ALTER FUNCTION "app_analytics"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_auth"."get_current_account"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_email text;
+  v_name text;
+  v_role text;
+begin
+  if v_uid is null then
+    raise exception 'unauthenticated';
+  end if;
+
+  select u.email
+  into v_email
+  from public.users u
+  where u.id = v_uid;
+
+  select coalesce(au.raw_user_meta_data ->> 'full_name', au.email), au.email
+  into v_name, v_email
+  from auth.users au
+  where au.id = v_uid;
+
+  select r.name
+  into v_role
+  from public.user_roles ur
+  join public.roles r on r.id = ur.role_id
+  where ur.user_id = v_uid
+    and ur.is_active = true
+    and r.is_active = true
+  order by ur.assigned_at desc nulls last, ur.created_at desc nulls last
+  limit 1;
+
+  return jsonb_build_object(
+    'id', v_uid,
+    'email', coalesce(v_email, ''),
+    'name', coalesce(v_name, v_email, ''),
+    'role', v_role
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "app_auth"."get_current_account"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_auth"."handle_new_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  user_name text;
+begin
+  insert into public.users (id, email, last_login_at)
+  values (new.id, new.email, now())
+  on conflict (id) do update set
+    last_login_at = case
+      when new.last_sign_in_at is distinct from old.last_sign_in_at then clock_timestamp()
+      else public.users.last_login_at
+    end;
+
+  user_name := coalesce(
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'name',
+    new.raw_user_meta_data->>'display_name',
+    split_part(new.email, '@', 1)
+  );
+
+  insert into public.user_profiles (user_id, alias)
+  values (new.id, user_name)
+  on conflict (user_id) do nothing;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_auth"."handle_new_user"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_education"."get_educational_categories"() RETURNS TABLE("category" "text", "content_count" integer)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  return query
+  select 
+    ec.category,
+    count(*)::int as content_count
+  from public.educational_content ec
+  where ec.is_active = true
+  group by ec.category
+  order by ec.category;
+end;
+$$;
+
+
+ALTER FUNCTION "app_education"."get_educational_categories"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_education"."get_educational_content_by_category"("p_category" "text") RETURNS TABLE("id" "uuid", "category" "text", "title" "text", "description" "text", "content_type" "text", "body" "text", "image_url" "text", "waste_type_id" "uuid")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  return query
+  select 
+    ec.id,
+    ec.category,
+    ec.title,
+    ec.description,
+    ec.content_type,
+    ec.body,
+    ec.image_url,
+    ec.waste_type_id
+  from public.educational_content ec
+  where ec.is_active = true 
+    and ec.category = p_category
+  order by ec.display_order, ec.created_at;
+end;
+$$;
+
+
+ALTER FUNCTION "app_education"."get_educational_content_by_category"("p_category" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_education"."get_educational_content_for_sync"() RETURNS TABLE("id" "uuid", "category" "text", "title" "text", "description" "text", "content_type" "text", "body" "text", "image_url" "text", "waste_type_id" "uuid")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  return query
+  select 
+    ec.id,
+    ec.category,
+    ec.title,
+    ec.description,
+    ec.content_type,
+    ec.body,
+    ec.image_url,
+    ec.waste_type_id
+  from public.educational_content ec
+  where ec.is_active = true
+  order by ec.category, ec.display_order, ec.created_at;
+end;
+$$;
+
+
+ALTER FUNCTION "app_education"."get_educational_content_for_sync"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) RETURNS TABLE("success" boolean, "message" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  invalid_ids uuid[];
+begin
+  if array_length(p_achievement_ids, 1) > 5 then
+    return query select false, 'max_featured_medals_exceeded';
+    return;
+  end if;
+
+  select array_agg(id)
+  into invalid_ids
+  from unnest(p_achievement_ids) as id
+  where not exists (
+    select 1 from public.user_achievements
+    where user_id = p_user_id and achievement_id = id
+  );
+
+  if invalid_ids is not null then
+    return query select false, 'invalid_or_unlocked_achievements';
+    return;
+  end if;
+
+  insert into public.user_featured_medals (user_id, achievement_ids, updated_at)
+  values (p_user_id, p_achievement_ids, now())
+  on conflict (user_id) do update set
+    achievement_ids = excluded.achievement_ids,
+    updated_at = now();
+
+  return query select true, 'featured_medals_updated';
+end;
+$$;
+
+
+ALTER FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_profile"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") RETURNS TABLE("success" boolean, "message" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  asset text;
+begin
+  if not exists (select 1 from public.rewards where id = p_reward_id) then
+    return query select false, 'reward_not_found';
+    return;
+  end if;
+
+  if not exists (select 1 from public.user_rewards where user_id = p_user_id and reward_id = p_reward_id) then
+    return query select false, 'reward_not_unlocked';
+    return;
+  end if;
+
+  select asset_url into asset from public.rewards where id = p_reward_id;
+
+  insert into public.avatars (user_id, base_style, updated_at)
+  values (p_user_id, asset, now())
+  on conflict (user_id) do update set
+    base_style = excluded.base_style,
+    updated_at = now();
+
+  return query select true, 'avatar_updated';
+end;
+$$;
+
+
+ALTER FUNCTION "app_profile"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  return query
+  with my_friends as (
+    select
+      case when f.requester_id = p_user_id
+           then f.addressee_id
+           else f.requester_id
+      end as friend_id
+    from public.friendships f
+    where (f.requester_id = p_user_id or f.addressee_id = p_user_id)
+      and f.status = 'accepted'
+      and f.is_active = true
+  )
+  select
+    mf.friend_id,
+    coalesce(up.alias, split_part(u.email, '@', 1)) as name,
+    coalesce(prog.streak_days, 0) as current_streak,
+    av.base_style as avatar_base_style,
+    la.last_activity_at,
+    coalesce(med.featured_medals, '[]'::jsonb) as featured_medals
+  from my_friends mf
+  join public.users u on u.id = mf.friend_id
+  left join public.user_profiles up on up.user_id = mf.friend_id
+  left join public.user_progress prog on prog.user_id = mf.friend_id
+  left join public.avatars av on av.user_id = mf.friend_id
+  left join lateral (
+    select max(rr.created_at) as last_activity_at
+    from public.recycling_records rr
+    where rr.user_id = mf.friend_id
+      and rr.is_active = true
+  ) la on true
+  left join lateral (
+    select jsonb_agg(
+      jsonb_build_object(
+        'id', a.id,
+        'name', a.name,
+        'description', a.description,
+        'image_url', r.asset_url
+      ) order by a.name
+    ) as featured_medals
+    from public.user_featured_medals ufm
+    cross join lateral unnest(ufm.achievement_ids) as t(achievement_id)
+    join public.achievements a on a.id = t.achievement_id
+    left join public.rewards r on r.id = a.reward_id
+    where ufm.user_id = mf.friend_id
+  ) med on true
+  order by lower(coalesce(up.alias, split_part(u.email, '@', 1)));
+end;
+$$;
+
+
+ALTER FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."apply_daily_heat_decay"() RETURNS "void"
@@ -112,19 +721,33 @@ $$;
 ALTER FUNCTION "public"."count_public_tables"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_educational_categories"() RETURNS TABLE("category" "text", "content_count" integer)
-    LANGUAGE "plpgsql" SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) RETURNS "jsonb"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_analytics'
     AS $$
-begin
-  return query
-  select 
-    ec.category,
-    count(*)::int as content_count
-  from public.educational_content ec
-  where ec.is_active = true
-  group by ec.category
-  order by ec.category;
-end;
+  select app_analytics.get_admin_dashboard(p_start, p_end);
+$$;
+
+
+ALTER FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_current_account"() RETURNS "jsonb"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_auth'
+    AS $$
+  select app_auth.get_current_account();
+$$;
+
+
+ALTER FUNCTION "public"."get_current_account"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_educational_categories"() RETURNS TABLE("category" "text", "content_count" integer)
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'app_education'
+    AS $$
+  select * from app_education.get_educational_categories();
 $$;
 
 
@@ -132,24 +755,10 @@ ALTER FUNCTION "public"."get_educational_categories"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_educational_content_by_category"("p_category" "text") RETURNS TABLE("id" "uuid", "category" "text", "title" "text", "description" "text", "content_type" "text", "body" "text", "image_url" "text", "waste_type_id" "uuid")
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'app_education'
     AS $$
-begin
-  return query
-  select 
-    ec.id,
-    ec.category,
-    ec.title,
-    ec.description,
-    ec.content_type,
-    ec.body,
-    ec.image_url,
-    ec.waste_type_id
-  from public.educational_content ec
-  where ec.is_active = true 
-    and ec.category = p_category
-  order by ec.display_order, ec.created_at;
-end;
+  select * from app_education.get_educational_content_by_category(p_category);
 $$;
 
 
@@ -157,23 +766,10 @@ ALTER FUNCTION "public"."get_educational_content_by_category"("p_category" "text
 
 
 CREATE OR REPLACE FUNCTION "public"."get_educational_content_for_sync"() RETURNS TABLE("id" "uuid", "category" "text", "title" "text", "description" "text", "content_type" "text", "body" "text", "image_url" "text", "waste_type_id" "uuid")
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'app_education'
     AS $$
-begin
-  return query
-  select 
-    ec.id,
-    ec.category,
-    ec.title,
-    ec.description,
-    ec.content_type,
-    ec.body,
-    ec.image_url,
-    ec.waste_type_id
-  from public.educational_content ec
-  where ec.is_active = true
-  order by ec.category, ec.display_order, ec.created_at;
-end;
+  select * from app_education.get_educational_content_for_sync();
 $$;
 
 
@@ -181,63 +777,10 @@ ALTER FUNCTION "public"."get_educational_content_for_sync"() OWNER TO "postgres"
 
 
 CREATE OR REPLACE FUNCTION "public"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb")
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'app_social'
     AS $$
-begin
-  return query
-  -- Paso 1: resolver los IDs de amigos aceptados del usuario dado.
-  with my_friends as (
-    select
-      case when f.requester_id = p_user_id
-           then f.addressee_id
-           else f.requester_id
-      end as friend_id
-    from public.friendships f
-    where (f.requester_id = p_user_id or f.addressee_id = p_user_id)
-      and f.status    = 'accepted'
-      and f.is_active = true
-  )
-  select
-    mf.friend_id,
-    coalesce(up.alias, split_part(u.email, '@', 1))      as name,
-    coalesce(prog.streak_days, 0)                         as current_streak,
-    av.base_style                                         as avatar_base_style,
-    la.last_activity_at,
-    coalesce(med.featured_medals, '[]'::jsonb)            as featured_medals
-  from my_friends mf
-  -- Usuario base (siempre existe gracias a FK en friendships)
-  join public.users u on u.id = mf.friend_id
-  -- Perfil (alias / nombre visible)
-  left join public.user_profiles up on up.user_id = mf.friend_id
-  -- Progreso (racha actual)
-  left join public.user_progress prog on prog.user_id = mf.friend_id
-  -- Avatar activo (URL del asset base)
-  left join public.avatars av on av.user_id = mf.friend_id
-  -- Última actividad: max timestamp de registros de reciclaje
-  left join lateral (
-    select max(rr.created_at) as last_activity_at
-    from public.recycling_records rr
-    where rr.user_id   = mf.friend_id
-      and rr.is_active = true
-  ) la on true
-  -- Medallas destacadas: array jsonb [{id, name, description, image_url}]
-  left join lateral (
-    select jsonb_agg(
-      jsonb_build_object(
-        'id',          a.id,
-        'name',        a.name,
-        'description', a.description,
-        'image_url',   r.asset_url
-      ) order by a.name
-    ) as featured_medals
-    from public.user_featured_medals ufm
-    cross join lateral unnest(ufm.achievement_ids) as t(achievement_id)
-    join  public.achievements a on a.id = t.achievement_id
-    left join public.rewards  r on r.id = a.reward_id
-    where ufm.user_id = mf.friend_id
-  ) med on true
-  order by lower(coalesce(up.alias, split_part(u.email, '@', 1)));
-end;
+  select * from app_social.get_friends_with_profile(p_user_id);
 $$;
 
 
@@ -299,34 +842,10 @@ ALTER FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") OWNER TO "
 
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'auth', 'app_auth'
     AS $$
-declare
-  user_name text;
 begin
-  -- 1. Insert user into public.users table
-  insert into public.users (id, email, last_login_at)
-  values (new.id, new.email, now())
-  on conflict (id) do update set
-    last_login_at = case 
-      when new.last_sign_in_at is distinct from old.last_sign_in_at then clock_timestamp()
-      else public.users.last_login_at
-    end;
-  
-  -- 2. Extract display name from Google OAuth metadata
-  user_name := coalesce(
-    new.raw_user_meta_data->>'full_name',
-    new.raw_user_meta_data->>'name',
-    new.raw_user_meta_data->>'display_name',
-    split_part(new.email, '@', 1)
-  );
-
-  -- 3. Insert user profile into public.user_profiles table
-  insert into public.user_profiles (user_id, alias)
-  values (new.id, user_name)
-  on conflict (user_id) do nothing;
-  
-  return new;
+  return app_auth.handle_new_user();
 end;
 $$;
 
@@ -409,6 +928,17 @@ $$;
 
 
 ALTER FUNCTION "public"."heat_gain_for_level"("p_level" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_current_user_admin"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_admin'
+    AS $$
+  select app_admin.is_current_user_admin();
+$$;
+
+
+ALTER FUNCTION "public"."is_current_user_admin"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."streak_level_checkpoint"("p_level" integer) RETURNS integer
@@ -824,40 +1354,10 @@ ALTER FUNCTION "public"."test_update_user_avatar_flow"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) RETURNS TABLE("success" boolean, "message" "text")
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'app_gamification'
     AS $$
-declare
-  invalid_ids uuid[];
-begin
-  -- Validate array size (max 5 medals)
-  if array_length(p_achievement_ids, 1) > 5 then
-    return query select false, 'max_featured_medals_exceeded';
-    return;
-  end if;
-
-  -- Validate all achievement IDs exist and user has unlocked them
-  select array_agg(id)
-  into invalid_ids
-  from unnest(p_achievement_ids) as id
-  where not exists (
-    select 1 from public.user_achievements
-    where user_id = p_user_id and achievement_id = id
-  );
-
-  if invalid_ids is not null then
-    return query select false, 'invalid_or_unlocked_achievements';
-    return;
-  end if;
-
-  -- Upsert featured medals record
-  insert into public.user_featured_medals (user_id, achievement_ids, updated_at)
-  values (p_user_id, p_achievement_ids, now())
-  on conflict (user_id) do update set
-    achievement_ids = excluded.achievement_ids,
-    updated_at = now();
-
-  return query select true, 'featured_medals_updated';
-end;
+  select * from app_gamification.update_featured_medals(p_user_id, p_achievement_ids);
 $$;
 
 
@@ -865,34 +1365,10 @@ ALTER FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievem
 
 
 CREATE OR REPLACE FUNCTION "public"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") RETURNS TABLE("success" boolean, "message" "text")
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'app_profile'
     AS $$
-declare
-  asset text;
-begin
-  -- Validate reward exists
-  if not exists (select 1 from public.rewards where id = p_reward_id) then
-    return query select false, 'reward_not_found';
-    return;
-  end if;
-
-  -- Validate user has unlocked the reward
-  if not exists (select 1 from public.user_rewards where user_id = p_user_id and reward_id = p_reward_id) then
-    return query select false, 'reward_not_unlocked';
-    return;
-  end if;
-
-  select asset_url into asset from public.rewards where id = p_reward_id;
-
-  -- Upsert avatar record for the user using the reward asset
-  insert into public.avatars (user_id, base_style, updated_at)
-  values (p_user_id, asset, now())
-  on conflict (user_id) do update set
-    base_style = excluded.base_style,
-    updated_at = now();
-
-  return query select true, 'avatar_updated';
-end;
+  select * from app_profile.update_user_avatar(p_user_id, p_reward_id);
 $$;
 
 
@@ -1057,7 +1533,8 @@ CREATE TABLE IF NOT EXISTS "public"."instruction_steps" (
     "text" "text" NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone
+    "updated_at" timestamp with time zone,
+    "image_url" "text"
 );
 
 
@@ -1889,10 +2366,34 @@ ALTER TABLE "public"."friendships" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."fun_facts" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "fun_facts_admin_all" ON "public"."fun_facts" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+
+
+
+CREATE POLICY "fun_facts_select_active_authenticated" ON "public"."fun_facts" FOR SELECT TO "authenticated" USING (("is_active" = true));
+
+
+
 ALTER TABLE "public"."instruction_steps" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "instruction_steps_admin_all" ON "public"."instruction_steps" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+
+
+
+CREATE POLICY "instruction_steps_select_active_authenticated" ON "public"."instruction_steps" FOR SELECT TO "authenticated" USING (("is_active" = true));
+
+
+
 ALTER TABLE "public"."instructions" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "instructions_admin_all" ON "public"."instructions" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+
+
+
+CREATE POLICY "instructions_select_active_authenticated" ON "public"."instructions" FOR SELECT TO "authenticated" USING (("is_active" = true));
+
 
 
 ALTER TABLE "public"."map_waste_type_bin_types" ENABLE ROW LEVEL SECURITY;
@@ -1919,6 +2420,14 @@ ALTER TABLE "public"."rewards" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."roles" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "roles_admin_all" ON "public"."roles" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+
+
+
+CREATE POLICY "roles_select_active_authenticated" ON "public"."roles" FOR SELECT TO "authenticated" USING (("is_active" = true));
+
+
+
 ALTER TABLE "public"."system_config" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1940,18 +2449,62 @@ ALTER TABLE "public"."user_rewards" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."user_roles" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "user_roles_admin_all" ON "public"."user_roles" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+
+
+
 ALTER TABLE "public"."user_settings" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "users_admin_all" ON "public"."users" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+
+
+
 ALTER TABLE "public"."waste_types" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "waste_types_admin_all" ON "public"."waste_types" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+
+
+
+CREATE POLICY "waste_types_select_active_authenticated" ON "public"."waste_types" FOR SELECT TO "authenticated" USING (("is_active" = true));
+
 
 
 
 
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+
+GRANT USAGE ON SCHEMA "app_admin" TO "service_role";
+
+
+
+GRANT USAGE ON SCHEMA "app_analytics" TO "service_role";
+
+
+
+GRANT USAGE ON SCHEMA "app_auth" TO "service_role";
+
+
+
+GRANT USAGE ON SCHEMA "app_education" TO "service_role";
+
+
+
+GRANT USAGE ON SCHEMA "app_gamification" TO "service_role";
+
+
+
+GRANT USAGE ON SCHEMA "app_profile" TO "service_role";
+
+
+
+GRANT USAGE ON SCHEMA "app_social" TO "service_role";
+
 
 
 
@@ -1961,6 +2514,51 @@ GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_admin"."is_current_user_admin"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_admin"."is_current_user_admin"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_analytics"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_analytics"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_auth"."get_current_account"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_auth"."get_current_account"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_education"."get_educational_categories"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_education"."get_educational_categories"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_education"."get_educational_content_by_category"("p_category" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_education"."get_educational_content_by_category"("p_category" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_education"."get_educational_content_for_sync"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_education"."get_educational_content_for_sync"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_profile"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_profile"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") TO "service_role";
 
 
 
@@ -2150,6 +2748,18 @@ GRANT ALL ON FUNCTION "public"."count_public_tables"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_current_account"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_current_account"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_current_account"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_educational_categories"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_educational_categories"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_educational_categories"() TO "service_role";
@@ -2195,6 +2805,12 @@ GRANT ALL ON FUNCTION "public"."handle_post_segregation_progress"() TO "service_
 GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_current_user_admin"() TO "anon";
+GRANT ALL ON FUNCTION "public"."is_current_user_admin"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_current_user_admin"() TO "service_role";
 
 
 

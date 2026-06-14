@@ -12,4 +12,9 @@ export default defineConfig({
       "@reciclame/database-types": path.resolve(__dirname, "../../packages/database-types/src/index.ts"),
     },
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+  },
 });

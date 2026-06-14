@@ -9,7 +9,7 @@ import {
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
-import { createRecyclingLog } from '@/src/services/api/recyclingLogs';
+import { createRecyclingLog } from '../api/recyclingLogs';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function InstructionsScreen() {

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
-import { getUserSettings, updateUserSetting, type UserSettingPatch } from '@/src/services/api/userSettings';
+import { getUserSettings, updateUserSetting, type UserSettingPatch } from '@/src/features/profile/api/userSettings';
 import type { UserSetting } from '@/src/types/user';
 import { useAuth } from './useAuth';
 
@@ -24,7 +24,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) {
-      setSettings((prev) => prev ?? { id: '', userId: '', notificationsEnabled: true, skipRecyclingInstructions: false });
+      setSettings((prev) => prev ?? { id: '', userId: '', notificationsEnabled: true, skipRecyclingInstructions: false, profileVisibility: null, language: null, updatedAt: null });
       return;
     }
 
@@ -48,10 +48,10 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
         userId,
         notificationsEnabled: settings?.notificationsEnabled ?? true,
         skipRecyclingInstructions: settings?.skipRecyclingInstructions ?? false,
-        profileVisibility: settings?.profileVisibility,
-        language: settings?.language,
+        profileVisibility: settings?.profileVisibility ?? null,
+        language: settings?.language ?? null,
         ...patch,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       };
       setSettings(optimistic);
 

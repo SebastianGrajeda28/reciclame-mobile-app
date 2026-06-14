@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '@/src/hooks/useAuth';
-import { getStreakProgress, type StreakProgress } from '@/src/services/api/streak';
+import { getStreakProgress, type StreakProgress } from '../api/streak';
 
 type State = {
   data: StreakProgress | null;

@@ -1,8 +1,1 @@
-export type Avatar = {
-  id: string;
-  userId: string;
-  baseStyle?: string;
-  frameRewardId?: string;
-  accessoryRewardId?: string;
-  updatedAt?: Date;
-};
+export type { Avatar } from "@reciclame/shared-domain";

@@ -27,10 +27,12 @@
     "admin-web:dev": "bun run --cwd apps/admin-web dev",
     "admin-web:build": "bun run --cwd apps/admin-web build",
     "admin-web:lint": "bun run --cwd apps/admin-web lint",
+    "admin-web:test": "bun run --cwd apps/admin-web test",
     "web:dev": "bun run admin-web:dev",
     "web:build": "bun run admin-web:build",
     "web:lint": "bun run admin-web:lint",
-    "db:test:contracts": "node scripts/run-supabase-contract-tests.mjs"
+    "db:test:contracts": "node scripts/run-supabase-contract-tests.mjs",
+    "db:test:rls": "node scripts/run-supabase-rls-tests.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",

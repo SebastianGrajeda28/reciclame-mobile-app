@@ -1,9 +1,9 @@
 import { act, renderHook } from '@testing-library/react-native';
 
 import { useRotatingFunFact } from '@/src/features/recycling/hooks/useFunFact';
-import { fetchFunFacts } from '@/src/services/api/content';
+import { fetchFunFacts } from '@/src/features/recycling/api/content';
 
-jest.mock('@/src/services/api/content', () => ({
+jest.mock('@/src/features/recycling/api/content', () => ({
   fetchFunFacts: jest.fn(),
 }));
 

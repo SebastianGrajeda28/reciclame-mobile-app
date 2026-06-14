@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getRecyclingLogs } from '@/src/services/api/recyclingLogs';
+import { getRecyclingLogs } from '../api/recyclingLogs';
 import type { RecyclingLogListItem } from '@/src/types/recycling';
 
 export function useRecyclingHistory(userId: string | null): {

@@ -1,7 +1,7 @@
 import { createContext, Dispatch, PropsWithChildren, ReactElement, SetStateAction, useContext, useEffect, useState } from 'react';
 
 import { AvatarConfig, DEFAULT_CONFIG, RACE_SKINS, EYE_COLORS } from '@/src/features/profile/data/avatarCatalog';
-import { getAvatarConfig, saveAvatarConfig } from '@/src/services/api/avatar';
+import { getAvatarConfig, saveAvatarConfig } from '../api/avatar';
 import { useAuth } from '@/src/hooks/useAuth';
 
 type AvatarConfigContextValue = {

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LogOut, KeyRound, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import { updateCurrentUserPassword } from "@/shared/services/authService";
+import { updateCurrentUserPassword } from "@/features/auth/services/authService";
 import { useUser } from "../context/UserContext";
 
 const ROLE_LABELS: Record<string, string> = {

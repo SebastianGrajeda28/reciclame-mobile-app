@@ -1,6 +1,1 @@
-export type WasteType = {
-  id: string;
-  name: string;
-  description?: string;
-  isActive: boolean;
-};
+export type { WasteType } from "@reciclame/shared-domain";
