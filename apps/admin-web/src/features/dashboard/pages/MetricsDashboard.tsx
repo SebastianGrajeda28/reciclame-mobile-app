@@ -605,7 +605,7 @@ export default function MetricsDashboard() {
                           dataKey="confirmed"
                           position="right"
                           offset={10}
-                          formatter={(value: number) => `${value}`}
+                          formatter={(value) => `${value}`}
                           className="fill-[#0b2f4e] text-xs font-semibold"
                         />
                       </Bar>

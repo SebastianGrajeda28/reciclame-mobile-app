@@ -32,6 +32,7 @@
     "web:build": "bun run admin-web:build",
     "web:lint": "bun run admin-web:lint",
     "lint": "bun run mobile:lint && bun run admin-web:lint",
+    "typecheck": "bun run --cwd apps/mobile tsc --noEmit && bun run --cwd apps/admin-web tsc --noEmit -p tsconfig.app.json",
     "db:test:contracts": "node scripts/run-supabase-contract-tests.mjs",
     "db:test:rls": "node scripts/run-supabase-rls-tests.mjs"
   },

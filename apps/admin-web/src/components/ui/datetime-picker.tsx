@@ -16,7 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { DayPicker, DayPickerProps } from 'react-day-picker';
+import { DayPicker, type DayPickerProps } from 'react-day-picker';
 
 // ---------- utils start ----------
 /**

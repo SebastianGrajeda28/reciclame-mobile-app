@@ -196,7 +196,7 @@ export default function InstructionCard({
               {showSteps ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               Gestionar pasos
             </button>
-            {showSteps && <InstructionStepsSection instructionId={instruction.id} />}
+            {showSteps && <InstructionStepsSection instruction={instruction} />}
           </>
         )}
       </article>
