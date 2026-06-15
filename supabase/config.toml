@@ -12,6 +12,23 @@ port = 54322
 shadow_port = 54320
 major_version = 17
 
+[db.migrations]
+schema_paths = [
+  "./schemas/00_overview.sql",
+  "./schemas/01_schemas.sql",
+  "./schemas/10_reference_data.sql",
+  "./schemas/20_identity_access.sql",
+  "./schemas/30_profile.sql",
+  "./schemas/35_social.sql",
+  "./schemas/40_geo_infrastructure.sql",
+  "./schemas/45_offline_sync.sql",
+  "./schemas/50_recycling_flow.sql",
+  "./schemas/60_education_content.sql",
+  "./schemas/70_gamification.sql",
+  "./schemas/80_admin_analytics.sql",
+  "./schemas/95_permissions.sql",
+]
+
 [realtime]
 enabled = false
 

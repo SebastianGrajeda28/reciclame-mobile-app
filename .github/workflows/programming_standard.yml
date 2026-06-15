@@ -33,4 +33,4 @@ jobs:
 
       # 3. Verificación de Build
       - name: Validar compilación de TypeScript
-        run: bunx tsc --noEmit
+        run: bun run typecheck
