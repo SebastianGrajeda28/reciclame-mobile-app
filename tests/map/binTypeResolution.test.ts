@@ -1,3 +1,4 @@
+import { mock, jest, describe, it, expect, afterEach } from 'bun:test';
 import { mockBinTypeResolution } from '../../src/features/recycling/services/binTypeResolution/mocks/mock-bin-type-resolution';
 import { supabaseBinTypeResolution } from '../../src/features/recycling/services/binTypeResolution/providers/supabase-bin-type-resolution';
 import {
@@ -15,13 +16,13 @@ import {
 } from '../../src/features/recycling/services/bin-types.mock';
 import { supabase } from '../../src/services/supabase/client';
 
-jest.mock('../../src/services/supabase/client', () => {
-  return {
-    supabase: {
-      from: jest.fn(),
-    },
-  };
-});
+// Bun hoists mock.module() before ESM imports are resolved, intercepting the
+// supabase client before supabase-bin-type-resolution.ts can load the real one.
+mock.module('../../src/services/supabase/client', () => ({
+  supabase: {
+    from: jest.fn(),
+  },
+}));
 
 const mockedFrom = supabase.from as jest.Mock;
 
