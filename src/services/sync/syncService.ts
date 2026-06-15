@@ -1,26 +1,22 @@
 import {
-  refreshFunFactsCache,
-  refreshInstructionsCache,
+  isRecyclingPointsCacheStale,
+  refreshRecyclingPointsCache,
+} from '@/src/features/recycling/services/recycling-points';
+import {
   isFunFactsCacheStale,
   isInstructionsCacheStale,
+  refreshFunFactsCache,
+  refreshInstructionsCache,
 } from '@/src/services/api/content';
-import {
-  refreshRecyclingPointsCache,
-  isRecyclingPointsCacheStale,
-} from '@/src/features/recycling/services/recycling-points';
-import { supabase } from '@/src/services/supabase/client';
 import {
   getPendingRecyclingRecords,
   markRecordSynced,
 } from '@/src/services/local/recyclingRecords';
+import { supabase } from '@/src/services/supabase/client';
 
 let isSyncing = false;
 let isRefreshing = false;
 
-/**
- * Envía a Supabase todos los registros de reciclaje que aún no se han sincronizado.
- * Es seguro llamarlo múltiples veces: usa un semáforo simple para evitar solapamiento.
- */
 export async function syncPendingRecords(): Promise<void> {
   if (isSyncing) {
     console.log('[SYNC] Ya hay una sincronizacion en curso, saltando.');
@@ -40,29 +36,32 @@ export async function syncPendingRecords(): Promise<void> {
     for (const record of pending) {
       try {
         console.log(`[SYNC] Subiendo registro ${record.id} (waste: ${record.wasteTypeId})...`);
-        const { error } = await supabase.from('recycling_records').insert({
-          id: record.id,
-          user_id: record.userId,
-          waste_type_id: record.wasteTypeId ?? null,
-          bin_type_id: record.binTypeId ?? null,
-          recycling_point_id: record.recyclingPointId ?? null,
-          detection_type: record.detectionType ?? null,
-          confidence_score: record.confidenceScore ?? null,
-          status: 'confirmed',
-          created_at: record.createdAt,
-        });
+        const { error } = await supabase.from('recycling_records').upsert(
+          {
+            id: record.id,
+            user_id: record.userId,
+            waste_type_id: record.wasteTypeId ?? null,
+            bin_type_id: record.binTypeId ?? null,
+            recycling_point_id: record.recyclingPointId ?? null,
+            detection_type: record.detectionType ?? null,
+            confidence_score: record.confidenceScore ?? null,
+            status: 'confirmed',
+            created_at: record.createdAt,
+          },
+          { ignoreDuplicates: true },
+        );
 
         if (!error) {
           markRecordSynced(record.id);
           synced++;
-          console.log(`[SYNC] ✓ Registro ${record.id} sincronizado OK`);
+          console.log(`[SYNC] Registro ${record.id} sincronizado OK`);
         } else {
           failed++;
-          console.warn(`[SYNC] ✗ Error al subir ${record.id}: ${error.message}`);
+          console.warn(`[SYNC] Error al subir ${record.id}: ${error.message}`);
         }
       } catch (e) {
         failed++;
-        console.warn(`[SYNC] ✗ Excepcion al subir ${record.id}:`, e);
+        console.warn(`[SYNC] Excepcion al subir ${record.id}:`, e);
       }
     }
 
@@ -72,11 +71,6 @@ export async function syncPendingRecords(): Promise<void> {
   }
 }
 
-/**
- * Actualiza las cachés locales de contenido estático (fun facts, instrucciones,
- * puntos de reciclaje) si están vencidas. Se llama automáticamente al reconectar.
- * Usa un semáforo para evitar refrescos simultáneos.
- */
 export async function refreshStaleContentCaches(): Promise<void> {
   if (isRefreshing) {
     console.log('[SYNC] Ya hay un refresco de cache en curso, saltando.');
@@ -84,7 +78,7 @@ export async function refreshStaleContentCaches(): Promise<void> {
   }
   isRefreshing = true;
 
-  const tasks: Array<{ name: string; stale: boolean; refresh: () => Promise<void> }> = [
+  const tasks: { name: string; stale: boolean; refresh: () => Promise<void> }[] = [
     {
       name: 'fun_facts',
       stale: isFunFactsCacheStale(),
@@ -104,12 +98,12 @@ export async function refreshStaleContentCaches(): Promise<void> {
 
   const staleNames = tasks.filter((t) => t.stale).map((t) => t.name);
   if (staleNames.length === 0) {
-    console.log('[SYNC] Todas las caches estan frescas — no se necesita refresco');
+    console.log('[SYNC] Todas las caches estan frescas - no se necesita refresco');
     isRefreshing = false;
     return;
   }
 
-  console.log(`[SYNC] Caches vencidas: ${staleNames.join(', ')} — refrescando...`);
+  console.log(`[SYNC] Caches vencidas: ${staleNames.join(', ')} - refrescando...`);
 
   await Promise.allSettled(
     tasks
