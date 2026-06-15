@@ -1,4 +1,4 @@
-import { getFriends } from '@/src/features/friends/api/friends';
+import { getFriends, getMyFriendCode } from '@/src/features/friends/api/friends';
 
 jest.mock('@/src/services/supabase/client', () => {
   return {
@@ -122,5 +122,41 @@ describe('getFriends', () => {
     await expect(getFriends('user-123')).rejects.toThrow(
       'No se pudo obtener la lista de amigos: Error de red',
     );
+  });
+});
+
+describe('getMyFriendCode', () => {
+  beforeEach(() => {
+    mockedRpc.mockReset();
+  });
+
+  test('Debería llamar a rpc get_my_friend_code y devolver el código como string', async () => {
+    // Preparar
+    mockedRpc.mockResolvedValue({ data: '04827193', error: null });
+
+    // Actuar
+    const result = await getMyFriendCode();
+
+    // Afirmar
+    expect(mockedRpc).toHaveBeenCalledWith('get_my_friend_code');
+    expect(result).toBe('04827193');
+  });
+
+  test('Debería lanzar Error cuando la RPC devuelve un error de Supabase', async () => {
+    // Preparar
+    mockedRpc.mockResolvedValue({ data: null, error: { message: 'Error de red' } });
+
+    // Actuar y Afirmar
+    await expect(getMyFriendCode()).rejects.toThrow(
+      'No se pudo obtener tu código de amigo: Error de red',
+    );
+  });
+
+  test('Debería lanzar Error cuando la RPC devuelve data null sin error', async () => {
+    // Preparar
+    mockedRpc.mockResolvedValue({ data: null, error: null });
+
+    // Actuar y Afirmar
+    await expect(getMyFriendCode()).rejects.toThrow('No se pudo obtener tu código de amigo.');
   });
 });

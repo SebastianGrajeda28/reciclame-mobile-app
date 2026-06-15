@@ -126,6 +126,54 @@ ALTER TABLE "public"."friend_codes" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."friendships" ENABLE ROW LEVEL SECURITY;
 
+CREATE OR REPLACE FUNCTION "app_social"."get_my_friend_code"() RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_code text;
+  v_attempts int := 0;
+begin
+  if v_uid is null then
+    raise exception 'unauthenticated';
+  end if;
+
+  select code into v_code
+  from public.friend_codes
+  where user_id = v_uid
+    and is_active = true
+    and (expires_at is null or expires_at > now())
+  limit 1;
+  if v_code is not null then
+    return v_code;
+  end if;
+
+  loop
+    v_attempts := v_attempts + 1;
+    v_code := lpad((floor(random() * 100000000))::bigint::text, 8, '0');
+    begin
+      insert into public.friend_codes (user_id, code)
+      values (v_uid, v_code)
+      on conflict (user_id) do nothing
+      returning code into v_code;
+      if v_code is not null then return v_code; end if;
+      select code into v_code from public.friend_codes where user_id = v_uid limit 1;
+      if v_code is not null then return v_code; end if;
+    exception when unique_violation then
+      if v_attempts >= 10 then raise exception 'could not generate unique friend code'; end if;
+    end;
+  end loop;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_my_friend_code"() RETURNS "text"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'app_social'
+    AS $$
+  select app_social.get_my_friend_code();
+$$;
+
 GRANT USAGE ON SCHEMA "app_social" TO "service_role";
 
 REVOKE ALL ON FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") FROM PUBLIC;
@@ -137,6 +185,14 @@ GRANT ALL ON FUNCTION "public"."get_friends_with_profile"("p_user_id" "uuid") TO
 GRANT ALL ON FUNCTION "public"."get_friends_with_profile"("p_user_id" "uuid") TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."get_friends_with_profile"("p_user_id" "uuid") TO "service_role";
+
+REVOKE ALL ON FUNCTION "app_social"."get_my_friend_code"() FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "app_social"."get_my_friend_code"() TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."get_my_friend_code"() TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."get_my_friend_code"() TO "service_role";
 
 GRANT ALL ON TABLE "public"."friend_codes" TO "anon";
 
