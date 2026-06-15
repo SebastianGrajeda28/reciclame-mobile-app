@@ -38,6 +38,27 @@ function mapFriendSummary(row: FriendSummaryRow): FriendSummary {
 }
 
 /**
+ * Obtiene el código único de amigo del usuario autenticado.
+ * El backend lo genera si aún no existe (get-or-create) y resuelve la identidad vía auth.uid().
+ *
+ * @returns Código de 8 dígitos numéricos único del usuario.
+ * @throws Error si la consulta a Supabase falla o no devuelve código.
+ */
+export async function getMyFriendCode(): Promise<string> {
+  const { data, error } = await supabase.rpc('get_my_friend_code');
+
+  if (error) {
+    throw new Error(`No se pudo obtener tu código de amigo: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error('No se pudo obtener tu código de amigo.');
+  }
+
+  return data as string;
+}
+
+/**
  * Obtiene el listado de amigos vinculados del usuario con sus agregados de perfil.
  *
  * Resuelve en una única consulta RPC: nombre, racha actual, avatar activo,
