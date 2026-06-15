@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import {
   STREAK_LEVEL_COLORS,
-
   STREAK_LEVEL_THRESHOLDS,
   nextMilestoneForLevel,
   type StreakLevel,
 } from '@/src/features/profile/constants/streak';
+import { useStreakCountdown } from '@/src/features/profile/hooks/useStreakCountdown';
 import { AppCard, AppHeatMeter, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
 
 type ProfileStreakCardProps = {
@@ -15,6 +15,7 @@ type ProfileStreakCardProps = {
   heat: number;
   level: number;
   recycledToday: boolean;
+  expiresAt?: string | null;
 };
 
 const LEVELS: StreakLevel[] = [1, 2, 3, 4, 5, 6, 7];
@@ -24,8 +25,10 @@ export function ProfileStreakCard({
   heat,
   level,
   recycledToday,
+  expiresAt = null,
 }: ProfileStreakCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const countdown = useStreakCountdown(expiresAt);
 
   const safeLevel = Math.max(1, Math.min(7, level)) as StreakLevel;
   const levelColor = STREAK_LEVEL_COLORS[safeLevel];
@@ -83,9 +86,33 @@ export function ProfileStreakCard({
         }
       />
 
+      {countdown && !recycledToday ? (
+        <View style={styles.countdownRow}>
+          <AppIcon
+            name="alertCircle"
+            size={theme.iconSizes.sm}
+            color={
+              countdown.expired || countdown.days === 0
+                ? theme.colors.danger
+                : theme.colors.textSecondary
+            }
+          />
+          <AppText
+            variant="caption"
+            style={{
+              color:
+                countdown.expired || countdown.days === 0
+                  ? theme.colors.danger
+                  : theme.colors.textSecondary,
+            }}
+          >
+            {countdown.label}
+          </AppText>
+        </View>
+      ) : null}
+
       {expanded && (
         <View style={styles.explanation}>
-
           <AppText variant="caption" muted style={styles.explanationText}>
             Calor: Sube cada vez que reciclás (máx. 1 vez por día). Baja cada día que no reciclás.
             Si llega a 0, tu racha muere.
@@ -98,9 +125,9 @@ export function ProfileStreakCard({
           <View style={styles.levelsGrid}>
             <View style={styles.levelIconsRow}>
               {LEVELS.map((lvl, i) => (
-                <>
+                <Fragment key={lvl}>
                   {i > 0 && (
-                    <View key={`line-${lvl}`} style={styles.levelConnectorWrap}>
+                    <View style={styles.levelConnectorWrap}>
                       <View style={styles.levelConnector} />
                       <AppText variant="caption" style={styles.levelConnectorLabel}>
                         {STREAK_LEVEL_THRESHOLDS[lvl] -
@@ -109,7 +136,7 @@ export function ProfileStreakCard({
                       </AppText>
                     </View>
                   )}
-                  <View key={lvl} style={styles.levelItemWrap}>
+                  <View style={styles.levelItemWrap}>
                     <AppIcon
                       name="flame"
                       size={lvl === safeLevel ? theme.iconSizes.xl : theme.iconSizes.md}
@@ -117,7 +144,7 @@ export function ProfileStreakCard({
                       style={lvl !== safeLevel && styles.levelIconMuted}
                     />
                   </View>
-                </>
+                </Fragment>
               ))}
             </View>
           </View>
@@ -150,6 +177,13 @@ const styles = StyleSheet.create({
   },
   heatLabel: {
     fontWeight: theme.fontWeights.semibold,
+  },
+  countdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.s1,
+    marginTop: theme.spacing.s3,
   },
   explanation: {
     gap: theme.spacing.s3,
@@ -194,9 +228,5 @@ const styles = StyleSheet.create({
   },
   levelIconMuted: {
     opacity: 0.35,
-  },
-  levelItemLabel: {
-    color: theme.colors.textSecondary,
-    fontSize: 9,
   },
 });

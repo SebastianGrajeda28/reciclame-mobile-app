@@ -5,6 +5,10 @@ export type StreakProgress = {
   heat: number;
   level: number;
   recycledToday: boolean;
+  /** Instante (ISO) en que la racha morirá si no se recicla; null si no hay racha activa (#176). */
+  expiresAt: string | null;
+  /** true si esta lectura detectó la muerte de la racha (#177). */
+  justExpired: boolean;
 };
 
 export async function getStreakProgress(userId: string): Promise<StreakProgress | null> {
@@ -22,5 +26,7 @@ export async function getStreakProgress(userId: string): Promise<StreakProgress 
     heat: Math.min(100, Math.max(0, row.heat ?? 0)),
     level: row.level ?? 1,
     recycledToday: lastRecyclingDate === today,
+    expiresAt: row.streak_expires_at ?? null,
+    justExpired: Boolean(row.streak_just_expired),
   };
 }

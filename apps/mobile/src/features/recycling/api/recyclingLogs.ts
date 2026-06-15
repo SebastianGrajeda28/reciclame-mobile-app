@@ -1,6 +1,21 @@
 import { supabase } from '@/src/services/supabase/client';
 import type { RecyclingLog, RecyclingLogInput, RecyclingLogListItem } from '@/src/types/recycling';
 
+/**
+ * Delta de racha devuelto por el RPC `confirm_segregation`. Alimenta la celebración (#175):
+ * el cliente sabe si esta segregación avanzó la racha, si subió de nivel, etc.
+ */
+export type StreakResult = {
+  recordId: string;
+  streakDays: number;
+  heat: number;
+  level: number;
+  previousLevel: number;
+  leveledUp: boolean;
+  streakExtendedToday: boolean;
+  alreadyRecycledToday: boolean;
+};
+
 function normalizeUntilDate(untilDate: string | Date): string {
   if (untilDate instanceof Date) {
     return untilDate.toISOString();
@@ -59,6 +74,38 @@ export async function createRecyclingLog(input: RecyclingLogInput): Promise<Recy
     detectionType: data.detection_type ?? undefined,
     confidenceScore: data.confidence_score ?? undefined,
     createdAt: data.created_at,
+  };
+}
+
+/**
+ * Confirma una segregación vía el RPC `confirm_segregation` (SECURITY DEFINER): inserta el
+ * `recycling_record` (disparando el trigger de progreso) y devuelve el delta de racha.
+ * Sustituye al insert directo en `recycling_records`, que choca con RLS.
+ */
+export async function confirmSegregation(input: RecyclingLogInput): Promise<StreakResult> {
+  const { data, error } = await supabase.rpc('confirm_segregation', {
+    p_user_id: input.userId,
+    p_waste_type_id: input.wasteTypeId,
+    p_bin_type_id: input.binTypeId,
+    p_recycling_point_id: input.recyclingPointId,
+    p_detection_type: input.detectionType ?? null,
+    p_confidence_score: input.confidenceScore ?? null,
+  });
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (error || !row) {
+    throw new Error(error?.message ?? 'No se pudo registrar la segregacion.');
+  }
+
+  return {
+    recordId: row.record_id,
+    streakDays: row.streak_days ?? 0,
+    heat: Math.min(100, Math.max(0, row.heat ?? 0)),
+    level: row.level ?? 1,
+    previousLevel: row.previous_level ?? 1,
+    leveledUp: Boolean(row.leveled_up),
+    streakExtendedToday: Boolean(row.streak_extended_today),
+    alreadyRecycledToday: Boolean(row.already_recycled_today),
   };
 }
 
