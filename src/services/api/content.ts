@@ -1,6 +1,14 @@
 import { supabase } from '@/src/services/supabase/client';
 import type { FunFact } from '@/src/types/funFact';
 import type { Instruction, InstructionStep } from '@/src/types/instruction';
+import {
+  getLocalFunFacts,
+  saveFunFactsCache,
+  getLocalInstruction,
+  saveInstructionsCache,
+} from '@/src/services/local/content';
+
+export { isFunFactsCacheStale, isInstructionsCacheStale } from '@/src/services/local/content';
 
 type FunFactRow = {
   id: string;
@@ -43,8 +51,6 @@ function mapInstructionStep(row: InstructionStepRow): InstructionStep {
 }
 
 function mapInstruction(row: InstructionRow): Instruction {
-  const steps = (row.instruction_steps ?? []).filter(Boolean).map(mapInstructionStep);
-
   return {
     id: row.id,
     title: row.title,
@@ -54,7 +60,7 @@ function mapInstruction(row: InstructionRow): Instruction {
     isActive: row.is_active,
     createdAt: row.created_at as unknown as Date,
     updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
-    steps,
+    steps: (row.instruction_steps ?? []).map(mapInstructionStep),
   };
 }
 
@@ -70,78 +76,136 @@ function mapFunFact(row: FunFactRow): FunFact {
 
 function pickRandom<T>(items: T[]): T | null {
   if (items.length === 0) return null;
-  const index = Math.floor(Math.random() * items.length);
-  return items[index] ?? null;
+  return items[Math.floor(Math.random() * items.length)] ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Instrucciones — caché-first
+// ---------------------------------------------------------------------------
 
 export async function fetchInstructionWithStepsByWasteTypeId(
   wasteTypeId: string,
 ): Promise<Instruction | null> {
-  const { data, error } = await supabase
-    .from('instructions')
-    .select(
-      'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at,instruction_steps(id,instruction_id,text,is_active,created_at,updated_at)',
-    )
-    .eq('is_active', true)
-    .eq('waste_type_id', wasteTypeId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
+  const cached = getLocalInstruction(wasteTypeId);
+  if (cached) {
+    console.log(`[CONTENT] Instruccion para waste=${wasteTypeId} desde cache: "${cached.title}"`);
+    return cached;
   }
 
-  const row = pickRandom(data ?? []);
-  return row ? mapInstruction(row) : null;
+  console.log(`[CONTENT] Instruccion para waste=${wasteTypeId} no en cache — consultando Supabase...`);
+  try {
+    const { data, error } = await supabase
+      .from('instructions')
+      .select(
+        'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at,' +
+          'instruction_steps(id,instruction_id,text,is_active,created_at,updated_at)',
+      )
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    const all = ((data ?? []) as unknown as InstructionRow[]).map(mapInstruction);
+    console.log(`[CONTENT] ✓ ${all.length} instrucciones desde Supabase — guardando en cache`);
+    if (all.length > 0) saveInstructionsCache(all);
+
+    const forType = all.filter((i) => i.wasteTypeId === wasteTypeId);
+    return pickRandom(forType);
+  } catch (e) {
+    console.warn('[CONTENT] Sin red y sin cache de instrucciones:', e);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Datos curiosos — caché-first
+// ---------------------------------------------------------------------------
+
+async function ensureFunFactsCache(): Promise<FunFact[]> {
+  console.log('[CONTENT] Cargando fun facts desde Supabase...');
+  const { data, error } = await supabase
+    .from('fun_facts')
+    .select('id,text,waste_type_id,is_active,created_at')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const facts = (data ?? []).map(mapFunFact);
+  console.log(`[CONTENT] ✓ ${facts.length} fun facts desde Supabase — guardando en cache`);
+  if (facts.length > 0) saveFunFactsCache(facts);
+  return facts;
 }
 
 export async function fetchRandomFunFactByWasteTypeId(
   wasteTypeId: string,
 ): Promise<FunFact | null> {
-  const { data, error } = await supabase
-    .from('fun_facts')
-    .select('id,text,waste_type_id,is_active,created_at')
-    .eq('is_active', true)
-    .eq('waste_type_id', wasteTypeId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
+  const localAll = getLocalFunFacts();
+  if (localAll) {
+    const match = pickRandom(localAll.filter((f) => f.wasteTypeId === wasteTypeId));
+    console.log(`[CONTENT] Fun fact para waste=${wasteTypeId}: "${match?.text.slice(0, 40) ?? 'ninguno'}" (cache local)`);
+    return match;
   }
 
-  const row = pickRandom(data ?? []);
-  return row ? mapFunFact(row) : null;
+  try {
+    const all = await ensureFunFactsCache();
+    return pickRandom(all.filter((f) => f.wasteTypeId === wasteTypeId));
+  } catch (e) {
+    console.warn('[CONTENT] Sin red y sin cache de fun facts:', e);
+    return null;
+  }
 }
 
 export async function fetchRandomFunFact(): Promise<FunFact | null> {
-  const { data, error } = await supabase
-    .from('fun_facts')
-    .select('id,text,waste_type_id,is_active,created_at')
-    .eq('is_active', true)
-    .order('created_at', { ascending: false });
+  const local = getLocalFunFacts();
+  if (local) return pickRandom(local);
 
-  if (error) {
-    throw new Error(error.message);
+  try {
+    const all = await ensureFunFactsCache();
+    return pickRandom(all);
+  } catch {
+    return null;
   }
-
-  const row = pickRandom(data ?? []);
-  return row ? mapFunFact(row) : null;
 }
 
-/**
- * Obtiene todos los datos curiosos activos para rotar en memoria.
- * @returns Lista de datos curiosos activos (puede estar vacía si la BD no tiene datos).
- * @throws Error si la consulta a Supabase falla.
- */
 export async function fetchFunFacts(): Promise<FunFact[]> {
+  const local = getLocalFunFacts();
+  if (local) return local;
+
+  try {
+    return await ensureFunFactsCache();
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Refresco forzado de cachés (llamado al reconectar)
+// ---------------------------------------------------------------------------
+
+/** Descarga todos los fun facts de Supabase y actualiza la caché local. */
+export async function refreshFunFactsCache(): Promise<void> {
+  console.log('[CONTENT] Refrescando cache de fun facts...');
+  const facts = await ensureFunFactsCache();
+  console.log(`[CONTENT] ✓ Fun facts actualizados en cache: ${facts.length}`);
+}
+
+/** Descarga todas las instrucciones de Supabase y actualiza la caché local. */
+export async function refreshInstructionsCache(): Promise<void> {
+  console.log('[CONTENT] Refrescando cache de instrucciones...');
+
   const { data, error } = await supabase
-    .from('fun_facts')
-    .select('id,text,waste_type_id,is_active,created_at')
+    .from('instructions')
+    .select(
+      'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at,' +
+        'instruction_steps(id,instruction_id,text,is_active,created_at,updated_at)',
+    )
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
-  return (data ?? []).map(mapFunFact);
+  const all = ((data ?? []) as unknown as InstructionRow[]).map(mapInstruction);
+  if (all.length > 0) saveInstructionsCache(all);
+  console.log(`[CONTENT] ✓ Instrucciones actualizadas en cache: ${all.length}`);
 }
