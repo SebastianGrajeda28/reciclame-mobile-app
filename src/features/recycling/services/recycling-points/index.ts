@@ -5,10 +5,22 @@ import type { RecyclingContainer } from '@/src/features/recycling/types/recyclin
 import {
   getLocalRecyclingPoints,
   getLocalRecyclingPointsStale,
+  isRecyclingPointsCacheStale,
   saveRecyclingPointsCache,
 } from '@/src/services/local/recyclingPoints';
 
+export { isRecyclingPointsCacheStale };
+
 export type { NearbyRecyclingPoint } from './types';
+
+/** Descarga todos los puntos desde Supabase y actualiza la caché local. */
+export async function refreshRecyclingPointsCache(): Promise<void> {
+  if (RECYCLE_POINTS_USE_MOCKS) return;
+  console.log('[POINTS] Refrescando cache de puntos de reciclaje...');
+  const points = await remoteRecyclingPoints.getAll();
+  if (points.length > 0) saveRecyclingPointsCache(points);
+  console.log(`[POINTS] ✓ Puntos actualizados en cache: ${points.length}`);
+}
 
 /**
  * Obtiene los puntos de reciclaje con estrategia caché-first:

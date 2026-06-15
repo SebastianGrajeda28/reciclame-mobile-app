@@ -1,3 +1,13 @@
+import {
+  refreshFunFactsCache,
+  refreshInstructionsCache,
+  isFunFactsCacheStale,
+  isInstructionsCacheStale,
+} from '@/src/services/api/content';
+import {
+  refreshRecyclingPointsCache,
+  isRecyclingPointsCacheStale,
+} from '@/src/features/recycling/services/recycling-points';
 import { supabase } from '@/src/services/supabase/client';
 import {
   getPendingRecyclingRecords,
@@ -5,6 +15,7 @@ import {
 } from '@/src/services/local/recyclingRecords';
 
 let isSyncing = false;
+let isRefreshing = false;
 
 /**
  * Envía a Supabase todos los registros de reciclaje que aún no se han sincronizado.
@@ -59,4 +70,59 @@ export async function syncPendingRecords(): Promise<void> {
   } finally {
     isSyncing = false;
   }
+}
+
+/**
+ * Actualiza las cachés locales de contenido estático (fun facts, instrucciones,
+ * puntos de reciclaje) si están vencidas. Se llama automáticamente al reconectar.
+ * Usa un semáforo para evitar refrescos simultáneos.
+ */
+export async function refreshStaleContentCaches(): Promise<void> {
+  if (isRefreshing) {
+    console.log('[SYNC] Ya hay un refresco de cache en curso, saltando.');
+    return;
+  }
+  isRefreshing = true;
+
+  const tasks: Array<{ name: string; stale: boolean; refresh: () => Promise<void> }> = [
+    {
+      name: 'fun_facts',
+      stale: isFunFactsCacheStale(),
+      refresh: refreshFunFactsCache,
+    },
+    {
+      name: 'instructions',
+      stale: isInstructionsCacheStale(),
+      refresh: refreshInstructionsCache,
+    },
+    {
+      name: 'recycling_points',
+      stale: isRecyclingPointsCacheStale(),
+      refresh: refreshRecyclingPointsCache,
+    },
+  ];
+
+  const staleNames = tasks.filter((t) => t.stale).map((t) => t.name);
+  if (staleNames.length === 0) {
+    console.log('[SYNC] Todas las caches estan frescas — no se necesita refresco');
+    isRefreshing = false;
+    return;
+  }
+
+  console.log(`[SYNC] Caches vencidas: ${staleNames.join(', ')} — refrescando...`);
+
+  await Promise.allSettled(
+    tasks
+      .filter((t) => t.stale)
+      .map(async (t) => {
+        try {
+          await t.refresh();
+        } catch (e) {
+          console.warn(`[SYNC] Error al refrescar cache de ${t.name}:`, e);
+        }
+      }),
+  );
+
+  isRefreshing = false;
+  console.log('[SYNC] Refresco de caches completado');
 }

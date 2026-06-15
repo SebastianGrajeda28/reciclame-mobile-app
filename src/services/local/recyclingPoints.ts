@@ -63,6 +63,11 @@ export function saveRecyclingPointsCache(points: RecyclingContainer[]): void {
   });
 }
 
+export function isRecyclingPointsCacheStale(): boolean {
+  const row = db.getFirstSync<{ cached_at: string }>(`SELECT cached_at FROM recycling_points LIMIT 1`);
+  return !row || Date.now() - new Date(row.cached_at).getTime() > CACHE_TTL_MS;
+}
+
 // Lookup helper used when creating offline records.
 export function getLocalPointName(pointId: string): string | null {
   const row = db.getFirstSync<{ name: string }>(

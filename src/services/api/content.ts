@@ -8,6 +8,8 @@ import {
   saveInstructionsCache,
 } from '@/src/services/local/content';
 
+export { isFunFactsCacheStale, isInstructionsCacheStale } from '@/src/services/local/content';
+
 type FunFactRow = {
   id: string;
   text: string;
@@ -175,4 +177,35 @@ export async function fetchFunFacts(): Promise<FunFact[]> {
   } catch {
     return [];
   }
+}
+
+// ---------------------------------------------------------------------------
+// Refresco forzado de cachés (llamado al reconectar)
+// ---------------------------------------------------------------------------
+
+/** Descarga todos los fun facts de Supabase y actualiza la caché local. */
+export async function refreshFunFactsCache(): Promise<void> {
+  console.log('[CONTENT] Refrescando cache de fun facts...');
+  const facts = await ensureFunFactsCache();
+  console.log(`[CONTENT] ✓ Fun facts actualizados en cache: ${facts.length}`);
+}
+
+/** Descarga todas las instrucciones de Supabase y actualiza la caché local. */
+export async function refreshInstructionsCache(): Promise<void> {
+  console.log('[CONTENT] Refrescando cache de instrucciones...');
+
+  const { data, error } = await supabase
+    .from('instructions')
+    .select(
+      'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at,' +
+        'instruction_steps(id,instruction_id,text,is_active,created_at,updated_at)',
+    )
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const all = ((data ?? []) as unknown as InstructionRow[]).map(mapInstruction);
+  if (all.length > 0) saveInstructionsCache(all);
+  console.log(`[CONTENT] ✓ Instrucciones actualizadas en cache: ${all.length}`);
 }

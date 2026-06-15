@@ -31,6 +31,16 @@ function isFreshCache(cachedAt: string): boolean {
   return Date.now() - new Date(cachedAt).getTime() < CACHE_TTL_MS;
 }
 
+export function isFunFactsCacheStale(): boolean {
+  const row = db.getFirstSync<{ cached_at: string }>(`SELECT cached_at FROM fun_facts LIMIT 1`);
+  return !row || !isFreshCache(row.cached_at);
+}
+
+export function isInstructionsCacheStale(): boolean {
+  const row = db.getFirstSync<{ cached_at: string }>(`SELECT cached_at FROM instructions LIMIT 1`);
+  return !row || !isFreshCache(row.cached_at);
+}
+
 export function getLocalFunFacts(wasteTypeId?: string): FunFact[] | null {
   const rows = wasteTypeId
     ? db.getAllSync<FunFactRow>(
