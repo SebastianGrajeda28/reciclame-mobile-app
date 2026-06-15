@@ -14,8 +14,8 @@
     "format": "prettier \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"*.{js,json,md}\" --write",
     "format:check": "prettier \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"*.{js,json,md}\" --check",
     "check": "npm run lint && npm run format:check",
-    "test:watch": "bun test --env-file .env --watch",
-    "test:coverage": "bun test --env-file .env --coverage tests/utils tests/map tests/supabase-connection.test.ts tests/supabase.test.ts",
+    "test:watch": "bun test --env-file .env --preload ./tests/bun-setup.ts --watch",
+    "test:coverage": "bun test --env-file .env --preload ./tests/bun-setup.ts --coverage tests/utils tests/map tests/supabase-connection.test.ts tests/supabase.test.ts",
     "test:components": "jest --config jest.components.config.js"
   },
   "dependencies": {
@@ -69,6 +69,7 @@
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
     "@types/ws": "^8.18.1",
+    "bun-types": "^1.3.14",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "eslint-config-prettier": "^10.1.8",
