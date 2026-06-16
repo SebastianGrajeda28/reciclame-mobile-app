@@ -41,9 +41,11 @@ export type RecyclingLogInput = {
 export type RecyclingLogListItem = {
   id: string;
   createdAt: string;
+  wasteTypeId?: string;
   wasteTypeName: string;
   recyclingPointName: string;
   detectionType?: string;
   confidenceScore?: number;
   status?: string;
+  heatGained?: number;
 };
