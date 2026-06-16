@@ -1,17 +1,22 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ProfileBadge } from '@/src/features/profile/data/profileGamification';
 import { AppIcon, AppText, theme } from '@/src/ui';
 
 type ProfileAchievementRowProps = {
   badge: Readonly<ProfileBadge>;
+  onPress?: () => void;
 };
 
-export function ProfileAchievementRow({ badge }: Readonly<ProfileAchievementRowProps>) {
+export function ProfileAchievementRow({ badge, onPress }: Readonly<ProfileAchievementRowProps>) {
   const earned = !!badge.earnedAt;
 
   return (
-    <View style={[styles.row, !earned && styles.rowLocked]}>
+    <Pressable 
+      style={[styles.row, !earned && styles.rowLocked]} 
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <View style={styles.imageWrap}>
         {earned ? (
           <Image
@@ -45,7 +50,7 @@ export function ProfileAchievementRow({ badge }: Readonly<ProfileAchievementRowP
           <AppIcon name="checkCircle" size={theme.iconSizes.sm} color={theme.colors.success} />
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
