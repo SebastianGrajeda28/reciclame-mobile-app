@@ -2,15 +2,16 @@ import { router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { checkUnlockedAchievements } from '@/src/features/profile/api/achievementUnlock';
 import {
-  useRecycleFlow,
-  useResolvedRecycleSelection,
+    useRecycleFlow,
+    useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
-import { createRecyclingLog } from '../api/recyclingLogs';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import { createRecyclingLog } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
@@ -75,7 +76,18 @@ export function InstructionsScreen() {
         confidenceScore: state.predictionConfidence,
       });
       markConfirmed(log.id);
-      router.replace('/recycle/success');
+      
+      // Check if any achievement was unlocked
+      const unlockedAchievement = checkUnlockedAchievements();
+      if (unlockedAchievement) {
+        // Navigate to reward screen with the unlocked achievement
+        router.replace({
+          pathname: '/recycle/reward',
+          params: { badgeId: unlockedAchievement.id },
+        });
+      } else {
+        router.replace('/recycle/success');
+      }
     } catch (err) {
       console.error('[InstructionsScreen] createRecyclingLog failed:', err);
       notify(
