@@ -8,6 +8,7 @@ import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileS
 import type { ProfileBadge } from '@/src/features/profile/data/profileGamification';
 import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 import { AppChip, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
+import { AchievementDetailModal } from '../components/AchievementDetailModal';
 
 type AchievementFilter = 'all' | 'unlocked' | 'locked';
 type AchievementSort = 'default' | 'alphabetical' | 'date-desc' | 'date-asc';
@@ -164,5 +165,7 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.s1,
   },
 });
+
+//fixed
 
 export default ProfileAchievementsScreen;
