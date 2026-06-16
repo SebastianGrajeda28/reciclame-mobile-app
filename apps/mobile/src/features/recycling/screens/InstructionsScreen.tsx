@@ -78,7 +78,7 @@ export function InstructionsScreen() {
       markConfirmed(log.id);
       
       // Check if any achievement was unlocked
-      const unlockedAchievement = checkUnlockedAchievements();
+      const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
       if (unlockedAchievement) {
         // Navigate to reward screen with the unlocked achievement
         router.replace({
