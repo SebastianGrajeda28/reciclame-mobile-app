@@ -83,3 +83,30 @@ export function groupByDateSection(
   }
   return sections;
 }
+
+const MONTHS_ABBR = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+];
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+
+/** Hora "14:20" para hoy/ayer (la sección ya da el día); "13 jun · 14:20" para fechas viejas. */
+export function formatHistoryTime(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  const time = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  if (d.getTime() >= startOfDay(now) - DAY_MS) return time;
+  return `${d.getDate()} ${MONTHS_ABBR[d.getMonth()]} · ${time}`;
+}

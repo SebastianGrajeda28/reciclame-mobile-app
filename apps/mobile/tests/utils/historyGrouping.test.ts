@@ -1,4 +1,5 @@
 import {
+  formatHistoryTime,
   groupByDateSection,
   horizonStart,
   sectionTitleFor,
@@ -64,5 +65,18 @@ describe('groupByDateSection (RF-039)', () => {
 
   it('lista vacía no produce secciones', () => {
     expect(groupByDateSection([], NOW)).toEqual([]);
+  });
+});
+
+describe('formatHistoryTime', () => {
+  it('hoy y ayer muestran solo la hora', () => {
+    expect(formatHistoryTime(new Date(2026, 5, 15, 14, 5).toISOString(), NOW)).toBe('14:05');
+    expect(formatHistoryTime(new Date(2026, 5, 14, 9, 30).toISOString(), NOW)).toBe('09:30');
+  });
+
+  it('fechas viejas muestran día, mes y hora', () => {
+    expect(formatHistoryTime(new Date(2026, 0, 13, 16, 40).toISOString(), NOW)).toBe(
+      '13 ene · 16:40',
+    );
   });
 });

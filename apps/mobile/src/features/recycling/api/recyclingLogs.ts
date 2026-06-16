@@ -194,7 +194,7 @@ export async function getRecyclingHistoryPage(
   let query = supabase
     .from('recycling_records')
     .select(
-      'id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)',
+      'id, created_at, waste_type_id, heat_gained, detection_type, confidence_score, status, waste_types(name), recycling_points(name)',
     )
     .eq('user_id', userId);
 
@@ -217,12 +217,14 @@ export async function getRecyclingHistoryPage(
   const items: RecyclingLogListItem[] = data.map((row) => ({
     id: row.id,
     createdAt: row.created_at,
+    wasteTypeId: row.waste_type_id ?? undefined,
     wasteTypeName: (row.waste_types as unknown as { name: string } | null)?.name ?? 'Desconocido',
     recyclingPointName:
       (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
     detectionType: row.detection_type ?? undefined,
     confidenceScore: row.confidence_score ?? undefined,
     status: row.status ?? undefined,
+    heatGained: row.heat_gained ?? undefined,
   }));
 
   return { items, hasMore: items.length === pageSize };
