@@ -133,11 +133,7 @@ ALTER TABLE "public"."universities" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."waste_types" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "roles_admin_all" ON "public"."roles" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
-
 CREATE POLICY "roles_select_active_authenticated" ON "public"."roles" FOR SELECT TO "authenticated" USING (("is_active" = true));
-
-CREATE POLICY "waste_types_admin_all" ON "public"."waste_types" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
 
 CREATE POLICY "waste_types_select_active_authenticated" ON "public"."waste_types" FOR SELECT TO "authenticated" USING (("is_active" = true));
 

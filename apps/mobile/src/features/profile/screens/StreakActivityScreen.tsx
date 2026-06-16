@@ -1,3 +1,7 @@
+// TODO: wire to real API via useStreakActivity hook (hook + types ready in profile/api/streak.ts:
+// getStreakActivity → StreakActivity, WeekDay, HeatMapEntry).
+// Replace WEEK_DAYS, HEAT_WEEKS, and hardcoded stats with data from the hook.
+// bestStreakDays also available from the same RPC (get_streak_activity).
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
