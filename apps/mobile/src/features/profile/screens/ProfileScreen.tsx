@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -12,13 +13,15 @@ import { useStreakProgress } from '@/src/features/profile/hooks/useStreakProgres
 import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
 import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
-import { AppIcon, AppText, theme } from '@/src/ui';
+import { AppButton, AppCard, AppIcon, AppText, theme } from '@/src/ui';
 
 export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
+  const [lostDismissed, setLostDismissed] = useState(false);
+  const showStreakLost = Boolean(streakData?.justExpired) && !lostDismissed;
 
   const featuredIds = profileGamificationSnapshot.featuredBadgeIds as readonly string[];
   const featuredBadges = profileGamificationSnapshot.allBadges.filter((b) =>
@@ -36,11 +39,31 @@ export function ProfileScreen() {
         onCustomizePress={() => router.push(routes.profileAvatar)}
         onSettingsPress={() => router.push(routes.profileSettings)}
       />
+      {showStreakLost ? (
+        <AppCard style={styles.lostCard}>
+          <View style={styles.lostHeader}>
+            <AppIcon name="alertCircle" size={theme.iconSizes.md} color={theme.colors.danger} />
+            <AppText variant="h3" style={styles.lostTitle}>
+              Perdiste tu racha
+            </AppText>
+          </View>
+          <AppText variant="caption" muted style={styles.lostText}>
+            Pasó el tiempo de gracia sin segregar. Tu nivel se mantiene — empieza una nueva racha
+            reciclando hoy.
+          </AppText>
+          <AppButton
+            variant="outline"
+            label="Entendido"
+            onPress={() => setLostDismissed(true)}
+          />
+        </AppCard>
+      ) : null}
       <ProfileStreakCard
         currentStreakDays={streakData?.streakDays ?? 0}
         heat={streakData?.heat ?? 0}
         level={streakData?.level ?? 1}
         recycledToday={streakData?.recycledToday ?? false}
+        expiresAt={streakData?.expiresAt ?? null}
       />
       <ProfileAchievementsPreviewCard
         featuredBadges={featuredBadges}
@@ -65,6 +88,22 @@ export function ProfileScreen() {
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
+  lostCard: {
+    gap: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
+  },
+  lostHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  lostTitle: {
+    color: theme.colors.danger,
+  },
+  lostText: {
+    lineHeight: 18,
+  },
   historyRow: {
     flexDirection: 'row',
     alignItems: 'center',

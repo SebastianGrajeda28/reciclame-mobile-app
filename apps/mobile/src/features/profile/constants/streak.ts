@@ -1,4 +1,7 @@
-export type StreakLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+// Tokens visuales compartidos (color por nivel) viven en src/ui para respetar la frontera
+// entre features; se re-exportan aquí por compatibilidad con los imports existentes.
+export { STREAK_LEVEL_COLORS, type StreakLevel } from '@/src/ui/streakColors';
+import type { StreakLevel } from '@/src/ui/streakColors';
 
 export const STREAK_LEVEL_THRESHOLDS: Record<StreakLevel, number> = {
   1: 0,
@@ -8,16 +11,6 @@ export const STREAK_LEVEL_THRESHOLDS: Record<StreakLevel, number> = {
   5: 45,
   6: 93,
   7: 189,
-};
-
-export const STREAK_LEVEL_COLORS: Record<StreakLevel, string> = {
-  1: '#6B0000',
-  2: '#DC2626',
-  3: '#F97316',
-  4: '#FACC15',
-  5: '#CBD5E1',
-  6: '#38BDF8',
-  7: '#A78BFA',
 };
 
 export const STREAK_LEVEL_LABELS: Record<StreakLevel, string> = {
