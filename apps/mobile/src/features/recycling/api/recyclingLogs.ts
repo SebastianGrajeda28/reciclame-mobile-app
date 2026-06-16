@@ -43,7 +43,9 @@ export async function createRecyclingLog(input: RecyclingLogInput): Promise<Recy
       estimated_weight: wasteType?.estimated_weight_g ?? null,
       status: 'confirmed',
     })
-    .select('id, user_id, waste_type_id, bin_type_id, recycling_point_id, detection_type, confidence_score, estimated_weight, created_at')
+    .select(
+      'id, user_id, waste_type_id, bin_type_id, recycling_point_id, detection_type, confidence_score, estimated_weight, created_at',
+    )
     .single();
 
   if (error || !data) {
@@ -62,12 +64,12 @@ export async function createRecyclingLog(input: RecyclingLogInput): Promise<Recy
   };
 }
 
-export async function getRecyclingLogs(
-  userId: string,
-): Promise<RecyclingLogListItem[]> {
+export async function getRecyclingLogs(userId: string): Promise<RecyclingLogListItem[]> {
   const { data, error } = await supabase
     .from('recycling_records')
-    .select('id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)')
+    .select(
+      'id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)',
+    )
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
@@ -79,7 +81,8 @@ export async function getRecyclingLogs(
     id: row.id,
     createdAt: row.created_at,
     wasteTypeName: (row.waste_types as unknown as { name: string } | null)?.name ?? 'Desconocido',
-    recyclingPointName: (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
+    recyclingPointName:
+      (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
     detectionType: row.detection_type ?? undefined,
     confidenceScore: row.confidence_score ?? undefined,
     status: row.status ?? undefined,
@@ -93,7 +96,9 @@ export async function getRecyclingLogsFiltered(
 ): Promise<RecyclingLogListItem[]> {
   let query = supabase
     .from('recycling_records')
-    .select('id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)')
+    .select(
+      'id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)',
+    )
     .eq('user_id', userId);
 
   if (untilDate) {
@@ -114,9 +119,64 @@ export async function getRecyclingLogsFiltered(
     id: row.id,
     createdAt: row.created_at,
     wasteTypeName: (row.waste_types as unknown as { name: string } | null)?.name ?? 'Desconocido',
-    recyclingPointName: (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
+    recyclingPointName:
+      (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
     detectionType: row.detection_type ?? undefined,
     confidenceScore: row.confidence_score ?? undefined,
     status: row.status ?? undefined,
   }));
+}
+
+export type RecyclingHistoryFilter = {
+  wasteTypeIds?: string[] | null;
+  fromDate?: string | null;
+};
+
+export const RECYCLING_HISTORY_PAGE_SIZE = 20;
+
+/** Página del historial: filtra (categoría + tiempo), ordena por fecha desc y pagina por rango. */
+export async function getRecyclingHistoryPage(
+  userId: string,
+  page: number,
+  filter: RecyclingHistoryFilter = {},
+  pageSize: number = RECYCLING_HISTORY_PAGE_SIZE,
+): Promise<{ items: RecyclingLogListItem[]; hasMore: boolean }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from('recycling_records')
+    .select(
+      'id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)',
+    )
+    .eq('user_id', userId);
+
+  if (filter.wasteTypeIds && filter.wasteTypeIds.length > 0) {
+    query = query.in('waste_type_id', filter.wasteTypeIds);
+  }
+  if (filter.fromDate) {
+    query = query.gte('created_at', filter.fromDate);
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(from, to);
+
+  if (error || !data) {
+    throw new Error(error?.message ?? 'No se pudo obtener el historial de reciclaje.');
+  }
+
+  const items: RecyclingLogListItem[] = data.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    wasteTypeName: (row.waste_types as unknown as { name: string } | null)?.name ?? 'Desconocido',
+    recyclingPointName:
+      (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
+    detectionType: row.detection_type ?? undefined,
+    confidenceScore: row.confidence_score ?? undefined,
+    status: row.status ?? undefined,
+  }));
+
+  return { items, hasMore: items.length === pageSize };
 }
