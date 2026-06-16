@@ -1,4 +1,4 @@
-import { getFriends, getMyFriendCode } from '@/src/features/friends/api/friends';
+import { addFriendByCode, getFriends, getMyFriendCode } from '@/src/features/friends/api/friends';
 
 jest.mock('@/src/services/supabase/client', () => {
   return {
@@ -158,5 +158,70 @@ describe('getMyFriendCode', () => {
 
     // Actuar y Afirmar
     await expect(getMyFriendCode()).rejects.toThrow('No se pudo obtener tu código de amigo.');
+  });
+});
+
+describe('addFriendByCode', () => {
+  beforeEach(() => {
+    mockedRpc.mockReset();
+  });
+
+  test('Debería mapear el jsonb devuelto por la RPC a AddFriendResult en camelCase (created: true)', async () => {
+    // Preparar
+    mockedRpc.mockResolvedValue({
+      data: { friendship_id: 'fid-001', friend_id: 'uid-002', created: true },
+      error: null,
+    });
+
+    // Actuar
+    const result = await addFriendByCode('12345678');
+
+    // Afirmar
+    expect(mockedRpc).toHaveBeenCalledWith('add_friend_by_code', { p_code: '12345678' });
+    expect(result.friendshipId).toBe('fid-001');
+    expect(result.friendId).toBe('uid-002');
+    expect(result.created).toBe(true);
+  });
+
+  test('Debería devolver created: false cuando la amistad ya existía (idempotente)', async () => {
+    // Preparar
+    mockedRpc.mockResolvedValue({
+      data: { friendship_id: 'fid-001', friend_id: 'uid-002', created: false },
+      error: null,
+    });
+
+    // Actuar
+    const result = await addFriendByCode('12345678');
+
+    // Afirmar
+    expect(result.created).toBe(false);
+  });
+
+  test('Debería mapear token conocido a mensaje en español (friend code not found)', async () => {
+    // Preparar
+    mockedRpc.mockResolvedValue({ data: null, error: { message: 'friend code not found' } });
+
+    // Actuar y Afirmar
+    await expect(addFriendByCode('00000000')).rejects.toThrow(
+      'No encontramos ningún usuario con ese código.',
+    );
+  });
+
+  test('Debería usar mensaje genérico cuando el token de error no está mapeado', async () => {
+    // Preparar
+    mockedRpc.mockResolvedValue({ data: null, error: { message: 'connection timeout' } });
+
+    // Actuar y Afirmar
+    await expect(addFriendByCode('12345678')).rejects.toThrow(
+      'No se pudo agregar al amigo: connection timeout',
+    );
+  });
+
+  test('Debería lanzar Error cuando la RPC devuelve data null sin error', async () => {
+    // Preparar
+    mockedRpc.mockResolvedValue({ data: null, error: null });
+
+    // Actuar y Afirmar
+    await expect(addFriendByCode('12345678')).rejects.toThrow('No se pudo agregar al amigo.');
   });
 });
