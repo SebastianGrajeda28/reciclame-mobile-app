@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
-  ScrollView,
   SectionList,
   StyleSheet,
   View,
 } from 'react-native';
-import { AppChip, AppScreen, AppText, theme } from '@/src/ui';
+import { AppIcon, AppScreen, AppSegmentedControl, AppText, theme } from '@/src/ui';
+import { HistoryCategorySheet } from '@/src/features/recycling/components/HistoryCategorySheet';
 import { HistoryEmptyState } from '@/src/features/recycling/components/HistoryEmptyState';
 import { HistoryErrorState } from '@/src/features/recycling/components/HistoryErrorState';
 import { RecyclingHistoryItem } from '@/src/features/recycling/components/RecyclingHistoryItem';
@@ -38,6 +39,7 @@ export function HistoryScreen() {
   const currentUser = useCurrentUser();
   const [horizon, setHorizon] = useState<Horizon>('all');
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
 
   const filters = useMemo(() => {
     const start = horizonStart(horizon);
@@ -52,69 +54,26 @@ export function HistoryScreen() {
     useRecyclingHistory(currentUser?.id ?? null, filters);
 
   const sections = useMemo(() => groupByDateSection(items), [items]);
+  const selectedCategory = categoryId ? HISTORY_CATEGORIES.find((c) => c.id === categoryId) : null;
   const hasActiveFilters = horizon !== 'all' || categoryId !== null;
 
-  const filterBar = (
-    <View style={styles.filters}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipRow}
-      >
-        {HORIZONS.map((h) => (
-          <AppChip
-            key={h.id}
-            label={h.label}
-            active={horizon === h.id}
-            onPress={() => setHorizon(h.id)}
-          />
-        ))}
-      </ScrollView>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipRow}
-      >
-        <AppChip label="Todas" active={categoryId === null} onPress={() => setCategoryId(null)} />
-        {HISTORY_CATEGORIES.map((c) => (
-          <AppChip
-            key={c.id}
-            label={c.label}
-            active={categoryId === c.id}
-            onPress={() => setCategoryId(c.id)}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-
+  let body;
   if (loading) {
-    return (
-      <AppScreen>
-        {filterBar}
-        <View style={styles.skeletonWrap}>
-          {[1, 2, 3, 4].map((k) => (
-            <SkeletonItem key={k} />
-          ))}
-        </View>
-      </AppScreen>
+    body = (
+      <View style={styles.skeletonWrap}>
+        {[1, 2, 3, 4].map((k) => (
+          <SkeletonItem key={k} />
+        ))}
+      </View>
     );
-  }
-
-  if (error) {
-    return (
-      <AppScreen>
-        {filterBar}
-        <View style={styles.padded}>
-          <HistoryErrorState onRetry={retry} />
-        </View>
-      </AppScreen>
+  } else if (error) {
+    body = (
+      <View style={styles.padded}>
+        <HistoryErrorState onRetry={retry} />
+      </View>
     );
-  }
-
-  return (
-    <AppScreen>
-      {filterBar}
+  } else {
+    body = (
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
@@ -155,6 +114,46 @@ export function HistoryScreen() {
           />
         }
       />
+    );
+  }
+
+  return (
+    <AppScreen>
+      <View style={styles.filters}>
+        <View style={styles.filterTop}>
+          <AppSegmentedControl
+            segments={HORIZONS.map((h) => ({ value: h.id, label: h.label }))}
+            value={horizon}
+            onChange={setHorizon}
+            style={styles.segmented}
+          />
+          <Pressable
+            onPress={() => setSheetVisible(true)}
+            style={styles.funnel}
+            accessibilityLabel="Filtrar por categoría"
+          >
+            <AppIcon name="filter" size={theme.iconSizes.md} color={theme.colors.textSecondary} />
+            {categoryId ? <View style={styles.funnelDot} /> : null}
+          </Pressable>
+        </View>
+        {selectedCategory ? (
+          <View style={styles.activeRow}>
+            <Pressable style={styles.activeChip} onPress={() => setCategoryId(null)}>
+              <AppText style={styles.activeChipText}>{selectedCategory.label}</AppText>
+              <AppIcon name="close" size={theme.iconSizes.xs} color={theme.colors.primary} />
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+
+      {body}
+
+      <HistoryCategorySheet
+        visible={sheetVisible}
+        selectedId={categoryId}
+        onSelect={setCategoryId}
+        onClose={() => setSheetVisible(false)}
+      />
     </AppScreen>
   );
 }
@@ -163,6 +162,7 @@ export default HistoryScreen;
 
 const styles = StyleSheet.create({
   filters: {
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.sm,
     gap: theme.spacing.sm,
@@ -170,9 +170,51 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
   },
-  chipRow: {
-    paddingHorizontal: theme.spacing.lg,
+  filterTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.sm,
+  },
+  segmented: {
+    flex: 1,
+  },
+  funnel: {
+    width: 44,
+    height: theme.components.segmentedHeight,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  funnelDot: {
+    position: 'absolute',
+    top: 7,
+    right: 9,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.primary,
+  },
+  activeRow: {
+    flexDirection: 'row',
+  },
+  activeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.primaryLight,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.radius.full,
+  },
+  activeChipText: {
+    fontSize: theme.fontSizes.sm,
+    fontWeight: theme.fontWeights.medium,
+    color: theme.colors.primary,
   },
   list: {
     paddingHorizontal: theme.spacing.lg,

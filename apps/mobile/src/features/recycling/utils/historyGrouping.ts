@@ -5,8 +5,8 @@ export type Horizon = 'all' | 'today' | 'week' | 'month';
 export const HORIZONS: { id: Horizon; label: string }[] = [
   { id: 'all', label: 'Todo' },
   { id: 'today', label: 'Hoy' },
-  { id: 'week', label: 'Esta semana' },
-  { id: 'month', label: 'Este mes' },
+  { id: 'week', label: 'Semana' },
+  { id: 'month', label: 'Mes' },
 ];
 
 const DAY_MS = 86_400_000;
