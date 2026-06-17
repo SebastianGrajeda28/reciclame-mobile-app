@@ -10,7 +10,7 @@ import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import { AppButton, AppIcon, AppScreen, AppText, StreakHeatBadge, theme } from '@/src/ui';
 
 export function SuccessScreen() {
   const { resetFlow, state } = useRecycleFlow();
@@ -56,10 +56,15 @@ export function SuccessScreen() {
 
       {streak?.alreadyRecycledToday ? (
         <View style={styles.streakPill}>
-          <AppIcon name="flame" size={theme.iconSizes.sm} color={theme.colors.warning} />
           <AppText variant="caption" style={styles.streakPillText}>
-            Ya aseguraste tu racha hoy · {streak.streakDays} días
+            Ya aseguraste tu racha hoy
           </AppText>
+          <StreakHeatBadge
+            streakDays={streak.streakDays}
+            level={streak.level}
+            heat={streak.heat}
+            size="sm"
+          />
         </View>
       ) : null}
 
@@ -115,14 +120,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.s1,
-    backgroundColor: theme.colors.warningBg,
+    backgroundColor: theme.colors.background,
     paddingHorizontal: theme.spacing.s3,
     paddingVertical: theme.spacing.s1,
     borderRadius: theme.radius.full,
     marginTop: theme.spacing.s1,
   },
   streakPillText: {
-    color: theme.colors.warning,
+    color: theme.colors.textSecondary,
     fontWeight: theme.fontWeights.semibold,
   },
   funFact: {
