@@ -1,6 +1,6 @@
+import { supabase } from '@/src/services/supabase/client';
 import type { ProfileBadge } from '@/src/features/profile/data/profileGamification';
 import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
-import { supabase } from '@/src/services/supabase/client';
 
 /**
  * Checks for newly unlocked achievements after a recycling action.

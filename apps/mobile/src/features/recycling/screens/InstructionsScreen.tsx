@@ -2,17 +2,16 @@ import { router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { checkUnlockedAchievements } from '@/src/features/profile/api/achievementUnlock';
 import {
-    useRecycleFlow,
-    useResolvedRecycleSelection,
+  useRecycleFlow,
+  useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
-import { confirmSegregation } from '../api/recyclingLogs';
+import { checkUnlockedAchievements } from '@/src/services/achievements';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
-import { createRecyclingLog } from '../api/recyclingLogs';
+import { confirmSegregation } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
@@ -83,7 +82,7 @@ export function InstructionsScreen() {
         confidenceScore: state.predictionConfidence,
       });
 
-      markConfirmed(log.id);
+      markConfirmed(streak.recordId);
       
       // Check if any achievement was unlocked
       const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
