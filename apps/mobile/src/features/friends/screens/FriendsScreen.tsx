@@ -6,7 +6,7 @@ import { routes } from '@/src/constants/routes';
 import { useFriends } from '@/src/features/friends/hooks/useFriends';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import type { FriendMedal, FriendSummary } from '@/src/types/friend';
-import { AppButton, AppIcon, AppText, theme } from '@/src/ui';
+import { AppButton, AppIcon, AppText, StreakHeatBadge, theme } from '@/src/ui';
 
 const MAX_VISIBLE_MEDALS = 3;
 const USE_MOCK_FRIENDS = true; // así hasta que el supabase remoto tenga todo (por si acaso)
@@ -151,10 +151,7 @@ function FriendListItem({ friend }: { friend: FriendSummary }) {
         <FriendMedalStrip medals={friend.featuredMedals} />
       </View>
       <View style={styles.streakBox}>
-        <AppText variant="h4" style={styles.streakValue}>
-          {friend.currentStreak}
-        </AppText>
-        <AppIcon name="flame" size={theme.iconSizes.lg} color={theme.colors.secondary} />
+        <StreakHeatBadge streakDays={friend.currentStreak} />
       </View>
     </View>
   );
@@ -349,9 +346,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: theme.spacing.s1,
-  },
-  streakValue: {
-    fontWeight: theme.fontWeights.extrabold,
   },
   centerState: {
     flex: 1,

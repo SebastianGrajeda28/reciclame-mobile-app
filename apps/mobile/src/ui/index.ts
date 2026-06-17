@@ -6,6 +6,7 @@ export { AppText } from '@/src/ui/components/AppText';
 export { AppButton } from '@/src/ui/components/AppButton';
 export { AppBarChart } from '@/src/ui/components/AppBarChart';
 export { AppHeatMeter } from '@/src/ui/components/AppHeatMeter';
+export { StreakHeatBadge } from '@/src/ui/components/StreakHeatBadge';
 export { AppIcon } from '@/src/ui/components/AppIcon';
 export { AppIconButton } from '@/src/ui/components/AppIconButton';
 export { AppInput } from '@/src/ui/components/AppInput';
