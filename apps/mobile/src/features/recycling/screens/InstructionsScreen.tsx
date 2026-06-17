@@ -9,8 +9,9 @@ import {
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
-import { confirmSegregation } from '../api/recyclingLogs';
+import { checkUnlockedAchievements } from '@/src/services/achievements';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import { confirmSegregation } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
@@ -80,9 +81,20 @@ export function InstructionsScreen() {
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,
       });
+
       markConfirmed(streak.recordId);
-      setStreakResult(streak);
-      router.replace('/recycle/success');
+      
+      // Check if any achievement was unlocked
+      const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
+      if (unlockedAchievement) {
+        // Navigate to reward screen with the unlocked achievement
+        router.replace({
+          pathname: '/recycle/reward',
+          params: { badgeId: unlockedAchievement.id },
+        });
+      } else {
+        router.replace('/recycle/success');
+      }
     } catch (err) {
       console.error('[InstructionsScreen] confirmSegregation failed:', err);
       notify(
