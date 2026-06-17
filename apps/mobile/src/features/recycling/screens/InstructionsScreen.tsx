@@ -2,14 +2,14 @@ import { router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { checkUnlockedAchievements } from '@/src/features/profile/api/achievementUnlock';
 import {
-    useRecycleFlow,
-    useResolvedRecycleSelection,
+  useRecycleFlow,
+  useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
+import { checkUnlockedAchievements } from '@/src/services/achievements';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import { createRecyclingLog } from '../api/recyclingLogs';
 

@@ -2,20 +2,31 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
-import type { ProfileBadge } from '@/src/features/profile/data/profileGamification';
+import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 type AchievementRewardScreenProps = {
-  badge: ProfileBadge;
+  badgeId: string;
 };
 
-export function AchievementRewardScreen({ badge }: AchievementRewardScreenProps) {
+export function AchievementRewardScreen({ badgeId }: AchievementRewardScreenProps) {
   const [animate, setAnimate] = useState(false);
+  const badge = profileGamificationSnapshot.allBadges.find(b => b.id === badgeId);
 
   useEffect(() => {
     const timer = setTimeout(() => setAnimate(true), 100);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!badge) {
+      router.replace('/recycle/success');
+    }
+  }, [badge]);
+
+  if (!badge) {
+    return null;
+  }
 
   const handleContinue = () => {
     router.replace('/recycle/success');
