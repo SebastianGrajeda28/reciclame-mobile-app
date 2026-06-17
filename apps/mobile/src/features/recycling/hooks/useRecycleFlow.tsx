@@ -42,7 +42,7 @@ type RecycleFlowContextValue = {
   resetFlow: (outcome?: 'abandoned' | 'failed') => void;
   startNewFlow: (userId: string | null) => Promise<void>;
   markStep: (step: FlowStep) => void;
-  markConfirmed: (recyclingRecordId: string) => void;
+  markConfirmed: (recyclingRecordId: string) => Promise<void>;
   setStreakResult: (result: StreakResult) => void;
 };
 
@@ -66,8 +66,8 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     }
   }, [updateSession]);
 
-  const markConfirmed = useCallback((recyclingRecordId: string) => {
-    updateSession({ outcome: 'confirmed', recyclingRecordId, furthestStep: 'success' });
+  const markConfirmed = useCallback(async (recyclingRecordId: string) => {
+    await updateSession({ outcome: 'confirmed', recyclingRecordId, furthestStep: 'success' });
   }, [updateSession]);
 
   const setStreakResult = useCallback((result: StreakResult) => {

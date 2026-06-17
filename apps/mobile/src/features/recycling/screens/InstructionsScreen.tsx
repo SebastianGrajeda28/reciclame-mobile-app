@@ -67,10 +67,15 @@ export function InstructionsScreen() {
       const usedManual =
         state.predictedWasteTypeId !== undefined &&
         state.predictedWasteTypeId !== state.finalWasteTypeId;
+      if (!resolvedBinType) {
+        notify('Datos incompletos', 'No se pudo resolver el contenedor. Intenta nuevamente.');
+        return;
+      }
+
       const streak = await confirmSegregation({
         userId: session.user.id,
         wasteTypeId: finalWasteType.id,
-        binTypeId: '33333333-3333-3333-3333-000000000001',//esto es un parche, se deberia ver que datos se pone realmente en este log.
+        binTypeId: resolvedBinType.id,
         recyclingPointId: selectedContainer.id,
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,
@@ -87,7 +92,7 @@ export function InstructionsScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType]);
+  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType, markConfirmed, setStreakResult]);
 
   useEffect(() => {
     if (
