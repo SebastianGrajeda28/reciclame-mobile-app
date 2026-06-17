@@ -10,12 +10,14 @@ import {
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
+import { confirmSegregation } from '../api/recyclingLogs';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import { createRecyclingLog } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
-  const { state, clearSelectedContainer, markStep, markConfirmed } = useRecycleFlow();
+  const { state, clearSelectedContainer, markStep, markConfirmed, setStreakResult } =
+    useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType } = useResolvedBinType(
     state.finalWasteTypeId,
@@ -67,10 +69,15 @@ export function InstructionsScreen() {
       const usedManual =
         state.predictedWasteTypeId !== undefined &&
         state.predictedWasteTypeId !== state.finalWasteTypeId;
-      const log = await createRecyclingLog({
+      if (!resolvedBinType) {
+        notify('Datos incompletos', 'No se pudo resolver el contenedor. Intenta nuevamente.');
+        return;
+      }
+
+      const streak = await confirmSegregation({
         userId: session.user.id,
         wasteTypeId: finalWasteType.id,
-        binTypeId: '33333333-3333-3333-3333-000000000001',//esto es un parche, se deberia ver que datos se pone realmente en este log.
+        binTypeId: resolvedBinType.id,
         recyclingPointId: selectedContainer.id,
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,
@@ -89,7 +96,7 @@ export function InstructionsScreen() {
         router.replace('/recycle/success');
       }
     } catch (err) {
-      console.error('[InstructionsScreen] createRecyclingLog failed:', err);
+      console.error('[InstructionsScreen] confirmSegregation failed:', err);
       notify(
         'No se pudo registrar',
         err instanceof Error ? err.message : 'Intenta nuevamente.',
@@ -97,7 +104,7 @@ export function InstructionsScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType]);
+  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType, markConfirmed, setStreakResult]);
 
   useEffect(() => {
     if (

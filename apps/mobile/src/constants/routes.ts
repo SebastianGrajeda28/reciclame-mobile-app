@@ -4,6 +4,7 @@ export const routes = {
   profileFeaturedBadges: '/profile/featured-badges',
   profileAvatar: '/profile/avatar',
   profileSettings: '/profile/settings',
+  profileStreak: '/profile/streak',
   recycleCamera: '/recycle/camera',
   recycleProcessing: '/recycle/processing',
   recycleManual: '/recycle/manual',

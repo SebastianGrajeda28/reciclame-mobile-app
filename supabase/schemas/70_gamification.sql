@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS "public"."user_progress" (
     "user_id" "uuid" NOT NULL,
     "points" integer DEFAULT 0 NOT NULL,
     "streak_days" integer DEFAULT 0 NOT NULL,
+    "best_streak_days" integer DEFAULT 0 NOT NULL,
     "heat" numeric,
     "level" integer DEFAULT 1 NOT NULL,
     "last_recycling_date" "date",
@@ -128,27 +129,26 @@ begin
 end;
 $$;
 
+CREATE OR REPLACE FUNCTION "public"."app_today"() RETURNS "date"
+    LANGUAGE "sql" STABLE
+    AS $$
+  SELECT (now() AT TIME ZONE 'America/Lima')::date;
+$$;
+
 CREATE OR REPLACE FUNCTION "public"."apply_daily_heat_decay"() RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-  -- Aplica decay solo a usuarios que no reciclaron hoy
   UPDATE public.user_progress
   SET
-    heat        = CASE
-                    WHEN heat - 30 <= 0 THEN 50
-                    ELSE heat - 30
-                  END,
-    streak_days = CASE
-                    WHEN heat - 30 <= 0 THEN public.streak_level_checkpoint(level)
-                    ELSE streak_days
-                  END,
+    heat        = CASE WHEN heat - 30 <= 0 THEN 50 ELSE heat - 30 END,
+    streak_days = CASE WHEN heat - 30 <= 0 THEN 0  ELSE streak_days END,
     updated_at  = now()
   WHERE
     is_active = true
     AND streak_days > 0
-    AND (last_recycling_date IS NULL OR last_recycling_date < CURRENT_DATE);
+    AND (last_recycling_date IS NULL OR last_recycling_date < public.app_today());
 END;
 $$;
 
@@ -167,7 +167,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "heat" integer, "level" integer, "last_recycling_date" "date")
+CREATE OR REPLACE FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "heat" integer, "level" integer, "last_recycling_date" "date", "streak_expires_at" timestamp with time zone, "streak_just_expired" boolean)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -176,32 +176,34 @@ DECLARE
   days_missed      int := 0;
   effective_heat   int;
   effective_streak int;
+  just_expired     boolean := false;
+  today            date := public.app_today();
+  expires          timestamptz;
 BEGIN
   SELECT * INTO rec
   FROM public.user_progress
   WHERE user_id = p_user_id AND is_active = true;
 
   IF NOT FOUND THEN
-    RETURN QUERY SELECT 0, 0, 1, NULL::date;
+    RETURN QUERY SELECT 0, 0, 1, NULL::date, NULL::timestamptz, false;
     RETURN;
   END IF;
 
-  -- Cuántos días completos sin reciclar (excluye hoy)
   IF rec.last_recycling_date IS NOT NULL THEN
-    days_missed := GREATEST(0, (CURRENT_DATE - rec.last_recycling_date) - 1);
+    days_missed := GREATEST(0, (today - rec.last_recycling_date) - 1);
   END IF;
 
   effective_heat   := COALESCE(rec.heat, 50)::int;
   effective_streak := COALESCE(rec.streak_days, 0);
 
-  -- Solo aplicar decay si hay racha activa Y no se aplicó ya hoy
-  IF effective_streak > 0 AND days_missed > 0 AND rec.updated_at::date < CURRENT_DATE THEN
+  IF effective_streak > 0 AND days_missed > 0
+     AND (rec.updated_at AT TIME ZONE 'America/Lima')::date < today THEN
     effective_heat := effective_heat - (30 * days_missed);
 
     IF effective_heat <= 0 THEN
-      -- Racha muerta: streak vuelve al checkpoint del nivel, heat reset, level queda
       effective_heat   := 50;
-      effective_streak := public.streak_level_checkpoint(COALESCE(rec.level, 1));
+      effective_streak := 0;
+      just_expired     := true;
     END IF;
 
     UPDATE public.user_progress
@@ -212,7 +214,20 @@ BEGIN
     WHERE user_id = p_user_id;
   END IF;
 
-  RETURN QUERY SELECT effective_streak, effective_heat, COALESCE(rec.level, 1), rec.last_recycling_date;
+  IF effective_streak > 0 THEN
+    expires := ((today + CEIL(effective_heat / 30.0)::int)::timestamp)
+                 AT TIME ZONE 'America/Lima';
+  ELSE
+    expires := NULL;
+  END IF;
+
+  RETURN QUERY SELECT
+    effective_streak,
+    effective_heat,
+    COALESCE(rec.level, 1),
+    rec.last_recycling_date,
+    expires,
+    just_expired;
 END;
 $$;
 
@@ -224,30 +239,30 @@ DECLARE
   progress_record public.user_progress%ROWTYPE;
   is_first_action_today boolean := false;
   new_streak int;
-  new_heat numeric;
-  new_level int;
-  heat_gain int;
+  new_heat   numeric;
+  new_level  int;
+  heat_gain  int;
+  today      date := public.app_today();
 BEGIN
-
   SELECT * INTO progress_record
   FROM public.user_progress
   WHERE user_id = NEW.user_id
   FOR UPDATE;
 
   IF FOUND THEN
-
     IF progress_record.last_recycling_date IS NULL
-       OR progress_record.last_recycling_date < CURRENT_DATE THEN
+       OR progress_record.last_recycling_date < today THEN
       is_first_action_today := true;
     END IF;
 
     IF is_first_action_today THEN
       new_streak := COALESCE(progress_record.streak_days, 0) + 1;
-
-      heat_gain := public.heat_gain_for_level(COALESCE(progress_record.level, 1));
-      new_heat  := LEAST(100, COALESCE(progress_record.heat, 50) + heat_gain);
-
-      new_level := public.compute_streak_level(new_streak);
+      heat_gain  := public.heat_gain_for_level(COALESCE(progress_record.level, 1));
+      new_heat   := LEAST(100, COALESCE(progress_record.heat, 50) + heat_gain);
+      new_level  := GREATEST(
+        COALESCE(progress_record.level, 1),
+        public.compute_streak_level(new_streak)
+      );
     ELSE
       new_streak := COALESCE(progress_record.streak_days, 0);
       new_heat   := COALESCE(progress_record.heat, 50);
@@ -256,19 +271,20 @@ BEGIN
 
     UPDATE public.user_progress
     SET
-      streak_days        = new_streak,
-      heat               = new_heat,
-      level              = new_level,
-      last_recycling_date = CURRENT_DATE,
-      updated_at         = now()
+      streak_days      = new_streak,
+      heat             = new_heat,
+      level            = new_level,
+      best_streak_days = GREATEST(COALESCE(best_streak_days, 0), new_streak),
+      last_recycling_date = today,
+      updated_at       = now()
     WHERE user_id = NEW.user_id;
 
   ELSE
 
     INSERT INTO public.user_progress (
-      user_id, points, streak_days, heat, level, last_recycling_date
+      user_id, points, streak_days, heat, level, best_streak_days, last_recycling_date
     ) VALUES (
-      NEW.user_id, 0, 1, 51, 1, CURRENT_DATE
+      NEW.user_id, 0, 1, 51, 1, 1, today
     );
 
   END IF;
@@ -298,6 +314,90 @@ BEGIN
     WHEN 2 THEN RETURN 3;
     ELSE        RETURN 0;
   END CASE;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "best_streak_days" integer, "recycled_today" boolean, "total_today" integer, "daily_average" numeric, "week_days" "jsonb", "heat_map" "jsonb")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  today         date := public.app_today();
+  week_start    date;
+  map_start     date;
+  v_streak      int;
+  v_best        int;
+  v_heat        int;
+  v_level       int;
+  v_last_date   date;
+  v_just_exp    boolean;
+BEGIN
+  SELECT sa.streak_days, sa.heat, sa.level, sa.last_recycling_date, sa.streak_just_expired
+  INTO v_streak, v_heat, v_level, v_last_date, v_just_exp
+  FROM public.get_progress_with_decay(p_user_id) sa;
+
+  IF v_streak IS NULL THEN v_streak := 0; END IF;
+
+  SELECT COALESCE(up.best_streak_days, 0)
+  INTO v_best
+  FROM public.user_progress up
+  WHERE up.user_id = p_user_id;
+
+  IF v_best IS NULL THEN v_best := 0; END IF;
+
+  week_start := today - EXTRACT(ISODOW FROM today)::int + 1;
+  map_start  := today - 27;
+
+  RETURN QUERY
+  WITH
+  daily_counts AS (
+    SELECT
+      (rr.created_at AT TIME ZONE 'America/Lima')::date AS rec_date,
+      COUNT(*)::int AS cnt
+    FROM public.recycling_records rr
+    WHERE rr.user_id = p_user_id
+      AND rr.is_active = true
+      AND (rr.created_at AT TIME ZONE 'America/Lima')::date >= map_start
+      AND (rr.created_at AT TIME ZONE 'America/Lima')::date <= today
+    GROUP BY rec_date
+  ),
+  day_series AS (
+    SELECT generate_series(map_start, today, '1 day'::interval)::date AS d
+  ),
+  full_map AS (
+    SELECT ds.d, COALESCE(dc.cnt, 0) AS cnt
+    FROM day_series ds
+    LEFT JOIN daily_counts dc ON dc.rec_date = ds.d
+  ),
+  week_series AS (
+    SELECT generate_series(week_start, week_start + 6, '1 day'::interval)::date AS wd
+  )
+  SELECT
+    v_streak::int,
+    v_best::int,
+    (COALESCE(v_last_date, '1900-01-01') >= today),
+    COALESCE((SELECT cnt FROM full_map WHERE d = today), 0)::int,
+    COALESCE(
+      (SELECT ROUND(AVG(cnt)::numeric, 1) FROM full_map WHERE cnt > 0),
+      0
+    )::numeric,
+    (
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'date',     to_char(ws.wd, 'YYYY-MM-DD'),
+          'recycled', EXISTS (SELECT 1 FROM daily_counts dc WHERE dc.rec_date = ws.wd)
+        )
+        ORDER BY ws.wd
+      )
+      FROM week_series ws
+    ),
+    (
+      SELECT jsonb_agg(
+        jsonb_build_object('date', to_char(fm.d, 'YYYY-MM-DD'), 'count', fm.cnt)
+        ORDER BY fm.d
+      )
+      FROM full_map fm
+    );
 END;
 $$;
 
@@ -334,11 +434,9 @@ GRANT ALL ON FUNCTION "public"."compute_streak_level"("p_streak_days" integer) T
 
 GRANT ALL ON FUNCTION "public"."compute_streak_level"("p_streak_days" integer) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "anon";
+GRANT EXECUTE ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "service_role";
+GRANT EXECUTE ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."handle_post_segregation_progress"() TO "anon";
 
@@ -387,3 +485,13 @@ GRANT ALL ON TABLE "public"."user_rewards" TO "anon";
 GRANT ALL ON TABLE "public"."user_rewards" TO "authenticated";
 
 GRANT ALL ON TABLE "public"."user_rewards" TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."app_today"() TO "anon";
+
+GRANT ALL ON FUNCTION "public"."app_today"() TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."app_today"() TO "service_role";
+
+GRANT EXECUTE ON FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") TO "service_role";

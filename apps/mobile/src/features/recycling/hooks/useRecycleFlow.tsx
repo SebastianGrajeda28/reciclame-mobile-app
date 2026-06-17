@@ -10,6 +10,7 @@ import {
 
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
+import type { StreakResult } from '../api/recyclingLogs';
 import {
   advanceStep,
   clearPendingSession,
@@ -26,6 +27,7 @@ type RecycleFlowState = {
   predictionConfidence?: number;
   finalWasteTypeId?: string;
   selectedContainerId?: string;
+  streakResult?: StreakResult;
 };
 
 type RecycleFlowContextValue = {
@@ -40,7 +42,8 @@ type RecycleFlowContextValue = {
   resetFlow: (outcome?: 'abandoned' | 'failed') => void;
   startNewFlow: (userId: string | null) => Promise<void>;
   markStep: (step: FlowStep) => void;
-  markConfirmed: (recyclingRecordId: string) => void;
+  markConfirmed: (recyclingRecordId: string) => Promise<void>;
+  setStreakResult: (result: StreakResult) => void;
 };
 
 const RecycleFlowContext = createContext<RecycleFlowContextValue | undefined>(undefined);
@@ -63,9 +66,13 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     }
   }, [updateSession]);
 
-  const markConfirmed = useCallback((recyclingRecordId: string) => {
-    updateSession({ outcome: 'confirmed', recyclingRecordId, furthestStep: 'success' });
+  const markConfirmed = useCallback(async (recyclingRecordId: string) => {
+    await updateSession({ outcome: 'confirmed', recyclingRecordId, furthestStep: 'success' });
   }, [updateSession]);
+
+  const setStreakResult = useCallback((result: StreakResult) => {
+    setState((prev) => ({ ...prev, streakResult: result }));
+  }, []);
 
   const startNewFlow = useCallback(async (userId: string | null) => {
     const session = await flushAndStartNewSession(userId);
@@ -156,6 +163,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       startNewFlow,
       markStep,
       markConfirmed,
+      setStreakResult,
     }),
     [
       state,
@@ -170,6 +178,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       clearPrediction,
       markStep,
       markConfirmed,
+      setStreakResult,
     ],
   );
 
