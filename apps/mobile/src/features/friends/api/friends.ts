@@ -68,6 +68,27 @@ export async function getMyFriendCode(): Promise<string> {
  * @returns Lista de amigos ordenada alfabéticamente por nombre.
  * @throws Error si la consulta a Supabase falla.
  */
+export type AddFriendResult = { friendshipId: string; friendId: string; created: boolean };
+
+const ADD_FRIEND_ERRORS: Record<string, string> = {
+  'invalid friend code': 'Ingresa un código de amigo válido.',
+  'friend code not found': 'No encontramos ningún usuario con ese código.',
+  'cannot add yourself': 'No puedes agregarte a ti mismo.',
+  unauthenticated: 'Debes iniciar sesión para agregar amigos.',
+};
+
+export async function addFriendByCode(code: string): Promise<AddFriendResult> {
+  const { data, error } = await supabase.rpc('add_friend_by_code', { p_code: code });
+  if (error) {
+    throw new Error(ADD_FRIEND_ERRORS[error.message] ?? `No se pudo agregar al amigo: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error('No se pudo agregar al amigo.');
+  }
+  const row = data as { friendship_id: string; friend_id: string; created: boolean };
+  return { friendshipId: row.friendship_id, friendId: row.friend_id, created: row.created };
+}
+
 export async function getFriends(userId: string): Promise<FriendSummary[]> {
   const { data, error } = await supabase.rpc('get_friends_with_profile', {
     p_user_id: userId,
