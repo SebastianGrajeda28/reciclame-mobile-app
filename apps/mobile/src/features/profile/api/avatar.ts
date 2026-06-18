@@ -16,14 +16,15 @@ export async function getAvatarConfig(userId: string): Promise<AvatarConfig | nu
 }
 
 export async function saveAvatarConfig(userId: string, config: AvatarConfig): Promise<void> {
-  const { error } = await supabase
-    .from('avatars')
-    .upsert(
-      { user_id: userId, avatar_config: config, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id' },
-    );
+  const { data, error } = await supabase
+    .rpc('save_avatar_config', { p_user_id: userId, p_config: config });
 
   if (error) throw new Error(error.message);
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (row && !(row as { success: boolean }).success) {
+    throw new Error((row as { message: string }).message);
+  }
 }
 
 export type UnlockedCosmetics = {
