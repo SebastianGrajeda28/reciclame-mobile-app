@@ -10,8 +10,9 @@ import { ProfileStatsGrid } from '@/src/features/profile/components/ProfileStats
 import { ProfileStreakCard } from '@/src/features/profile/components/ProfileStreakCard';
 import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
+import { useProfileSummary } from '@/src/features/profile/hooks/useProfileSummary';
 import { useStreakProgress } from '@/src/features/profile/hooks/useStreakProgress';
-import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
+import { formatActiveTime, formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppButton, AppCard, AppIcon, AppText, theme } from '@/src/ui';
 
@@ -19,6 +20,7 @@ export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
+  const { data: summaryData, loading: summaryLoading } = useProfileSummary();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
   const [lostDismissed, setLostDismissed] = useState(false);
   const showStreakLost = Boolean(streakData?.justExpired) && !lostDismissed;
@@ -27,6 +29,33 @@ export function ProfileScreen() {
   const featuredBadges = profileGamificationSnapshot.allBadges.filter((b) =>
     featuredIds.includes(b.id),
   );
+
+  const stats = [
+    {
+      id: 'weight',
+      value: summaryLoading ? '...' : `${(summaryData?.totalWeightKg ?? 0).toFixed(1)} kg`,
+      label: 'Peso total',
+      icon: 'scale' as const,
+    },
+    {
+      id: 'items',
+      value: summaryLoading ? '...' : String(summaryData?.totalItems ?? 0),
+      label: 'Artículos reciclados',
+      icon: 'package' as const,
+    },
+    {
+      id: 'active-since',
+      value: summaryLoading ? '...' : formatActiveTime(summaryData?.memberSince),
+      label: 'Activo desde',
+      icon: 'calendar' as const,
+    },
+    {
+      id: 'badges',
+      value: summaryLoading ? '...' : String(summaryData?.achievementsCount ?? 0),
+      label: 'Insignias ganadas',
+      icon: 'award' as const,
+    },
+  ];
 
   return (
     <ProfileScreenContainer>
@@ -76,7 +105,7 @@ export function ProfileScreen() {
         onSeeAllPress={() => router.push(routes.profileAchievements)}
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />
-      <ProfileStatsGrid stats={profileGamificationSnapshot.stats} />
+      <ProfileStatsGrid stats={stats} />
       <Pressable
         style={({ pressed }) => [styles.historyRow, pressed && styles.historyRowPressed]}
         onPress={() => router.push(routes.recycleHistory)}

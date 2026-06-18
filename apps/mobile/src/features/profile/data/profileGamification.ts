@@ -14,7 +14,7 @@ export type ProfileStat = {
   id: string;
   value: string;
   label: string;
-  icon: 'scale' | 'recycle' | 'calendar' | 'award';
+  icon: 'scale' | 'recycle' | 'calendar' | 'award' | 'package';
 };
 
 // TODO(profile): replace this snapshot with a real profile achievements/stats query

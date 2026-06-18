@@ -22,9 +22,9 @@ schema_paths = [
   "./schemas/35_social.sql",
   "./schemas/40_geo_infrastructure.sql",
   "./schemas/45_offline_sync.sql",
-  "./schemas/50_recycling_flow.sql",
+  "./schemas/50_gamification.sql",
   "./schemas/60_education_content.sql",
-  "./schemas/70_gamification.sql",
+  "./schemas/70_recycling_flow.sql",
   "./schemas/80_admin_analytics.sql",
   "./schemas/95_permissions.sql",
 ]

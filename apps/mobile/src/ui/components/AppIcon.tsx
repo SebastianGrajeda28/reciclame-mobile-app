@@ -59,6 +59,7 @@ export type AppIconName =
   | 'laptop'
   | 'fileDocument'
   | 'locate'
+  | 'package'
   | 'eyeOff';
 
 type AppIconProps = {
@@ -201,6 +202,15 @@ export function AppIcon({ name, size, color, style }: AppIconProps) {
       return <Feather name="crosshair" size={size} color={color} style={style} />;
     case 'eyeOff':
       return <Feather name="eye-off" size={size} color={color} style={style} />;
+    case 'package':
+      return (
+        <MaterialCommunityIcons
+          name="package-variant-closed"
+          size={size}
+          color={color}
+          style={style}
+        />
+      );
     default:
       return null;
   }
