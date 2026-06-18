@@ -60,3 +60,4 @@ const tableCount = db.getFirstSync<{ count: number }>(
 console.log(`[DB] Tablas locales creadas: ${tableCount?.count ?? 0}`);
 
 export { db };
+
