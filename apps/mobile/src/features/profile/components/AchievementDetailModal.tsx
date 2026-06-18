@@ -30,11 +30,7 @@ export function AchievementDetailModal({ visible, badge, onClose }: AchievementD
           <View style={styles.imageContainer}>
             {earned ? (
               <Image
-                source={
-                  badge.imageUrl
-                    ? { uri: badge.imageUrl }
-                    : require('@/assets/images/badge-placeholder.png')
-                }
+                source={badge.image}
                 style={styles.image}
                 resizeMode="contain"
               />
