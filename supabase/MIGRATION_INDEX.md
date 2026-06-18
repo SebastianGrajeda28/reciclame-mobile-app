@@ -49,6 +49,8 @@ New database work should start in `supabase/schemas/*` and then generate additiv
 - `20260603000003_rpc_get_progress_with_decay.sql` — progress RPC with decay data
 - `20260606000000_get_friends_with_profile.sql` — social/friends profile aggregate
 - `20260607000001_add_avatar_config.sql` — avatar configuration additions
+- `20260615000000_achievement_unlock_logic.sql` — initial achievement unlock RPC + trigger wiring
+- `20260618000000_gamification_expand_achievement_conditions.sql` — 16 new condition types (bin type, waste type, location, social, manual detection); seeds 25 achievements; restores achievement check in progress trigger
 
 ## Recycling flow and progress
 
