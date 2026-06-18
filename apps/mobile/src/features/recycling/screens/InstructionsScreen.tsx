@@ -77,7 +77,7 @@ export function InstructionsScreen() {
         confidenceScore: state.predictionConfidence,
       });
 
-      markConfirmed(streak.recordId);
+      markConfirmed(log.id);
       
       // Check if any achievement was unlocked
       const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
