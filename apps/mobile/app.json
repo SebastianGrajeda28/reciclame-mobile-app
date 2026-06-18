@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "reciclame-mobile-app",
+    "name": "Recíclame",
     "slug": "reciclame-mobile-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,6 +12,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.wolgank.reciclame",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -20,7 +22,6 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.reciclamemobileapp",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyCsWNjZBe4Tmvkx9AN3ZTQ74HhaP-J9pZw"
@@ -50,6 +51,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5ad88413-f15a-4ce6-8929-65fb3d19a3b7"
+      }
     }
   }
 }
