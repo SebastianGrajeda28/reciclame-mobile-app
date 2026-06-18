@@ -12,6 +12,7 @@ import { useUserSettings } from '@/src/hooks/useUserSettings';
 import { checkUnlockedAchievements } from '@/src/services/achievements';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import { createRecyclingLog } from '../api/recyclingLogs';
+import { confirmSegregation } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
@@ -75,10 +76,11 @@ export function InstructionsScreen() {
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,
       });
-      markConfirmed(log.id);
+
+      markConfirmed(streak.recordId);
       
       // Check if any achievement was unlocked
-      const unlockedAchievement = checkUnlockedAchievements();
+      const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
       if (unlockedAchievement) {
         // Navigate to reward screen with the unlocked achievement
         router.replace({
