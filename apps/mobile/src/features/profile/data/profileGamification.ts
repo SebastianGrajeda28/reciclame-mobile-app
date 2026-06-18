@@ -1,7 +1,7 @@
 export type ProfileBadge = {
   id: string;
   name: string;
-  image: ReturnType<typeof require>;
+  image: number; // static require() result — React Native image asset
   hint: string; // Vague hint on how to unlock — intentionally ambiguous
   userPercentage: number; // 0–100: % of users who have this badge
   earnedAt?: string; // ISO date — undefined means locked
@@ -30,7 +30,7 @@ export const profileGamificationSnapshot = {
       userPercentage: 89,
       earnedAt: '2024-01-15',
       description: 'Completaste tu primer reciclaje exitoso.',
-      reward: '+10 puntos',
+      reward: 'Cosmético: Jubón',
     },
     {
       id: 'semana-verde',
@@ -40,7 +40,7 @@ export const profileGamificationSnapshot = {
       userPercentage: 54,
       earnedAt: '2024-02-03',
       description: 'Reciclaste durante 7 días consecutivos.',
-      reward: '+25 puntos',
+      reward: 'Cosmético: Gorro Beanie',
     },
     {
       id: 'mes-eco',
@@ -49,7 +49,7 @@ export const profileGamificationSnapshot = {
       hint: 'Un mes entero sin romper la cadena.',
       userPercentage: 12,
       description: 'Reciclaste durante 30 días consecutivos.',
-      reward: '+100 puntos',
+      reward: 'Cosmético: Túnica',
     },
     {
       id: 'decena',
@@ -59,7 +59,7 @@ export const profileGamificationSnapshot = {
       userPercentage: 67,
       earnedAt: '2024-01-20',
       description: 'Reciclaste 10 artículos en total.',
-      reward: '+15 puntos',
+      reward: 'Cosmético: Gorro Trampero',
     },
     {
       id: 'centurion',
@@ -68,7 +68,7 @@ export const profileGamificationSnapshot = {
       hint: 'Hay un número redondo que pocos alcanzan.',
       userPercentage: 14,
       description: 'Reciclaste 100 artículos en total.',
-      reward: '+75 puntos',
+      reward: 'Cosmético: Sombrero de Copa',
     },
     {
       id: 'leyenda',
@@ -77,7 +77,7 @@ export const profileGamificationSnapshot = {
       hint: 'Solo los que van más allá conocen este camino.',
       userPercentage: 3,
       description: 'Reciclaste 500 artículos en total.',
-      reward: 'Medalla de oro',
+      reward: 'Cosmético: Casco Guerrero',
     },
     {
       id: 'cazador-pilas',
@@ -86,7 +86,7 @@ export const profileGamificationSnapshot = {
       hint: 'Hay un residuo peligroso que muy pocos traen.',
       userPercentage: 28,
       description: 'Depositaste pilas en el contenedor correcto 3 veces.',
-      reward: '+30 puntos',
+      reward: 'Cosmético: Gorro Ingeniero',
     },
     {
       id: 'especialista-raee',
@@ -95,7 +95,7 @@ export const profileGamificationSnapshot = {
       hint: 'Los residuos eléctricos necesitan manos expertas.',
       userPercentage: 19,
       description: 'Depositaste residuos electrónicos (RAEE) 3 veces.',
-      reward: '+35 puntos',
+      reward: 'Cosmético: Casco Soldado',
     },
     {
       id: 'vidriero',
@@ -104,7 +104,7 @@ export const profileGamificationSnapshot = {
       hint: 'El vidrio nunca miente sobre quién lo separó bien.',
       userPercentage: 33,
       description: 'Reciclaste vidrio 5 veces.',
-      reward: '+20 puntos',
+      reward: 'Cosmético: Capucha',
     },
     {
       id: 'papelero',
@@ -113,7 +113,7 @@ export const profileGamificationSnapshot = {
       hint: 'Papel y cartón tienen más vida de la que parece.',
       userPercentage: 41,
       description: 'Reciclaste papel o cartón 5 veces.',
-      reward: '+20 puntos',
+      reward: 'Cosmético: Barba Clásica',
     },
     {
       id: 'plastico-cero',
@@ -122,7 +122,7 @@ export const profileGamificationSnapshot = {
       hint: 'Un tipo de material domina más que los demás.',
       userPercentage: 22,
       description: 'Reciclaste plásticos 10 veces.',
-      reward: '+40 puntos',
+      reward: 'Cosmético: Peto',
     },
     {
       id: 'todo-espectro',
@@ -131,7 +131,7 @@ export const profileGamificationSnapshot = {
       hint: 'La variedad es la esencia del reciclaje completo.',
       userPercentage: 17,
       description: 'Reciclaste al menos 5 tipos diferentes de residuos.',
-      reward: '+50 puntos',
+      reward: 'Cosmético: Sombrero Cowboy',
     },
     {
       id: 'polimero-pro',
@@ -140,7 +140,7 @@ export const profileGamificationSnapshot = {
       hint: 'Hay una familia de materiales que dominas.',
       userPercentage: 25,
       description: 'Usaste el contenedor de plásticos 10 veces.',
-      reward: '+35 puntos',
+      reward: 'Cosmético: Chaleco',
     },
     {
       id: 'el-separador',
@@ -149,7 +149,7 @@ export const profileGamificationSnapshot = {
       hint: 'Conoces el color de cada contenedor.',
       userPercentage: 15,
       description: 'Usaste al menos 4 tipos distintos de contenedores.',
-      reward: '+60 puntos',
+      reward: 'Cosmético: Casco Caballero',
     },
     {
       id: 'residuos-peligrosos',
@@ -158,7 +158,7 @@ export const profileGamificationSnapshot = {
       hint: 'Algunos residuos requieren más cuidado que otros.',
       userPercentage: 36,
       description: 'Depositaste correctamente un residuo peligroso (pilas o RAEE).',
-      reward: '+25 puntos',
+      reward: 'Cosmético: Barba Vikinga',
     },
     {
       id: 'ingeniero-electronico',
@@ -167,7 +167,7 @@ export const profileGamificationSnapshot = {
       hint: 'La tecnología también tiene un ciclo de vida.',
       userPercentage: 11,
       description: 'Depositaste residuos electrónicos en el contenedor RAEE 3 veces.',
-      reward: '+45 puntos',
+      reward: 'Cosmético: Barba Horquilla',
     },
     {
       id: 'explorador',
@@ -176,7 +176,7 @@ export const profileGamificationSnapshot = {
       hint: 'El campus esconde más de un punto verde.',
       userPercentage: 44,
       description: 'Reciclaste en al menos 2 puntos del campus.',
-      reward: '+20 puntos',
+      reward: 'Cosmético: Gorro Explorador',
     },
     {
       id: 'nomade-verde',
@@ -185,7 +185,7 @@ export const profileGamificationSnapshot = {
       hint: 'Conoces cada rincón verde del campus.',
       userPercentage: 21,
       description: 'Reciclaste en todos los puntos de reciclaje del campus.',
-      reward: '+80 puntos',
+      reward: 'Cosmético: Armadura Bruta',
     },
     {
       id: 'bibliofilo',
@@ -194,7 +194,7 @@ export const profileGamificationSnapshot = {
       hint: 'Un lugar específico te conoce mejor que nadie.',
       userPercentage: 38,
       description: 'Reciclaste 5 veces en la Biblioteca Central.',
-      reward: '+30 puntos',
+      reward: 'Cosmético: Fedora',
     },
     {
       id: 'racha-perfecta',
@@ -203,7 +203,7 @@ export const profileGamificationSnapshot = {
       hint: 'El pasado también cuenta.',
       userPercentage: 48,
       description: 'Alcanzaste una racha de 7 días en algún momento.',
-      reward: '+20 puntos',
+      reward: 'Cosmético: Bigote Cowboy',
     },
     {
       id: 'constancia-hierro',
@@ -212,7 +212,7 @@ export const profileGamificationSnapshot = {
       hint: 'Tu mejor versión dejó huella.',
       userPercentage: 9,
       description: 'Alcanzaste una racha de 30 días en algún momento.',
-      reward: '+120 puntos',
+      reward: 'Cosmético: Barba Leñador',
     },
     {
       id: 'corrector',
@@ -221,7 +221,7 @@ export const profileGamificationSnapshot = {
       hint: 'La IA no siempre tiene la última palabra.',
       userPercentage: 31,
       description: 'Corregiste la clasificación automática al menos una vez.',
-      reward: '+15 puntos',
+      reward: 'Cosmético: Bigote Herradura',
     },
     {
       id: 'meticuloso',
@@ -230,7 +230,7 @@ export const profileGamificationSnapshot = {
       hint: 'Prefieres clasificar tú mismo.',
       userPercentage: 16,
       description: 'Registraste 5 reciclajes en modo manual.',
-      reward: '+40 puntos',
+      reward: 'Cosmético: Barba Chamán',
     },
     {
       id: 'amigo-reciclador',
@@ -239,7 +239,7 @@ export const profileGamificationSnapshot = {
       hint: 'El reciclaje es mejor en compañía.',
       userPercentage: 52,
       description: 'Agregaste a tu primer amigo en la app.',
-      reward: '+20 puntos',
+      reward: 'Cosmético: Bigote Húngaro',
     },
     {
       id: 'red-verde',
@@ -248,7 +248,7 @@ export const profileGamificationSnapshot = {
       hint: 'Has construido una comunidad eco.',
       userPercentage: 23,
       description: 'Tienes al menos 3 amigos en la app.',
-      reward: '+50 puntos',
+      reward: 'Cosmético: Barba Garibaldi',
     },
   ] satisfies ProfileBadge[],
   featuredBadgeIds: ['primer-paso', 'semana-verde', 'decena', 'explorador', 'amigo-reciclador'],
@@ -259,4 +259,4 @@ export const profileGamificationSnapshot = {
     { id: 'active-since', value: '6 meses', label: 'Activo desde', icon: 'calendar' },
     { id: 'badges', value: '8', label: 'Insignias ganadas', icon: 'award' },
   ] satisfies ProfileStat[],
-} as const;
+};

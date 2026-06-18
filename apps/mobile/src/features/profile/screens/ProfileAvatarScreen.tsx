@@ -7,6 +7,7 @@ import { AvatarComposer } from '@/src/features/profile/components/AvatarComposer
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
+import { useUnlockedCosmetics } from '@/src/features/profile/hooks/useUnlockedCosmetics';
 import {
   AvatarConfig,
   AvatarRace,
@@ -238,6 +239,7 @@ function ColorDot({ color, selected, onPress, hexOverride }: { color: string; se
 
 export function ProfileAvatarScreen() {
   const { config, setConfig, save, saving, hasChanges } = useAvatarConfig();
+  const { cosmetics } = useUnlockedCosmetics();
   const [group, setGroup] = useState<Group>('General');
   const [tab, setTab] = useState<Tab>('Raza');
   const { map: hatColors, setColor: setHatColor } = useItemColorMap('avatar:hatColors');
@@ -460,11 +462,12 @@ export function ProfileAvatarScreen() {
       case 'Pelo': {
         const { color: hairColor, style: activeHairStyle } = parseSimpleColorStyle(config.hair);
         const savedHairColor = hairColor ?? hairColors['color'] ?? HAIR_COLORS[0];
+        const unlockedHair = HAIR_STYLES.filter((s) => cosmetics.hair.has(s));
         return (
           <SwatchGrid
             items={buildNullableSwatchItems(
               activeHairStyle, savedHairColor, HAIR_COLORS[0],
-              HAIR_STYLES, hairKey,
+              unlockedHair, hairKey,
               (v) => { setHairColor('color', savedHairColor); update({ hair: v }); },
               () => update({ hair: null }),
               config.hair === null,
@@ -476,11 +479,12 @@ export function ProfileAvatarScreen() {
       case 'Barba': {
         const { color: beardColor, style: activeBeardStyle } = parseSimpleColorStyle(config.beard);
         const savedBeardColor = beardColor ?? beardColors['color'] ?? BEARD_COLORS[0];
+        const unlockedBeard = BEARD_STYLES.filter((s) => cosmetics.beard.has(s));
         return (
           <SwatchGrid
             items={buildNullableSwatchItems(
               activeBeardStyle, savedBeardColor, BEARD_COLORS[0],
-              BEARD_STYLES, beardKey,
+              unlockedBeard, beardKey,
               (v) => { setBeardColor('color', savedBeardColor); update({ beard: v }); },
               () => update({ beard: null }),
               config.beard === null,
@@ -492,11 +496,12 @@ export function ProfileAvatarScreen() {
       case 'Bigote': {
         const { color: moustacheColor, style: activeMoustacheStyle } = parseSimpleColorStyle(config.moustache);
         const savedMoustacheColor = moustacheColor ?? moustacheColors['color'] ?? MOUSTACHE_COLORS[0];
+        const unlockedMoustache = MOUSTACHE_STYLES.filter((s) => cosmetics.moustache.has(s));
         return (
           <SwatchGrid
             items={buildNullableSwatchItems(
               activeMoustacheStyle, savedMoustacheColor, MOUSTACHE_COLORS[0],
-              MOUSTACHE_STYLES, moustacheKey,
+              unlockedMoustache, moustacheKey,
               (v) => { setMoustacheColor('color', savedMoustacheColor); update({ moustache: v }); },
               () => update({ moustache: null }),
               config.moustache === null,
@@ -507,11 +512,12 @@ export function ProfileAvatarScreen() {
 
       case 'Ropa': {
         const { color: clothesColor, style: activeClothesStyle } = parseCompoundColorStyle(config.clothes);
+        const unlockedClothes = CLOTHES_STYLES.filter((s) => cosmetics.clothes.has(s));
         return (
           <SwatchGrid
             items={buildColoredStyleItems(
               activeClothesStyle, clothesColor,
-              CLOTHES_COLORS, CLOTHES_STYLES,
+              CLOTHES_COLORS, unlockedClothes,
               clothesColors, clothesKey,
               (v) => update({ clothes: v }),
               (style, color) => setClothesColor(style, color),
@@ -524,11 +530,12 @@ export function ProfileAvatarScreen() {
 
       case 'Gorro': {
         const { color: hatColor, style: activeHatStyle } = parseCompoundColorStyle(config.hat);
+        const unlockedHats = HAT_STYLES.filter((s) => cosmetics.hat.has(s));
         return (
           <SwatchGrid
             items={buildColoredStyleItems(
               activeHatStyle, hatColor,
-              HAT_COLORS, HAT_STYLES,
+              HAT_COLORS, unlockedHats,
               hatColors, hatKey,
               (v) => update({ hat: v }),
               (style, color) => setHatColor(style, color),

@@ -1,236 +1,243 @@
--- Progression, streaks, medals and rewards logic.
--- Includes progress state, reward ownership, progression functions and trigger-driven updates.
+-- Implements the cosmetic unlock system (issue #174).
+-- 1. Adds item_key + item_type to rewards so each reward maps to an avatar cosmetic style.
+-- 2. Seeds 25 cosmetic rewards (one per achievement) with fixed UUIDs.
+--    item_type: hat | clothes | beard | moustache
+--    Unlocking a cosmetic grants the style in ALL its colors.
+-- 3. Links each achievement to its cosmetic reward via reward_id.
+-- 4. Seeds 20 starter cosmetics and grants them to all existing users.
+-- 5. Updates handle_new_user to grant starter cosmetics to new users on signup.
+-- 6. Replaces check_and_unlock_achievements to auto-insert user_rewards on unlock.
 
-CREATE TABLE IF NOT EXISTS "public"."user_achievements" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "achievement_id" "uuid" NOT NULL,
-    "unlocked_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone,
-    "is_active" boolean DEFAULT true NOT NULL
-);
+-- ── Step 1: Add cosmetic columns to rewards ───────────────────────────────────
+ALTER TABLE public.rewards
+  ADD COLUMN IF NOT EXISTS item_key  TEXT,
+  ADD COLUMN IF NOT EXISTS item_type TEXT;
 
-CREATE TABLE IF NOT EXISTS "public"."user_featured_medals" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "achievement_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
-    "updated_at" timestamp with time zone,
-    CONSTRAINT "max_featured_medals" CHECK (("array_length"("achievement_ids", 1) <= 5))
-);
+-- ── Step 2: Seed 25 achievement cosmetic rewards ──────────────────────────────
+-- UUIDs: 44444444-4444-4444-4444-000000000001 .. 000000000025
+INSERT INTO public.rewards (id, name, description, reward_type, item_type, item_key, is_active)
+VALUES
+  -- Progression achievements
+  ('44444444-4444-4444-4444-000000000001', 'Jubón',             'Jubón elegante en todos sus colores',              'cosmetic', 'clothes',   'doublet',     true),
+  ('44444444-4444-4444-4444-000000000002', 'Gorro Beanie',      'Gorro beanie en todos sus colores',                'cosmetic', 'hat',       'beanie',      true),
+  ('44444444-4444-4444-4444-000000000003', 'Túnica',            'Túnica mística en todos sus colores',              'cosmetic', 'clothes',   'robe',        true),
+  ('44444444-4444-4444-4444-000000000004', 'Gorro Trampero',    'Gorro de trampero en todos sus colores',           'cosmetic', 'hat',       'trapper',     true),
+  ('44444444-4444-4444-4444-000000000005', 'Sombrero de Copa',  'Sombrero de copa en todos sus colores',            'cosmetic', 'hat',       'tall',        true),
+  ('44444444-4444-4444-4444-000000000006', 'Casco Guerrero',    'Casco legendario de guerrero en todos sus colores','cosmetic', 'hat',       'warrior',     true),
+  -- Waste-type achievements
+  ('44444444-4444-4444-4444-000000000007', 'Gorro Ingeniero',   'Gorro de ingeniero en todos sus colores',          'cosmetic', 'hat',       'engineer',    true),
+  ('44444444-4444-4444-4444-000000000008', 'Casco Soldado',     'Casco de soldado en todos sus colores',            'cosmetic', 'hat',       'soldier',     true),
+  ('44444444-4444-4444-4444-000000000009', 'Capucha',           'Capucha en todos sus colores',                     'cosmetic', 'hat',       'hood',        true),
+  ('44444444-4444-4444-4444-000000000010', 'Barba Clásica',     'Barba clásica en todos sus colores',               'cosmetic', 'beard',     'classic',     true),
+  ('44444444-4444-4444-4444-000000000011', 'Peto',              'Peto de guerrero en todos sus colores',            'cosmetic', 'clothes',   'breastplate', true),
+  ('44444444-4444-4444-4444-000000000012', 'Sombrero Cowboy',   'Sombrero vaquero en todos sus colores',            'cosmetic', 'hat',       'cowboy',      true),
+  -- Bin-type achievements
+  ('44444444-4444-4444-4444-000000000013', 'Chaleco',           'Chaleco en todos sus colores',                     'cosmetic', 'clothes',   'vest',        true),
+  ('44444444-4444-4444-4444-000000000014', 'Casco Caballero',   'Casco de caballero en todos sus colores',          'cosmetic', 'hat',       'knight',      true),
+  ('44444444-4444-4444-4444-000000000015', 'Barba Vikinga',     'Barba vikinga en todos sus colores',               'cosmetic', 'beard',     'viking',      true),
+  ('44444444-4444-4444-4444-000000000016', 'Barba Horquilla',   'Barba de horquilla en todos sus colores',          'cosmetic', 'beard',     'fork',        true),
+  -- Location achievements
+  ('44444444-4444-4444-4444-000000000017', 'Gorro Explorador',  'Gorro de explorador ranger en todos sus colores',  'cosmetic', 'hat',       'ranger',      true),
+  ('44444444-4444-4444-4444-000000000018', 'Armadura Bruta',    'Armadura de bruto en todos sus colores',           'cosmetic', 'clothes',   'brute',       true),
+  ('44444444-4444-4444-4444-000000000019', 'Fedora',            'Sombrero fedora en todos sus colores',             'cosmetic', 'hat',       'fedora',      true),
+  -- Streak achievements
+  ('44444444-4444-4444-4444-000000000020', 'Bigote Cowboy',     'Bigote estilo cowboy en todos sus colores',        'cosmetic', 'moustache', 'cowboy',      true),
+  ('44444444-4444-4444-4444-000000000021', 'Barba Leñador',     'Barba de leñador en todos sus colores',            'cosmetic', 'beard',     'lumberjack',  true),
+  -- Behavioral achievements
+  ('44444444-4444-4444-4444-000000000022', 'Bigote Herradura',  'Bigote de herradura en todos sus colores',         'cosmetic', 'moustache', 'horseshoe',   true),
+  ('44444444-4444-4444-4444-000000000023', 'Barba Chamán',      'Barba de chamán en todos sus colores',             'cosmetic', 'beard',     'shaman',      true),
+  -- Social achievements
+  ('44444444-4444-4444-4444-000000000024', 'Bigote Húngaro',    'Bigote estilo húngaro en todos sus colores',       'cosmetic', 'moustache', 'hungarian',   true),
+  ('44444444-4444-4444-4444-000000000025', 'Barba Vikinga Dorada','Barba vikinga dorada en todos sus colores',      'cosmetic', 'beard',     'garibaldi',   true)
+ON CONFLICT (id) DO UPDATE SET
+  name        = EXCLUDED.name,
+  description = EXCLUDED.description,
+  reward_type = EXCLUDED.reward_type,
+  item_type   = EXCLUDED.item_type,
+  item_key    = EXCLUDED.item_key,
+  is_active   = EXCLUDED.is_active;
 
-CREATE TABLE IF NOT EXISTS "public"."user_progress" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "points" integer DEFAULT 0 NOT NULL,
-    "streak_days" integer DEFAULT 0 NOT NULL,
-    "best_streak_days" integer DEFAULT 0 NOT NULL,
-    "heat" numeric,
-    "level" integer DEFAULT 1 NOT NULL,
-    "last_recycling_date" "date",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone,
-    "is_active" boolean DEFAULT true NOT NULL
-);
+-- ── Step 3: Seed starter cosmetics (granted to every user on account creation) ─
+-- UUIDs: 44444444-4444-4444-4444-000000000101 .. 000000000120
+-- Starters: 1 hat (bandana), all 18 hair styles (hair is free), 1 beard (goatee), 1 moustache (pencil)
+INSERT INTO public.rewards (id, name, description, reward_type, item_type, item_key, is_active)
+VALUES
+  ('44444444-4444-4444-4444-000000000101', 'Bandana (inicial)',        'Bandana disponible desde el comienzo',           'cosmetic_starter', 'hat',       'bandana',      true),
+  ('44444444-4444-4444-4444-000000000102', 'Pelo Corto (inicial)',     'Pelo corto inicial',                             'cosmetic_starter', 'hair',      'short',        true),
+  ('44444444-4444-4444-4444-000000000103', 'Pelo Largo (inicial)',     'Pelo largo inicial',                             'cosmetic_starter', 'hair',      'long',         true),
+  ('44444444-4444-4444-4444-000000000104', 'Pelo Afro (inicial)',      'Pelo afro inicial',                              'cosmetic_starter', 'hair',      'afro',         true),
+  ('44444444-4444-4444-4444-000000000105', 'Pelo Bob (inicial)',       'Pelo bob inicial',                               'cosmetic_starter', 'hair',      'bobcut',       true),
+  ('44444444-4444-4444-4444-000000000106', 'Pelo Lazo (inicial)',      'Pelo con lazo inicial',                          'cosmetic_starter', 'hair',      'bow',          true),
+  ('44444444-4444-4444-4444-000000000107', 'Doble Lazo (inicial)',     'Pelo con doble lazo inicial',                    'cosmetic_starter', 'hair',      'bows',         true),
+  ('44444444-4444-4444-4444-000000000108', 'Pelo Pompas (inicial)',    'Pelo pompas inicial',                            'cosmetic_starter', 'hair',      'bubbles',      true),
+  ('44444444-4444-4444-4444-000000000109', 'Pelo D-Cut (inicial)',     'Pelo d-cut inicial',                             'cosmetic_starter', 'hair',      'dcut',         true),
+  ('44444444-4444-4444-4444-000000000110', 'Pelo Raya Media (inicial)','Pelo raya al medio inicial',                     'cosmetic_starter', 'hair',      'middle_part',  true),
+  ('44444444-4444-4444-4444-000000000111', 'Mohawk (inicial)',         'Mohawk inicial',                                 'cosmetic_starter', 'hair',      'mohawk',       true),
+  ('44444444-4444-4444-4444-000000000112', 'Cola de Caballo (inicial)','Cola de caballo inicial',                        'cosmetic_starter', 'hair',      'ponytail',     true),
+  ('44444444-4444-4444-4444-000000000113', 'Pelo con Puntas (inicial)','Pelo con puntas inicial',                        'cosmetic_starter', 'hair',      'spikes',       true),
+  ('44444444-4444-4444-4444-000000000114', 'Pelo de Punta (inicial)', 'Pelo de punta inicial',                          'cosmetic_starter', 'hair',      'tip',          true),
+  ('44444444-4444-4444-4444-000000000115', 'Peluquín (inicial)',       'Peluquín inicial',                               'cosmetic_starter', 'hair',      'toupee',       true),
+  ('44444444-4444-4444-4444-000000000116', 'Pelo V-Cut (inicial)',     'Pelo v-cut inicial',                             'cosmetic_starter', 'hair',      'vcut',         true),
+  ('44444444-4444-4444-4444-000000000117', 'Melena (inicial)',         'Melena inicial',                                 'cosmetic_starter', 'hair',      'mane',         true),
+  ('44444444-4444-4444-4444-000000000118', 'Calvo (inicial)',          'Sin pelo — disponible desde el comienzo',        'cosmetic_starter', 'hair',      'bald',         true),
+  ('44444444-4444-4444-4444-000000000119', 'Barba Perilla (inicial)',  'Barba de perilla inicial',                       'cosmetic_starter', 'beard',     'goatee',       true),
+  ('44444444-4444-4444-4444-000000000120', 'Bigote Lápiz (inicial)',   'Bigote de lápiz inicial',                        'cosmetic_starter', 'moustache', 'pencil',       true)
+ON CONFLICT (id) DO UPDATE SET
+  name        = EXCLUDED.name,
+  description = EXCLUDED.description,
+  reward_type = EXCLUDED.reward_type,
+  item_type   = EXCLUDED.item_type,
+  item_key    = EXCLUDED.item_key,
+  is_active   = EXCLUDED.is_active;
 
-CREATE TABLE IF NOT EXISTS "public"."user_rewards" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "reward_id" "uuid" NOT NULL,
-    "unlocked_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "is_equipped" boolean DEFAULT false NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone,
-    "is_active" boolean DEFAULT true NOT NULL
-);
+-- ── Step 4: Link each achievement to its cosmetic reward ──────────────────────
+-- primer-paso (first_recycling) → jubón/doublet
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000001'
+  WHERE condition_type = 'first_recycling' AND reward_id IS NULL;
 
-ALTER TABLE "public"."user_achievements" OWNER TO "postgres";
+-- semana-verde (streak_days 7) → beanie
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000002'
+  WHERE condition_type = 'streak_days' AND condition_value = 7 AND reward_id IS NULL;
 
-ALTER TABLE "public"."user_featured_medals" OWNER TO "postgres";
+-- mes-eco (streak_days 30) → robe
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000003'
+  WHERE condition_type = 'streak_days' AND condition_value = 30 AND reward_id IS NULL;
 
-ALTER TABLE "public"."user_progress" OWNER TO "postgres";
+-- decena (total_recycling_count 10) → trapper
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000004'
+  WHERE condition_type = 'total_recycling_count' AND condition_value = 10 AND reward_id IS NULL;
 
-ALTER TABLE "public"."user_rewards" OWNER TO "postgres";
+-- centurion (total_recycling_count 100) → tall hat
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000005'
+  WHERE condition_type = 'total_recycling_count' AND condition_value = 100 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_achievements"
-    ADD CONSTRAINT "user_achievements_pkey" PRIMARY KEY ("id");
+-- leyenda (total_recycling_count 500) → warrior helmet
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000006'
+  WHERE condition_type = 'total_recycling_count' AND condition_value = 500 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_achievements"
-    ADD CONSTRAINT "user_achievements_user_id_achievement_id_key" UNIQUE ("user_id", "achievement_id");
+-- cazador-pilas (waste_type_pilas_count 3) → engineer hat
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000007'
+  WHERE condition_type = 'waste_type_pilas_count' AND condition_value = 3 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_featured_medals"
-    ADD CONSTRAINT "user_featured_medals_pkey" PRIMARY KEY ("id");
+-- especialista-raee (waste_type_raee_count 3) → soldier helmet
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000008'
+  WHERE condition_type = 'waste_type_raee_count' AND condition_value = 3 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_featured_medals"
-    ADD CONSTRAINT "user_featured_medals_user_id_key" UNIQUE ("user_id");
+-- vidriero (waste_type_vidrio_count 5) → hood
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000009'
+  WHERE condition_type = 'waste_type_vidrio_count' AND condition_value = 5 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_progress"
-    ADD CONSTRAINT "user_progress_pkey" PRIMARY KEY ("id");
+-- papelero (waste_type_paper_count 5) → classic beard
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000010'
+  WHERE condition_type = 'waste_type_paper_count' AND condition_value = 5 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_progress"
-    ADD CONSTRAINT "user_progress_user_id_key" UNIQUE ("user_id");
+-- plastico-cero (waste_type_plastico_count 10) → breastplate
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000011'
+  WHERE condition_type = 'waste_type_plastico_count' AND condition_value = 10 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_rewards"
-    ADD CONSTRAINT "user_rewards_pkey" PRIMARY KEY ("id");
+-- todo-espectro (unique_waste_types 5) → cowboy hat
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000012'
+  WHERE condition_type = 'unique_waste_types' AND condition_value = 5 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_rewards"
-    ADD CONSTRAINT "user_rewards_user_id_reward_id_key" UNIQUE ("user_id", "reward_id");
+-- polimero-pro (bin_type_plastico_count 10) → vest
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000013'
+  WHERE condition_type = 'bin_type_plastico_count' AND condition_value = 10 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_achievements"
-    ADD CONSTRAINT "user_achievements_achievement_id_fkey" FOREIGN KEY ("achievement_id") REFERENCES "public"."achievements"("id") ON DELETE CASCADE;
+-- el-separador (unique_bin_types 4) → knight helmet
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000014'
+  WHERE condition_type = 'unique_bin_types' AND condition_value = 4 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_achievements"
-    ADD CONSTRAINT "user_achievements_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+-- residuos-peligrosos (bin_type_pilas_count 1) → viking beard
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000015'
+  WHERE condition_type = 'bin_type_pilas_count' AND condition_value = 1 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_featured_medals"
-    ADD CONSTRAINT "user_featured_medals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+-- ingeniero-electronico (bin_type_raee_count 3) → fork beard
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000016'
+  WHERE condition_type = 'bin_type_raee_count' AND condition_value = 3 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_progress"
-    ADD CONSTRAINT "user_progress_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+-- explorador (unique_recycling_points 2) → ranger hat
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000017'
+  WHERE condition_type = 'unique_recycling_points' AND condition_value = 2 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_rewards"
-    ADD CONSTRAINT "user_rewards_reward_id_fkey" FOREIGN KEY ("reward_id") REFERENCES "public"."rewards"("id") ON DELETE CASCADE;
+-- nomade-verde (unique_recycling_points 3) → brute armor
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000018'
+  WHERE condition_type = 'unique_recycling_points' AND condition_value = 3 AND reward_id IS NULL;
 
-ALTER TABLE ONLY "public"."user_rewards"
-    ADD CONSTRAINT "user_rewards_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+-- bibliofilo (recycling_point_biblioteca_count 5) → fedora
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000019'
+  WHERE condition_type = 'recycling_point_biblioteca_count' AND condition_value = 5 AND reward_id IS NULL;
 
-CREATE OR REPLACE FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) RETURNS TABLE("success" boolean, "message" "text")
+-- racha-perfecta (best_streak_days 7) → cowboy moustache
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000020'
+  WHERE condition_type = 'best_streak_days' AND condition_value = 7 AND reward_id IS NULL;
+
+-- constancia-hierro (best_streak_days 30) → lumberjack beard
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000021'
+  WHERE condition_type = 'best_streak_days' AND condition_value = 30 AND reward_id IS NULL;
+
+-- corrector (waste_type_overridden_count 1) → horseshoe moustache
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000022'
+  WHERE condition_type = 'waste_type_overridden_count' AND condition_value = 1 AND reward_id IS NULL;
+
+-- meticuloso (manual_detection_count 5) → shaman beard
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000023'
+  WHERE condition_type = 'manual_detection_count' AND condition_value = 5 AND reward_id IS NULL;
+
+-- amigo-reciclador (friend_count 1) → hungarian moustache
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000024'
+  WHERE condition_type = 'friend_count' AND condition_value = 1 AND reward_id IS NULL;
+
+-- red-verde (friend_count 3) → garibaldi beard
+UPDATE public.achievements SET reward_id = '44444444-4444-4444-4444-000000000025'
+  WHERE condition_type = 'friend_count' AND condition_value = 3 AND reward_id IS NULL;
+
+-- ── Step 5: Grant starter cosmetics to all existing users ─────────────────────
+INSERT INTO public.user_rewards (user_id, reward_id, unlocked_at, is_equipped, is_active)
+SELECT u.id, r.id, now(), false, true
+FROM public.users u
+CROSS JOIN public.rewards r
+WHERE r.reward_type = 'cosmetic_starter' AND r.is_active = true
+ON CONFLICT (user_id, reward_id) DO NOTHING;
+
+-- ── Step 6: Update handle_new_user to grant starter cosmetics on signup ───────
+CREATE OR REPLACE FUNCTION "app_auth"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'auth'
     AS $$
 declare
-  invalid_ids uuid[];
+  user_name text;
 begin
-  if array_length(p_achievement_ids, 1) > 5 then
-    return query select false, 'max_featured_medals_exceeded';
-    return;
-  end if;
+  insert into public.users (id, email, last_login_at)
+  values (new.id, new.email, now())
+  on conflict (id) do update set
+    last_login_at = case
+      when new.last_sign_in_at is distinct from old.last_sign_in_at then clock_timestamp()
+      else public.users.last_login_at
+    end;
 
-  select array_agg(id)
-  into invalid_ids
-  from unnest(p_achievement_ids) as id
-  where not exists (
-    select 1 from public.user_achievements
-    where user_id = p_user_id and achievement_id = id
+  user_name := coalesce(
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'name',
+    new.raw_user_meta_data->>'display_name',
+    split_part(new.email, '@', 1)
   );
 
-  if invalid_ids is not null then
-    return query select false, 'invalid_or_unlocked_achievements';
-    return;
-  end if;
+  insert into public.user_profiles (user_id, alias)
+  values (new.id, user_name)
+  on conflict (user_id) do nothing;
 
-  insert into public.user_featured_medals (user_id, achievement_ids, updated_at)
-  values (p_user_id, p_achievement_ids, now())
-  on conflict (user_id) do update set
-    achievement_ids = excluded.achievement_ids,
-    updated_at = now();
+  -- Grant all starter cosmetics automatically
+  insert into public.user_rewards (user_id, reward_id, unlocked_at, is_equipped, is_active)
+  select new.id, r.id, now(), false, true
+  from public.rewards r
+  where r.reward_type = 'cosmetic_starter' and r.is_active = true
+  on conflict (user_id, reward_id) do nothing;
 
-  return query select true, 'featured_medals_updated';
+  return new;
 end;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."app_today"() RETURNS "date"
-    LANGUAGE "sql" STABLE
-    AS $$
-  SELECT (now() AT TIME ZONE 'America/Lima')::date;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."apply_daily_heat_decay"() RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-BEGIN
-  UPDATE public.user_progress
-  SET
-    heat        = CASE WHEN heat - 30 <= 0 THEN 50 ELSE heat - 30 END,
-    streak_days = CASE WHEN heat - 30 <= 0 THEN 0  ELSE streak_days END,
-    updated_at  = now()
-  WHERE
-    is_active = true
-    AND streak_days > 0
-    AND (last_recycling_date IS NULL OR last_recycling_date < public.app_today());
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."compute_streak_level"("p_streak_days" integer) RETURNS integer
-    LANGUAGE "plpgsql" IMMUTABLE
-    AS $$
-BEGIN
-  IF p_streak_days >= 189 THEN RETURN 7;
-  ELSIF p_streak_days >= 93  THEN RETURN 6;
-  ELSIF p_streak_days >= 45  THEN RETURN 5;
-  ELSIF p_streak_days >= 21  THEN RETURN 4;
-  ELSIF p_streak_days >= 9   THEN RETURN 3;
-  ELSIF p_streak_days >= 3   THEN RETURN 2;
-  ELSE RETURN 1;
-  END IF;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "heat" integer, "level" integer, "last_recycling_date" "date", "streak_expires_at" timestamp with time zone, "streak_just_expired" boolean)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  rec              public.user_progress%ROWTYPE;
-  days_missed      int := 0;
-  effective_heat   int;
-  effective_streak int;
-  just_expired     boolean := false;
-  today            date := public.app_today();
-  expires          timestamptz;
-BEGIN
-  SELECT * INTO rec
-  FROM public.user_progress
-  WHERE user_id = p_user_id AND is_active = true;
-
-  IF NOT FOUND THEN
-    RETURN QUERY SELECT 0, 0, 1, NULL::date, NULL::timestamptz, false;
-    RETURN;
-  END IF;
-
-  IF rec.last_recycling_date IS NOT NULL THEN
-    days_missed := GREATEST(0, (today - rec.last_recycling_date) - 1);
-  END IF;
-
-  effective_heat   := COALESCE(rec.heat, 50)::int;
-  effective_streak := COALESCE(rec.streak_days, 0);
-
-  IF effective_streak > 0 AND days_missed > 0
-     AND (rec.updated_at AT TIME ZONE 'America/Lima')::date < today THEN
-    effective_heat := effective_heat - (30 * days_missed);
-
-    IF effective_heat <= 0 THEN
-      effective_heat   := 50;
-      effective_streak := 0;
-      just_expired     := true;
-    END IF;
-
-    UPDATE public.user_progress
-    SET
-      heat        = effective_heat,
-      streak_days = effective_streak,
-      updated_at  = now()
-    WHERE user_id = p_user_id;
-  END IF;
-
-  IF effective_streak > 0 THEN
-    expires := ((today + CEIL(effective_heat / 30.0)::int)::timestamp)
-                 AT TIME ZONE 'America/Lima';
-  ELSE
-    expires := NULL;
-  END IF;
-
-  RETURN QUERY SELECT
-    effective_streak,
-    effective_heat,
-    COALESCE(rec.level, 1),
-    rec.last_recycling_date,
-    expires,
-    just_expired;
-END;
-$$;
-
+-- ── Step 7: Replace check_and_unlock_achievements with reward-granting version ─
 CREATE OR REPLACE FUNCTION "public"."check_and_unlock_achievements"("p_user_id" "uuid") RETURNS TABLE("achievement_id" "uuid", "achievement_name" "text", "reward_id" "uuid")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -286,9 +293,6 @@ BEGIN
   SELECT COUNT(*) INTO overridden_count FROM public.recycling_sessions WHERE user_id = p_user_id AND waste_type_overridden = true AND outcome = 'confirmed';
   SELECT COUNT(*) INTO manual_count FROM public.recycling_records WHERE user_id = p_user_id AND status = 'confirmed' AND detection_type = 'manual';
   SELECT COUNT(*) INTO friend_count FROM public.friendships WHERE (requester_id = p_user_id OR addressee_id = p_user_id) AND status = 'accepted' AND is_active = true;
-
-  -- Inline macro: insert + return newly unlocked for a given condition_type + threshold
-  -- (repeated per threshold to keep the logic readable and avoid dynamic SQL)
 
   IF recycling_count >= 1 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
@@ -537,269 +541,5 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."handle_post_segregation_progress"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  progress_record public.user_progress%ROWTYPE;
-  is_first_action_today boolean := false;
-  new_streak int;
-  new_heat   numeric;
-  new_level  int;
-  heat_gain  int;
-  today      date := public.app_today();
-BEGIN
-  SELECT * INTO progress_record
-  FROM public.user_progress
-  WHERE user_id = NEW.user_id
-  FOR UPDATE;
-
-  IF FOUND THEN
-    IF progress_record.last_recycling_date IS NULL
-       OR progress_record.last_recycling_date < today THEN
-      is_first_action_today := true;
-    END IF;
-
-    IF is_first_action_today THEN
-      new_streak := COALESCE(progress_record.streak_days, 0) + 1;
-      heat_gain  := public.heat_gain_for_level(COALESCE(progress_record.level, 1));
-      new_heat   := LEAST(100, COALESCE(progress_record.heat, 50) + heat_gain);
-      new_level  := GREATEST(
-        COALESCE(progress_record.level, 1),
-        public.compute_streak_level(new_streak)
-      );
-    ELSE
-      new_streak := COALESCE(progress_record.streak_days, 0);
-      new_heat   := COALESCE(progress_record.heat, 50);
-      new_level  := COALESCE(progress_record.level, 1);
-    END IF;
-
-    UPDATE public.user_progress
-    SET
-      streak_days      = new_streak,
-      heat             = new_heat,
-      level            = new_level,
-      best_streak_days = GREATEST(COALESCE(best_streak_days, 0), new_streak),
-      last_recycling_date = today,
-      updated_at       = now()
-    WHERE user_id = NEW.user_id;
-
-  ELSE
-
-    INSERT INTO public.user_progress (
-      user_id, points, streak_days, heat, level, best_streak_days, last_recycling_date
-    ) VALUES (
-      NEW.user_id, 0, 1, 51, 1, 1, today
-    );
-
-  END IF;
-
-  PERFORM public.check_and_unlock_achievements(NEW.user_id);
-
-  RETURN NEW;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."heat_gain_for_level"("p_level" integer) RETURNS integer
-    LANGUAGE "plpgsql" IMMUTABLE
-    AS $$
-BEGIN
-  RETURN (p_level * (p_level + 1)) / 2;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."streak_level_checkpoint"("p_level" integer) RETURNS integer
-    LANGUAGE "plpgsql" IMMUTABLE
-    AS $$
-BEGIN
-  CASE p_level
-    WHEN 7 THEN RETURN 189;
-    WHEN 6 THEN RETURN 93;
-    WHEN 5 THEN RETURN 45;
-    WHEN 4 THEN RETURN 21;
-    WHEN 3 THEN RETURN 9;
-    WHEN 2 THEN RETURN 3;
-    ELSE        RETURN 0;
-  END CASE;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "best_streak_days" integer, "recycled_today" boolean, "total_today" integer, "daily_average" numeric, "week_days" "jsonb", "heat_map" "jsonb")
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  today         date := public.app_today();
-  week_start    date;
-  map_start     date;
-  v_streak      int;
-  v_best        int;
-  v_heat        int;
-  v_level       int;
-  v_last_date   date;
-  v_just_exp    boolean;
-BEGIN
-  SELECT sa.streak_days, sa.heat, sa.level, sa.last_recycling_date, sa.streak_just_expired
-  INTO v_streak, v_heat, v_level, v_last_date, v_just_exp
-  FROM public.get_progress_with_decay(p_user_id) sa;
-
-  IF v_streak IS NULL THEN v_streak := 0; END IF;
-
-  SELECT COALESCE(up.best_streak_days, 0)
-  INTO v_best
-  FROM public.user_progress up
-  WHERE up.user_id = p_user_id;
-
-  IF v_best IS NULL THEN v_best := 0; END IF;
-
-  week_start := today - EXTRACT(ISODOW FROM today)::int + 1;
-  map_start  := today - 27;
-
-  RETURN QUERY
-  WITH
-  daily_counts AS (
-    SELECT
-      (rr.created_at AT TIME ZONE 'America/Lima')::date AS rec_date,
-      COUNT(*)::int AS cnt
-    FROM public.recycling_records rr
-    WHERE rr.user_id = p_user_id
-      AND rr.is_active = true
-      AND (rr.created_at AT TIME ZONE 'America/Lima')::date >= map_start
-      AND (rr.created_at AT TIME ZONE 'America/Lima')::date <= today
-    GROUP BY rec_date
-  ),
-  day_series AS (
-    SELECT generate_series(map_start, today, '1 day'::interval)::date AS d
-  ),
-  full_map AS (
-    SELECT ds.d, COALESCE(dc.cnt, 0) AS cnt
-    FROM day_series ds
-    LEFT JOIN daily_counts dc ON dc.rec_date = ds.d
-  ),
-  week_series AS (
-    SELECT generate_series(week_start, week_start + 6, '1 day'::interval)::date AS wd
-  )
-  SELECT
-    v_streak::int,
-    v_best::int,
-    (COALESCE(v_last_date, '1900-01-01') >= today),
-    COALESCE((SELECT cnt FROM full_map WHERE d = today), 0)::int,
-    COALESCE(
-      (SELECT ROUND(AVG(cnt)::numeric, 1) FROM full_map WHERE cnt > 0),
-      0
-    )::numeric,
-    (
-      SELECT jsonb_agg(
-        jsonb_build_object(
-          'date',     to_char(ws.wd, 'YYYY-MM-DD'),
-          'recycled', EXISTS (SELECT 1 FROM daily_counts dc WHERE dc.rec_date = ws.wd)
-        )
-        ORDER BY ws.wd
-      )
-      FROM week_series ws
-    ),
-    (
-      SELECT jsonb_agg(
-        jsonb_build_object('date', to_char(fm.d, 'YYYY-MM-DD'), 'count', fm.cnt)
-        ORDER BY fm.d
-      )
-      FROM full_map fm
-    );
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) RETURNS TABLE("success" boolean, "message" "text")
-    LANGUAGE "sql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'app_gamification'
-    AS $$
-  select * from app_gamification.update_featured_medals(p_user_id, p_achievement_ids);
-$$;
-
-CREATE OR REPLACE TRIGGER "on_recycling_record_created" AFTER INSERT ON "public"."recycling_records" FOR EACH ROW EXECUTE FUNCTION "public"."handle_post_segregation_progress"();
-
-ALTER TABLE "public"."user_achievements" ENABLE ROW LEVEL SECURITY;
-
-ALTER TABLE "public"."user_progress" ENABLE ROW LEVEL SECURITY;
-
-ALTER TABLE "public"."user_rewards" ENABLE ROW LEVEL SECURITY;
-
-GRANT USAGE ON SCHEMA "app_gamification" TO "service_role";
-
-REVOKE ALL ON FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) FROM PUBLIC;
-
-GRANT ALL ON FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."apply_daily_heat_decay"() TO "anon";
-
-GRANT ALL ON FUNCTION "public"."apply_daily_heat_decay"() TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."apply_daily_heat_decay"() TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."compute_streak_level"("p_streak_days" integer) TO "anon";
-
-GRANT ALL ON FUNCTION "public"."compute_streak_level"("p_streak_days" integer) TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."compute_streak_level"("p_streak_days" integer) TO "service_role";
-
-GRANT EXECUTE ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "authenticated";
-
-GRANT EXECUTE ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."handle_post_segregation_progress"() TO "anon";
-
-GRANT ALL ON FUNCTION "public"."handle_post_segregation_progress"() TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."handle_post_segregation_progress"() TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "anon";
-
-GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."streak_level_checkpoint"("p_level" integer) TO "anon";
-
-GRANT ALL ON FUNCTION "public"."streak_level_checkpoint"("p_level" integer) TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."streak_level_checkpoint"("p_level" integer) TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "anon";
-
-GRANT ALL ON FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "service_role";
-
-GRANT ALL ON TABLE "public"."user_achievements" TO "anon";
-
-GRANT ALL ON TABLE "public"."user_achievements" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."user_achievements" TO "service_role";
-
-GRANT ALL ON TABLE "public"."user_featured_medals" TO "anon";
-
-GRANT ALL ON TABLE "public"."user_featured_medals" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."user_featured_medals" TO "service_role";
-
-GRANT ALL ON TABLE "public"."user_progress" TO "anon";
-
-GRANT ALL ON TABLE "public"."user_progress" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."user_progress" TO "service_role";
-
-GRANT ALL ON TABLE "public"."user_rewards" TO "anon";
-
-GRANT ALL ON TABLE "public"."user_rewards" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."user_rewards" TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."app_today"() TO "anon";
-
-GRANT ALL ON FUNCTION "public"."app_today"() TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."app_today"() TO "service_role";
-
-GRANT EXECUTE ON FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") TO "authenticated";
-
-GRANT EXECUTE ON FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") TO "service_role";
+GRANT EXECUTE ON FUNCTION public.check_and_unlock_achievements(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.check_and_unlock_achievements(uuid) TO service_role;

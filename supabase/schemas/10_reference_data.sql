@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS "public"."rewards" (
     "description" "text",
     "reward_type" "text",
     "asset_url" "text",
+    "item_key" "text",
+    "item_type" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone,
     "is_active" boolean DEFAULT true NOT NULL
