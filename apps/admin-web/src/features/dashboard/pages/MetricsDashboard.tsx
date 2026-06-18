@@ -261,14 +261,14 @@ export default function MetricsDashboard() {
     })) ?? recognitionQuality.map((row) => ({ ...row, count: row.value }));
 
   const renderedTrend = dashboardData?.trend ?? weeklyTrend;
+  const allResidues = useMemo(
+    () => dashboardData?.detailRows.map((row) => row.residue) ?? [],
+    [dashboardData]
+  );
 
-  useEffect(() => {
-      if (dashboardData && selectedResidues.length === 0 && dashboardData.detailRows.length > 0) {
-          setSelectedResidues(dashboardData.detailRows.map((row) => row.residue));
-      }
-    }, [dashboardData, selectedResidues.length]);
+  const activeResidues = selectedResidues.length > 0 ? selectedResidues : allResidues;
 
-  const filteredDetailRows = dashboardData?.detailRows.filter((row) => selectedResidues.includes(row.residue)) ?? [];
+  const filteredDetailRows = dashboardData?.detailRows.filter((row) => activeResidues.includes(row.residue)) ?? [];
 
   const funnelMaxValue = Math.max(...renderedFunnel.map((step) => step.value), 1);
 
@@ -673,7 +673,7 @@ export default function MetricsDashboard() {
     <div className="mt-4">
       <ResidueFilterChips
         options={dashboardData.detailRows.map((row) => ({ residue: row.residue }))}
-        selected={selectedResidues}
+        selected={activeResidues}
         onChange={setSelectedResidues}
       />
     </div>
