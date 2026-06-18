@@ -6,6 +6,7 @@
     "apps/admin-web",
     "packages/*"
   ],
+  "packageManager": "bun@1.3.14",
   "scripts": {
     "prepare": "husky install",
     "mobile:dev": "bun run --cwd apps/mobile dev",
