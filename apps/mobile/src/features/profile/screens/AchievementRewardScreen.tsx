@@ -36,15 +36,11 @@ export function AchievementRewardScreen({ badgeId }: AchievementRewardScreenProp
     <AppScreen padded centered style={styles.root}>
       <View style={[styles.iconWrap, animate && styles.iconWrapAnimated]}>
         <View style={styles.iconCircle}>
-          {badge.imageUrl ? (
-            <Image
-              source={{ uri: badge.imageUrl }}
-              style={styles.image}
-              resizeMode="contain"
-            />
-          ) : (
-            <AppIcon name="award" size={theme.iconSizes.xl} color={theme.colors.primary} />
-          )}
+          <Image
+            source={badge.image}
+            style={styles.image}
+            resizeMode="contain"
+          />
         </View>
       </View>
 

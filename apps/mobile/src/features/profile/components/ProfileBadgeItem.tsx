@@ -33,11 +33,7 @@ export function ProfileBadgeItem({
           </View>
         ) : (
           <Image
-            source={
-              badge.imageUrl
-                ? { uri: badge.imageUrl }
-                : require('@/assets/images/badge-placeholder.png')
-            }
+            source={badge.image}
             style={{ width: dim.image, height: dim.image }}
             resizeMode="contain"
           />
