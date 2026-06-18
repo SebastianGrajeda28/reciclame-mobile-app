@@ -61,7 +61,7 @@ CREATE INDEX "idx_friendships_status" ON "public"."friendships" USING "btree" ("
 
 CREATE UNIQUE INDEX "uq_friendships_pair" ON "public"."friendships" USING "btree" ("user_low", "user_high");
 
-CREATE OR REPLACE FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb")
+CREATE OR REPLACE FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb", "avatar_config" "jsonb")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -84,7 +84,8 @@ begin
     coalesce(prog.streak_days, 0) as current_streak,
     av.base_style as avatar_base_style,
     la.last_activity_at,
-    coalesce(med.featured_medals, '[]'::jsonb) as featured_medals
+    coalesce(med.featured_medals, '[]'::jsonb) as featured_medals,
+    av.avatar_config
   from my_friends mf
   join public.users u on u.id = mf.friend_id
   left join public.user_profiles up on up.user_id = mf.friend_id
@@ -115,7 +116,7 @@ begin
 end;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb")
+CREATE OR REPLACE FUNCTION "public"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb", "avatar_config" "jsonb")
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO 'public', 'app_social'
     AS $$
