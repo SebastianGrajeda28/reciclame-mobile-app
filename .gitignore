@@ -312,4 +312,5 @@ bun.lockb
 
 # supabase snippets
 supabase/snippets
+supabase/schema.sql
 tree.txt
