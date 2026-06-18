@@ -7,3 +7,7 @@ expo-env.d.ts
 
 .env
 .env.local
+
+# Expo CNG generated native folders
+android/
+ios/
