@@ -8,8 +8,8 @@ import { ProfileHeroCard } from '@/src/features/profile/components/ProfileHeroCa
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileStatsGrid } from '@/src/features/profile/components/ProfileStatsGrid';
 import { ProfileStreakCard } from '@/src/features/profile/components/ProfileStreakCard';
-import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
+import { useProfileGamification } from '@/src/features/profile/hooks/useProfileGamification';
 import { useStreakProgress } from '@/src/features/profile/hooks/useStreakProgress';
 import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
@@ -19,14 +19,10 @@ export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
+  const { featuredBadges, stats } = useProfileGamification();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
   const [lostDismissed, setLostDismissed] = useState(false);
   const showStreakLost = Boolean(streakData?.justExpired) && !lostDismissed;
-
-  const featuredIds = profileGamificationSnapshot.featuredBadgeIds as readonly string[];
-  const featuredBadges = profileGamificationSnapshot.allBadges.filter((b) =>
-    featuredIds.includes(b.id),
-  );
 
   return (
     <ProfileScreenContainer>
@@ -76,7 +72,7 @@ export function ProfileScreen() {
         onSeeAllPress={() => router.push(routes.profileAchievements)}
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />
-      <ProfileStatsGrid stats={profileGamificationSnapshot.stats} />
+      <ProfileStatsGrid stats={stats} />
       <Pressable
         style={({ pressed }) => [styles.historyRow, pressed && styles.historyRowPressed]}
         onPress={() => router.push(routes.recycleHistory)}

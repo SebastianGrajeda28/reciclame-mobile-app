@@ -30,11 +30,7 @@ export function AchievementDetailModal({ visible, badge, onClose }: AchievementD
           <View style={styles.imageContainer}>
             {earned ? (
               <Image
-                source={
-                  badge.imageUrl
-                    ? { uri: badge.imageUrl }
-                    : require('@/assets/images/badge-placeholder.png')
-                }
+                source={badge.image}
                 style={styles.image}
                 resizeMode="contain"
               />
@@ -70,7 +66,7 @@ export function AchievementDetailModal({ visible, badge, onClose }: AchievementD
               Pista
             </AppText>
             <AppText variant="caption" muted style={styles.hint}>
-              {badge.hint}
+              {badge.description}
             </AppText>
           </View>
 

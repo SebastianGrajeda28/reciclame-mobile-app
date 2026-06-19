@@ -13,6 +13,10 @@ export const STREAK_LEVEL_COLORS: Record<StreakLevel, string> = {
   7: '#A78BFA',
 };
 
+export function normalizeStreakLevel(level?: number | null): StreakLevel {
+  return Math.max(1, Math.min(7, Math.round(level ?? 1))) as StreakLevel;
+}
+
 export function levelForStreakDays(streakDays: number): StreakLevel {
   if (streakDays >= 189) return 7;
   if (streakDays >= 93) return 6;

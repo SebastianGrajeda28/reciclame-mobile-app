@@ -1,29 +1,33 @@
-// TODO: wire to real API via useStreakActivity hook (hook + types ready in profile/api/streak.ts:
-// getStreakActivity → StreakActivity, WeekDay, HeatMapEntry).
-// Replace WEEK_DAYS, HEAT_WEEKS, and hardcoded stats with data from the hook.
-// bestStreakDays also available from the same RPC (get_streak_activity).
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
-import { AppCard, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
+import { useStreakActivity } from '@/src/features/profile/hooks/useStreakActivity';
+import { AppButton, AppCard, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
+import type { HeatMapEntry, WeekDay } from '@/src/features/profile/api/streak';
 
-const WEEK_DAYS = [
-  { label: 'Lun', status: 'done' },
-  { label: 'Mar', status: 'done' },
-  { label: 'Mié', status: 'done' },
-  { label: 'Jue', status: 'done' },
-  { label: 'Vie', status: 'done' },
-  { label: 'Sab', status: 'done' },
-  { label: 'Dom', status: 'pending' },
-] as const;
-
-const HEAT_WEEKS = [
-  [3, 2, 4, 1, 3, 4, 0],
-  [2, 4, 3, 2, 1, 3, 2],
-  [4, 3, 2, 4, 3, 4, 1],
-  [3, 4, 2, 3, 4, 3, 0],
+const WEEK_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const;
+const HEAT_MAP_DAYS = 28;
+const HEAT_MAP_COLUMNS = 7;
+const HEAT_TOOLTIP_WIDTH = 132;
+const HEAT_TOOLTIP_HEIGHT = 54;
+const HEAT_TOOLTIP_OFFSET = 6;
+const LIMA_TIME_ZONE = 'America/Lima';
+const MONTH_LABELS = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ] as const;
 
 const HEAT_LEGEND = [
@@ -49,14 +53,53 @@ function heatColor(value: number) {
   }
 }
 
-function WeekStatusRow() {
+function formatAverage(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function getLimaDateString() {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: LIMA_TIME_ZONE });
+}
+
+function formatHeatMapDate(date: string) {
+  const [year, month, day] = date.split('-').map(Number);
+  if (!year || !month || !day) return date;
+
+  const parsedDate = new Date(Date.UTC(year, month - 1, day));
+  const dayLabel = WEEK_LABELS[(parsedDate.getUTCDay() + 6) % 7];
+
+  return `${dayLabel}. ${day} ${MONTH_LABELS[month - 1]}`;
+}
+
+function normalizeHeatMap(entries: HeatMapEntry[]) {
+  const normalized = entries.slice(-HEAT_MAP_DAYS);
+
+  while (normalized.length < HEAT_MAP_DAYS) {
+    normalized.unshift({ date: `placeholder-${normalized.length}`, count: 0 });
+  }
+
+  return Array.from({ length: HEAT_MAP_DAYS / HEAT_MAP_COLUMNS }, (_, rowIndex) =>
+    normalized.slice(rowIndex * HEAT_MAP_COLUMNS, (rowIndex + 1) * HEAT_MAP_COLUMNS),
+  );
+}
+
+function WeekStatusRow({ weekDays }: { weekDays: WeekDay[] }) {
+  const today = useMemo(getLimaDateString, []);
+
   return (
     <View style={styles.weekRow}>
-      {WEEK_DAYS.map((day) => {
-        const done = day.status === 'done';
+      {WEEK_LABELS.map((label, index) => {
+        const done = Boolean(weekDays[index]?.recycled);
+        const isToday = weekDays[index]?.date === today;
         return (
-          <View key={day.label} style={styles.weekItem}>
-            <View style={[styles.weekCircle, done ? styles.weekDone : styles.weekPending]}>
+          <View key={label} style={styles.weekItem}>
+            <View
+              style={[
+                styles.weekCircle,
+                done ? styles.weekDone : styles.weekPending,
+                isToday && styles.weekTodayCircle,
+              ]}
+            >
               {done ? (
                 <AppIcon name="check" size={theme.iconSizes.xs} color={theme.colors.textInverse} />
               ) : (
@@ -64,8 +107,15 @@ function WeekStatusRow() {
               )}
             </View>
             <AppText variant="caption" style={styles.weekLabel}>
-              {day.label}
+              {label}
             </AppText>
+            {isToday ? (
+              <AppText variant="caption" style={styles.weekTodayLabel}>
+                Hoy
+              </AppText>
+            ) : (
+              <View style={styles.weekTodayPlaceholder} />
+            )}
           </View>
         );
       })}
@@ -73,25 +123,107 @@ function WeekStatusRow() {
   );
 }
 
-function HeatMapCard() {
+function HeatMapCard({ heatMap }: { heatMap: HeatMapEntry[] }) {
+  const weeks = normalizeHeatMap(heatMap);
+  const [selectedEntry, setSelectedEntry] = useState<{
+    entry: HeatMapEntry;
+    rowIndex: number;
+    columnIndex: number;
+  } | null>(null);
+  const [gridWidth, setGridWidth] = useState(0);
+  const hasActivity = heatMap.some((entry) => entry.count > 0);
+  const cellGap = theme.spacing.s3;
+  const cellSize =
+    gridWidth > 0 ? (gridWidth - cellGap * (HEAT_MAP_COLUMNS - 1)) / HEAT_MAP_COLUMNS : 0;
+  const tooltipStyle =
+    selectedEntry && cellSize > 0
+      ? {
+          left: Math.max(
+            0,
+            Math.min(
+              gridWidth - HEAT_TOOLTIP_WIDTH,
+              selectedEntry.columnIndex * (cellSize + cellGap) +
+                cellSize / 2 -
+                HEAT_TOOLTIP_WIDTH / 2,
+            ),
+          ),
+          top:
+            selectedEntry.rowIndex === 0
+              ? cellSize + HEAT_TOOLTIP_OFFSET
+              : selectedEntry.rowIndex * (cellSize + cellGap) -
+                HEAT_TOOLTIP_HEIGHT -
+                HEAT_TOOLTIP_OFFSET,
+        }
+      : null;
+
   return (
     <AppCard style={styles.heatCard} padding="lg" elevation="xs" bordered={false}>
       <AppText variant="caption" style={styles.heatTitle}>
         Mapa de calor - últimas 4 semanas
       </AppText>
 
-      <View style={styles.heatGrid}>
-        {HEAT_WEEKS.map((week, rowIndex) => (
+      <View
+        style={styles.heatGrid}
+        onLayout={(event) => setGridWidth(event.nativeEvent.layout.width)}
+      >
+        {weeks.map((week, rowIndex) => (
           <View key={`week-${rowIndex}`} style={styles.heatRow}>
-            {week.map((value, columnIndex) => (
-              <View
-                key={`${rowIndex}-${columnIndex}`}
-                style={[styles.heatCell, { backgroundColor: heatColor(value) }]}
-              />
-            ))}
+            {week.map((entry, columnIndex) => {
+              const isPlaceholder = entry.date.startsWith('placeholder-');
+              const isSelected = selectedEntry?.entry.date === entry.date;
+
+              return (
+                <Pressable
+                  key={`${entry.date}-${columnIndex}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isPlaceholder
+                      ? 'Día sin datos'
+                      : `${formatHeatMapDate(entry.date)}. Reciclajes: ${entry.count}`
+                  }
+                  disabled={isPlaceholder}
+                  delayLongPress={250}
+                  onPress={() => {
+                    if (isSelected) setSelectedEntry(null);
+                  }}
+                  onLongPress={() => setSelectedEntry({ entry, rowIndex, columnIndex })}
+                  style={[
+                    styles.heatCell,
+                    { backgroundColor: heatColor(Math.min(entry.count, 4)) },
+                    isSelected && styles.heatCellSelected,
+                  ]}
+                />
+              );
+            })}
           </View>
         ))}
+
+        {selectedEntry && tooltipStyle ? (
+          <View style={[styles.heatTooltip, tooltipStyle]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar detalle del día"
+              hitSlop={8}
+              onPress={() => setSelectedEntry(null)}
+              style={styles.heatTooltipClose}
+            >
+              <AppIcon name="close" size={theme.iconSizes.xs} color={theme.colors.textSecondary} />
+            </Pressable>
+            <AppText variant="caption" style={styles.heatTooltipDate}>
+              {formatHeatMapDate(selectedEntry.entry.date)}
+            </AppText>
+            <AppText variant="caption" style={styles.heatTooltipText}>
+              Reciclajes: {selectedEntry.entry.count}
+            </AppText>
+          </View>
+        ) : null}
       </View>
+
+      {!hasActivity ? (
+        <AppText variant="caption" style={styles.heatEmptyText}>
+          Aún no tienes reciclajes en las últimas 4 semanas.
+        </AppText>
+      ) : null}
 
       <View style={styles.legendRow}>
         {HEAT_LEGEND.map((item) => (
@@ -107,7 +239,7 @@ function HeatMapCard() {
   );
 }
 
-function StatsCard() {
+function StatsCard({ totalToday, dailyAverage }: { totalToday: number; dailyAverage: number }) {
   return (
     <AppCard style={styles.statsCard} padding="lg" elevation="xs" bordered={false}>
       <View style={styles.statColumn}>
@@ -115,7 +247,7 @@ function StatsCard() {
           Reciclajes hoy
         </AppText>
         <AppText variant="h1" style={styles.statGreen}>
-          2
+          {totalToday}
         </AppText>
       </View>
       <View style={styles.statColumn}>
@@ -123,7 +255,7 @@ function StatsCard() {
           Promedio diario
         </AppText>
         <AppText variant="h1" style={styles.statBlue}>
-          3.2
+          {formatAverage(dailyAverage)}
         </AppText>
       </View>
     </AppCard>
@@ -131,6 +263,8 @@ function StatsCard() {
 }
 
 export function StreakActivityScreen() {
+  const { data, loading, error, refetch } = useStreakActivity();
+
   function handleBack() {
     if (router.canGoBack()) {
       router.back();
@@ -138,6 +272,64 @@ export function StreakActivityScreen() {
     }
 
     router.replace('/(tabs)/yo');
+  }
+
+  let body;
+  if (loading) {
+    body = (
+      <View style={styles.stateCard}>
+        <ActivityIndicator color={theme.colors.primary} />
+        <AppText variant="caption" muted>
+          Cargando tu actividad...
+        </AppText>
+      </View>
+    );
+  } else if (error) {
+    body = (
+      <AppCard style={styles.stateCard} variant="danger">
+        <AppIcon name="alertCircle" size={theme.iconSizes.lg} color={theme.colors.danger} />
+        <AppText variant="h3" style={styles.stateTitle}>
+          No se pudo cargar tu racha
+        </AppText>
+        <AppText variant="caption" muted style={styles.stateText}>
+          {error}
+        </AppText>
+        <AppButton label="Reintentar" variant="outline" onPress={refetch} />
+      </AppCard>
+    );
+  } else {
+    const activity = data ?? {
+      streakDays: 0,
+      bestStreakDays: 0,
+      recycledToday: false,
+      totalToday: 0,
+      dailyAverage: 0,
+      weekDays: [],
+      heatMap: [],
+    };
+
+    body = (
+      <>
+        <View style={styles.hero}>
+          <View style={styles.streakCircle}>
+            <AppText style={styles.streakNumber}>{activity.streakDays}</AppText>
+            <AppText variant="caption" style={styles.streakCaption}>
+              días seguidos
+            </AppText>
+          </View>
+          <View style={styles.bestRow}>
+            <AppIcon name="trophy" size={theme.iconSizes.xs} color={theme.colors.warning} />
+            <AppText variant="caption" style={styles.bestText}>
+              Tu mejor racha: {activity.bestStreakDays} días
+            </AppText>
+          </View>
+        </View>
+
+        <WeekStatusRow weekDays={activity.weekDays} />
+        <HeatMapCard heatMap={activity.heatMap} />
+        <StatsCard totalToday={activity.totalToday} dailyAverage={activity.dailyAverage} />
+      </>
+    );
   }
 
   return (
@@ -160,25 +352,7 @@ export function StreakActivityScreen() {
           />
         }
       />
-
-      <View style={styles.hero}>
-        <View style={styles.streakCircle}>
-          <AppText style={styles.streakNumber}>14</AppText>
-          <AppText variant="caption" style={styles.streakCaption}>
-            días seguidos
-          </AppText>
-        </View>
-        <View style={styles.bestRow}>
-          <AppIcon name="trophy" size={theme.iconSizes.xs} color={theme.colors.warning} />
-          <AppText variant="caption" style={styles.bestText}>
-            Tu mejor racha: 21 días
-          </AppText>
-        </View>
-      </View>
-
-      <WeekStatusRow />
-      <HeatMapCard />
-      <StatsCard />
+      {body}
     </ProfileScreenContainer>
   );
 }
@@ -192,6 +366,19 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     gap: theme.spacing.s3,
+  },
+  stateCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.s3,
+    minHeight: 220,
+  },
+  stateTitle: {
+    color: theme.colors.danger,
+    textAlign: 'center',
+  },
+  stateText: {
+    textAlign: 'center',
   },
   streakCircle: {
     width: 104,
@@ -256,9 +443,25 @@ const styles = StyleSheet.create({
     lineHeight: 12,
     color: theme.colors.textSecondary,
   },
+  weekTodayCircle: {
+    borderWidth: 2,
+    borderColor: theme.colors.textPrimary,
+  },
+  weekTodayLabel: {
+    minHeight: 12,
+    fontSize: 9,
+    lineHeight: 12,
+    color: theme.colors.primaryPressed,
+    fontWeight: theme.fontWeights.bold,
+  },
+  weekTodayPlaceholder: {
+    minHeight: 12,
+  },
   heatCard: {
     gap: theme.spacing.s4,
     borderRadius: theme.radius.lg,
+    position: 'relative',
+    overflow: 'visible',
   },
   heatTitle: {
     textAlign: 'center',
@@ -267,6 +470,8 @@ const styles = StyleSheet.create({
   },
   heatGrid: {
     gap: theme.spacing.s3,
+    overflow: 'visible',
+    position: 'relative',
   },
   heatRow: {
     flexDirection: 'row',
@@ -276,6 +481,47 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
     borderRadius: theme.radius.xs,
+  },
+  heatCellSelected: {
+    borderWidth: 2,
+    borderColor: theme.colors.textPrimary,
+  },
+  heatTooltip: {
+    position: 'absolute',
+    width: HEAT_TOOLTIP_WIDTH,
+    minHeight: HEAT_TOOLTIP_HEIGHT,
+    paddingVertical: theme.spacing.s2,
+    paddingHorizontal: theme.spacing.s3,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    gap: theme.spacing.s1,
+    zIndex: 10,
+    elevation: 3,
+  },
+  heatTooltipClose: {
+    position: 'absolute',
+    top: theme.spacing.s1,
+    right: theme.spacing.s1,
+    width: 20,
+    height: 20,
+    borderRadius: theme.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heatTooltipDate: {
+    color: theme.colors.textPrimary,
+    fontWeight: theme.fontWeights.bold,
+    paddingHorizontal: theme.spacing.s3,
+  },
+  heatTooltipText: {
+    color: theme.colors.textSecondary,
+  },
+  heatEmptyText: {
+    textAlign: 'center',
+    color: theme.colors.textSecondary,
   },
   legendRow: {
     flexDirection: 'row',

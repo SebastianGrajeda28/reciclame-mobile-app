@@ -21,7 +21,8 @@ import {
   RAEE_BIN_TYPE_ID,
 } from '@/src/features/recycling/services/bin-types.mock';
 import type { NearbyRecyclingPoint } from '@/src/features/recycling/services/recycling-points';
-import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import { useStreakProgress } from '@/src/hooks/useStreakProgress';
+import { AppButton, AppIcon, AppScreen, AppText, StreakHeatBadge, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
 
 const pUCPRegion = {
@@ -88,6 +89,7 @@ export function MapScreen() {
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const [category, setCategory] = useState<string>('all');
   const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
+  const { data: streakData } = useStreakProgress();
   const { finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
     state.finalWasteTypeId,
@@ -149,7 +151,11 @@ export function MapScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <AppText style={styles.title}>Reciclaje</AppText>
-          <AppText style={styles.score}>4 🔥</AppText>
+          <StreakHeatBadge
+            streakDays={streakData?.streakDays ?? 0}
+            level={streakData?.level ?? 1}
+            heat={streakData?.heat ?? 0}
+          />
         </View>
       </View>
 
@@ -284,10 +290,6 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.display,
     lineHeight: theme.fontSizes.display + theme.spacing.xs,
     fontWeight: theme.fontWeights.bold,
-  },
-  score: {
-    color: theme.recycle.headerScore,
-    fontWeight: theme.fontWeights.semibold,
   },
   filterRow: {
     paddingHorizontal: theme.spacing.lg,

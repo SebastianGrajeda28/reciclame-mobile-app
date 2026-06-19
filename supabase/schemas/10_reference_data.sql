@@ -4,10 +4,11 @@
 CREATE TABLE IF NOT EXISTS "public"."achievements" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
+    "slug" "text",
     "description" "text",
+    "unlock_description" "text",
     "condition_type" "text",
     "condition_value" integer,
-    "reward_id" "uuid",
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone
@@ -37,12 +38,14 @@ CREATE TABLE IF NOT EXISTS "public"."campuses" (
 CREATE TABLE IF NOT EXISTS "public"."rewards" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
-    "description" "text",
-    "reward_type" "text",
-    "asset_url" "text",
+    "item_key" "text",
+    "item_type" "text",
+    "requires_unlock" boolean DEFAULT false NOT NULL,
+    "achievement_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone,
-    "is_active" boolean DEFAULT true NOT NULL
+    "is_active" boolean DEFAULT true NOT NULL,
+    CONSTRAINT "rewards_item_type_item_key_key" UNIQUE ("item_type", "item_key")
 );
 
 CREATE TABLE IF NOT EXISTS "public"."roles" (
@@ -89,6 +92,9 @@ ALTER TABLE "public"."waste_types" OWNER TO "postgres";
 ALTER TABLE ONLY "public"."achievements"
     ADD CONSTRAINT "achievements_pkey" PRIMARY KEY ("id");
 
+ALTER TABLE ONLY "public"."achievements"
+    ADD CONSTRAINT "achievements_slug_key" UNIQUE ("slug");
+
 ALTER TABLE ONLY "public"."bin_types"
     ADD CONSTRAINT "bin_types_pkey" PRIMARY KEY ("id");
 
@@ -109,9 +115,6 @@ ALTER TABLE ONLY "public"."universities"
 
 ALTER TABLE ONLY "public"."waste_types"
     ADD CONSTRAINT "waste_types_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."achievements"
-    ADD CONSTRAINT "achievements_reward_id_fkey" FOREIGN KEY ("reward_id") REFERENCES "public"."rewards"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."bin_types"
     ADD CONSTRAINT "bin_types_university_id_fkey" FOREIGN KEY ("university_id") REFERENCES "public"."universities"("id") ON DELETE SET NULL;
@@ -136,6 +139,16 @@ ALTER TABLE "public"."waste_types" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "roles_select_active_authenticated" ON "public"."roles" FOR SELECT TO "authenticated" USING (("is_active" = true));
 
 CREATE POLICY "waste_types_select_active_authenticated" ON "public"."waste_types" FOR SELECT TO "authenticated" USING (("is_active" = true));
+
+CREATE POLICY "rewards_select_authenticated" ON "public"."rewards" FOR SELECT TO "authenticated" USING (("is_active" = true));
+
+CREATE POLICY "achievements_select_authenticated" ON "public"."achievements" FOR SELECT TO "authenticated" USING (("is_active" = true));
+
+CREATE POLICY "bin_types_select_authenticated" ON "public"."bin_types" FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "campuses_select_authenticated" ON "public"."campuses" FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "universities_select_authenticated" ON "public"."universities" FOR SELECT TO "authenticated" USING (true);
 
 GRANT ALL ON TABLE "public"."achievements" TO "anon";
 

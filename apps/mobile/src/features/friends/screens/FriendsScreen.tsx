@@ -10,9 +10,7 @@ import { routes } from '@/src/constants/routes';
 import { useFriends } from '@/src/features/friends/hooks/useFriends';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import type { FriendMedal, FriendSummary } from '@/src/types/friend';
-import { AppButton, AppIcon, AppText, STREAK_LEVEL_COLORS, theme } from '@/src/ui';
-import { levelForStreakDays } from '@/src/ui/streakColors';
-import { formatRelativeTime } from '@/src/utils/dates';
+import { AppButton, AppIcon, AppText, StreakHeatBadge, theme } from '@/src/ui';
 
 const MAX_VISIBLE_MEDALS = 3;
 
@@ -97,10 +95,7 @@ function FriendListItem({ friend }: { friend: FriendSummary }) {
         ) : null}
       </View>
       <View style={styles.streakBox}>
-        <AppText variant="h4" style={styles.streakValue}>
-          {friend.currentStreak}
-        </AppText>
-        <AppIcon name="flame" size={theme.iconSizes.lg} color={flameColor} />
+        <StreakHeatBadge streakDays={friend.currentStreak} />
       </View>
     </View>
   );
@@ -302,9 +297,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: theme.spacing.s1,
-  },
-  streakValue: {
-    fontWeight: theme.fontWeights.extrabold,
   },
   centerState: {
     flex: 1,

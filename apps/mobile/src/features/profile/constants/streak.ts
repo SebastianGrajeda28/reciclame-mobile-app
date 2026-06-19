@@ -1,7 +1,7 @@
 // Tokens visuales compartidos (color por nivel) viven en src/ui para respetar la frontera
 // entre features; se re-exportan aquí por compatibilidad con los imports existentes.
-export { STREAK_LEVEL_COLORS, type StreakLevel } from '@/src/ui/streakColors';
 import type { StreakLevel } from '@/src/ui/streakColors';
+export { levelForStreakDays, STREAK_LEVEL_COLORS, type StreakLevel } from '@/src/ui/streakColors';
 
 export const STREAK_LEVEL_THRESHOLDS: Record<StreakLevel, number> = {
   1: 0,
@@ -24,12 +24,12 @@ export const STREAK_LEVEL_LABELS: Record<StreakLevel, string> = {
 };
 
 export const HEAT_FIRE_COLORS: { maxPercent: number; color: string }[] = [
-  { maxPercent: 14,  color: '#6B0000' },
-  { maxPercent: 28,  color: '#DC2626' },
-  { maxPercent: 42,  color: '#F97316' },
-  { maxPercent: 57,  color: '#FACC15' },
-  { maxPercent: 71,  color: '#CBD5E1' },
-  { maxPercent: 85,  color: '#38BDF8' },
+  { maxPercent: 14, color: '#6B0000' },
+  { maxPercent: 28, color: '#DC2626' },
+  { maxPercent: 42, color: '#F97316' },
+  { maxPercent: 57, color: '#FACC15' },
+  { maxPercent: 71, color: '#CBD5E1' },
+  { maxPercent: 85, color: '#38BDF8' },
   { maxPercent: 100, color: '#A78BFA' },
 ];
 
@@ -44,8 +44,6 @@ export function heatColorForPercent(percent: number): string {
   const tier = HEAT_FIRE_COLORS.find((t) => percent <= t.maxPercent);
   return tier?.color ?? HEAT_FIRE_COLORS[HEAT_FIRE_COLORS.length - 1].color;
 }
-
-export { levelForStreakDays } from '@/src/ui/streakColors';
 
 export function nextMilestoneForLevel(level: StreakLevel): number | null {
   if (level === 7) return null;

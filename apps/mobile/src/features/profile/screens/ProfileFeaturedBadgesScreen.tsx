@@ -1,32 +1,52 @@
-import { useState } from 'react';
-
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { updateFeaturedMedals } from '@/src/features/profile/api/achievements';
 import { ProfileBadgeItem } from '@/src/features/profile/components/ProfileBadgeItem';
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
-import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
+import { useProfileGamification } from '@/src/features/profile/hooks/useProfileGamification';
+import { useAuth } from '@/src/hooks/useAuth';
 import { AppButton, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
 
 const MAX_FEATURED = 5;
 
 export function ProfileFeaturedBadgesScreen() {
-  const earned = profileGamificationSnapshot.allBadges.filter((b) => !!b.earnedAt);
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(profileGamificationSnapshot.featuredBadgeIds as readonly string[]),
-  );
+  const { session } = useAuth();
+  const { allBadges, featuredSlugs, slugToAchievementId, refetch } = useProfileGamification();
+  const earned = allBadges.filter((b) => !!b.earnedAt);
+  const [selected, setSelected] = useState<Set<string>>(new Set(featuredSlugs));
+  const [saving, setSaving] = useState(false);
 
-  function toggleBadge(id: string) {
+  function toggleBadge(slug: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+      if (next.has(slug)) {
+        next.delete(slug);
       } else if (next.size < MAX_FEATURED) {
-        next.add(id);
+        next.add(slug);
       }
       return next;
     });
+  }
+
+  async function handleSave() {
+    if (!session?.user?.id) return;
+    setSaving(true);
+    try {
+      const achievementIds = Array.from(selected)
+        .map((slug) => slugToAchievementId.get(slug))
+        .filter(Boolean) as string[];
+
+      await updateFeaturedMedals(session.user.id, achievementIds);
+      refetch();
+      router.back();
+    } catch {
+      // silently ignore — user stays on screen
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -74,10 +94,7 @@ export function ProfileFeaturedBadgesScreen() {
         })}
       </View>
 
-      <AppButton
-        label="Guardar selección"
-        onPress={() => router.back()}
-      />
+      <AppButton label="Guardar selección" loading={saving} onPress={handleSave} />
     </ProfileScreenContainer>
   );
 }
