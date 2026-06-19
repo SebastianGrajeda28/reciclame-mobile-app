@@ -1,23 +1,22 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RotateCcw, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
+import { AppPage, AppSurface } from "@/shared/components/AppPage";
+import { useUser } from "@/shared/context/UserContext";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import InstructionStepsSection, {
   InstructionPreviewRail,
 } from "../components/InstructionStepsSection";
-import InstructionStepsSection from "../components/InstructionStepsSection";
 import {
   createInstruction,
+  deactivateInstruction,
   getInstructions,
   restoreInstruction,
-  deactivateInstruction,
   type Instruction,
 } from "../services/InstructionsService";
 import { getWasteTypes } from "../services/WasteTypesService";
-import { useUser } from "@/shared/context/UserContext";
-import { AppPage, AppSurface } from "@/shared/components/AppPage";
 
 type InstructionsTab = "active" | "inactive";
 
@@ -115,7 +114,7 @@ export default function InstructionsPage() {
       <div className="flex flex-col gap-3 md:min-h-[72px] md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">
-            Gestionar instrucciones
+            Gestionar Instrucciones
           </h1>
           <p className="mt-2 text-sm text-slate-500">
             Configura los pasos guiados que verá cada usuario según el tipo de residuo seleccionado.

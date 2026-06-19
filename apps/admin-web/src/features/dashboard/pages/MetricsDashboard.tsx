@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { CalendarIcon, CheckCircle2, ScanSearch, Scale, Users } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { AppPage, AppSurface } from "@/shared/components/AppPage";
+import { useUser } from "@/shared/context/UserContext";
+import { CalendarIcon, CheckCircle2, Scale, ScanSearch, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
 import { fetchDashboard, type DashboardResponse } from "../services/dashboardService";
-import { useUser } from "@/shared/context/UserContext";
-import { AppPage, AppSurface } from "@/shared/components/AppPage";
 
 type DatePreset = "last7" | "last30" | "historical" | "custom";
 type DashboardTab = "flow" | "results";
@@ -62,7 +62,7 @@ const recognitionQuality = [
 
 const funnelSteps = [
   { label: "Iniciaron", value: 100, color: "#0b2f4e" },
-  { label: "Processing", value: 91, color: "#1c8fdf" },
+  { label: "Procesaron", value: 91, color: "#1c8fdf" },
   { label: "Mapa", value: 67, color: "#22c76f" },
   { label: "Instrucciones", value: 52, color: "#3ed08b" },
   { label: "Confirmaron", value: 43, color: "#129a56" },
@@ -246,6 +246,7 @@ export default function MetricsDashboard() {
 
   const renderedFunnel = dashboardData?.funnel.map((step, index) => ({
     ...step,
+    label: funnelSteps[index]?.label ?? step.label,
     color: funnelSteps[index]?.color ?? "#0b2f4e",
   })) ?? funnelSteps;
 
@@ -379,7 +380,7 @@ export default function MetricsDashboard() {
                     : "border-[#d7e6f2] bg-white text-[#0b2f4e] hover:border-[#b9d8c8]"
                 )}
               >
-                Custom
+                Personalizado
                 <CalendarIcon className="h-4 w-4" />
               </button>
             </PopoverTrigger>

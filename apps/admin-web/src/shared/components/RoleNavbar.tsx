@@ -4,7 +4,7 @@ import ProfilePopover from "./ProfilePopover";
 
 const NAV_ITEMS = [
   { label: "Métricas", path: "/metricas" },
-  { label: "Fun Facts", path: "/fun-facts" },
+  { label: "Datos Curiosos", path: "/fun-facts" },
   { label: "Instrucciones", path: "/instrucciones" },
 ];
 
