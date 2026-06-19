@@ -1,6 +1,7 @@
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
@@ -76,11 +77,7 @@ export function ProcessingScreen() {
       <View style={styles.imageSection}>
         <View style={styles.imageWrapper}>
           {state.capturedPhotoUri ? (
-            <Image
-              source={{ uri: state.capturedPhotoUri }}
-              style={styles.image}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: state.capturedPhotoUri }} style={styles.image} contentFit="cover" />
           ) : (
             <View style={styles.imagePlaceholder} />
           )}
