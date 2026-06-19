@@ -1,85 +1,20 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { router, type Href } from 'expo-router';
+import { useCallback, useRef } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvatarComposer } from '@/src/avatar';
+import type { AvatarConfig } from '@/src/avatar/avatarCatalog';
 import { routes } from '@/src/constants/routes';
 import { useFriends } from '@/src/features/friends/hooks/useFriends';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import type { FriendMedal, FriendSummary } from '@/src/types/friend';
-import { AppButton, AppIcon, AppText, theme } from '@/src/ui';
+import { AppButton, AppIcon, AppText, STREAK_LEVEL_COLORS, theme } from '@/src/ui';
+import { levelForStreakDays } from '@/src/ui/streakColors';
+import { formatRelativeTime } from '@/src/utils/dates';
 
 const MAX_VISIBLE_MEDALS = 3;
-const USE_MOCK_FRIENDS = true; // así hasta que el supabase remoto tenga todo (por si acaso)
-
-const mockFriends: FriendSummary[] = [
-  {
-    id: 'mock-friend-1',
-    name: 'Alice Smith',
-    currentStreak: 70,
-    featuredMedals: [
-      { id: 'mock-medal-1', name: 'Eco inicial' },
-      { id: 'mock-medal-2', name: 'Bosque vivo' },
-      { id: 'mock-medal-3', name: 'Botella limpia' },
-    ],
-  },
-  {
-    id: 'mock-friend-2',
-    name: 'Bob Johnson',
-    currentStreak: 45,
-    featuredMedals: [
-      { id: 'mock-medal-4', name: 'Caja pro' },
-      { id: 'mock-medal-5', name: 'Botella limpia' },
-      { id: 'mock-medal-6', name: 'Racha dorada' },
-    ],
-  },
-  {
-    id: 'mock-friend-3',
-    name: 'Charlie Brown',
-    currentStreak: 17,
-    featuredMedals: [
-      { id: 'mock-medal-7', name: 'Caja pro' },
-      { id: 'mock-medal-8', name: 'Bosque vivo' },
-      { id: 'mock-medal-9', name: 'Botella limpia' },
-    ],
-  },
-  {
-    id: 'mock-friend-4',
-    name: 'Diana Prince',
-    currentStreak: 5,
-    featuredMedals: [
-      { id: 'mock-medal-10', name: 'Reciclaje constante' },
-      { id: 'mock-medal-11', name: 'Gota limpia' },
-    ],
-  },
-  {
-    id: 'mock-friend-5',
-    name: 'Ariel War',
-    currentStreak: 3,
-    featuredMedals: [{ id: 'mock-medal-12', name: 'Pila segura' }],
-  },
-  {
-    id: 'mock-friend-6',
-    name: 'Ethan Walker',
-    currentStreak: 1,
-    featuredMedals: [{ id: 'mock-medal-13', name: 'Pila segura' }],
-  },
-  {
-    id: 'mock-friend-7',
-    name: 'Francis Deen',
-    currentStreak: 67,
-    featuredMedals: [{ id: 'mock-medal-16', name: 'Pila segura' }],
-  },
-  {
-    id: 'mock-friend-8',
-    name: 'Gin Bates',
-    currentStreak: 42,
-    featuredMedals: [
-      { id: 'mock-medal-7', name: 'Caja pro' },
-      { id: 'mock-medal-8', name: 'Bosque vivo' },
-      { id: 'mock-medal-9', name: 'Botella limpia' },
-    ],
-  },
-];
 
 function buildInitials(name: string) {
   return name
@@ -92,10 +27,13 @@ function buildInitials(name: string) {
 
 function FriendAvatar({ friend }: { friend: FriendSummary }) {
   const initials = buildInitials(friend.name);
+  const avatarConfig = friend.avatarConfig as AvatarConfig | null | undefined;
 
   return (
     <View style={styles.avatarShell}>
-      {friend.avatarUrl ? (
+      {avatarConfig ? (
+        <AvatarComposer config={avatarConfig} size={68} blink={false} />
+      ) : friend.avatarUrl ? (
         <Image source={{ uri: friend.avatarUrl }} style={styles.avatarImage} />
       ) : (
         <View style={styles.avatarFallback}>
@@ -141,6 +79,9 @@ function FriendMedalStrip({ medals }: { medals: FriendMedal[] }) {
 }
 
 function FriendListItem({ friend }: { friend: FriendSummary }) {
+  const streakLevel = levelForStreakDays(friend.currentStreak);
+  const flameColor = STREAK_LEVEL_COLORS[streakLevel];
+
   return (
     <View style={styles.friendCard}>
       <FriendAvatar friend={friend} />
@@ -149,12 +90,17 @@ function FriendListItem({ friend }: { friend: FriendSummary }) {
           {friend.name}
         </AppText>
         <FriendMedalStrip medals={friend.featuredMedals} />
+        {friend.lastActivityAt ? (
+          <AppText variant="caption" muted>
+            {formatRelativeTime(friend.lastActivityAt)}
+          </AppText>
+        ) : null}
       </View>
       <View style={styles.streakBox}>
         <AppText variant="h4" style={styles.streakValue}>
           {friend.currentStreak}
         </AppText>
-        <AppIcon name="flame" size={theme.iconSizes.lg} color={theme.colors.secondary} />
+        <AppIcon name="flame" size={theme.iconSizes.lg} color={flameColor} />
       </View>
     </View>
   );
@@ -182,20 +128,27 @@ function FriendsEmptyState() {
 export function FriendsScreen() {
   const currentUser = useCurrentUser();
   const {
-    data: remoteFriends,
+    data: friends,
     loading,
     refreshing,
     error,
     refresh,
     refetch,
-  } = useFriends(USE_MOCK_FRIENDS ? null : (currentUser?.id ?? null));
+  } = useFriends(currentUser?.id ?? null);
 
-  const friends = USE_MOCK_FRIENDS ? mockFriends : remoteFriends;
-  const screenLoading = USE_MOCK_FRIENDS ? false : loading;
-  const screenRefreshing = USE_MOCK_FRIENDS ? false : refreshing;
-  const screenError = USE_MOCK_FRIENDS ? null : error;
-  const handleRefresh = USE_MOCK_FRIENDS ? undefined : refresh;
-  const showInitialLoading = screenLoading && friends.length === 0;
+  const hasMounted = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (hasMounted.current) {
+        refresh();
+      } else {
+        hasMounted.current = true;
+      }
+    }, [refresh]),
+  );
+
+  const showInitialLoading = loading && friends.length === 0;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -210,14 +163,14 @@ export function FriendsScreen() {
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
-      ) : screenError ? (
+      ) : error ? (
         <View style={styles.centerState}>
           <AppIcon name="alertCircle" size={theme.iconSizes.xl} color={theme.colors.danger} />
           <AppText variant="h4" style={styles.errorTitle}>
             No pudimos cargar tus amigos
           </AppText>
           <AppText variant="bodyS" muted style={styles.errorMessage}>
-            {screenError}
+            {error}
           </AppText>
           <AppButton label="Reintentar" variant="outline" onPress={refetch} />
         </View>
@@ -232,8 +185,8 @@ export function FriendsScreen() {
           ]}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={<FriendsEmptyState />}
-          refreshing={screenRefreshing}
-          onRefresh={handleRefresh}
+          refreshing={refreshing}
+          onRefresh={refresh}
           showsVerticalScrollIndicator={false}
         />
       )}

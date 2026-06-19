@@ -45,15 +45,7 @@ export function heatColorForPercent(percent: number): string {
   return tier?.color ?? HEAT_FIRE_COLORS[HEAT_FIRE_COLORS.length - 1].color;
 }
 
-export function levelForStreakDays(streakDays: number): StreakLevel {
-  if (streakDays >= 189) return 7;
-  if (streakDays >= 93)  return 6;
-  if (streakDays >= 45)  return 5;
-  if (streakDays >= 21)  return 4;
-  if (streakDays >= 9)   return 3;
-  if (streakDays >= 3)   return 2;
-  return 1;
-}
+export { levelForStreakDays } from '@/src/ui/streakColors';
 
 export function nextMilestoneForLevel(level: StreakLevel): number | null {
   if (level === 7) return null;

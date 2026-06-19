@@ -13,6 +13,7 @@ type FriendSummaryRow = {
   name: string;
   current_streak: number;
   avatar_base_style: string | null;
+  avatar_config: Record<string, unknown> | null;
   last_activity_at: string | null;
   featured_medals: FriendMedalRow[] | null;
 };
@@ -32,6 +33,7 @@ function mapFriendSummary(row: FriendSummaryRow): FriendSummary {
     name: row.name,
     currentStreak: row.current_streak,
     avatarUrl: row.avatar_base_style ?? null,
+    avatarConfig: row.avatar_config ?? null,
     lastActivityAt: row.last_activity_at ?? null,
     featuredMedals: (row.featured_medals ?? []).map(mapFriendMedal),
   };

@@ -14,6 +14,7 @@ export type FriendSummary = {
   name: string;
   currentStreak: number;
   avatarUrl?: string | null;
+  avatarConfig?: Record<string, unknown> | null;
   lastActivityAt?: string | null;
   featuredMedals: FriendMedal[];
 };

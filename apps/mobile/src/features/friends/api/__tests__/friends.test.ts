@@ -12,11 +12,29 @@ import { supabase } from '@/src/services/supabase/client';
 
 const mockedRpc = supabase.rpc as jest.Mock;
 
+const sampleAvatarConfig = {
+  race: 'human',
+  skin: 'brown',
+  bg: 'light_blue',
+  ears: 'normal',
+  nose: 'rounded',
+  mouth: 'smile',
+  eyeColor: 'brown',
+  eyeStyle: 'round',
+  brows: 'black_normal',
+  hair: 'brown_short',
+  hat: null,
+  clothes: 'blue_doublet',
+  beard: null,
+  moustache: null,
+};
+
 const sampleRow = {
   friend_id: 'aaaaaaaa-0000-0000-0000-000000000001',
   name: 'Ana Recicladora',
   current_streak: 5,
   avatar_base_style: 'https://cdn.example.com/avatar-1.png',
+  avatar_config: sampleAvatarConfig,
   last_activity_at: '2026-06-01T14:30:00Z',
   featured_medals: [
     {
@@ -51,6 +69,7 @@ describe('getFriends', () => {
     expect(friend.currentStreak).toBe(5);
     expect(friend.avatarUrl).toBe('https://cdn.example.com/avatar-1.png');
     expect(friend.lastActivityAt).toBe('2026-06-01T14:30:00Z');
+    expect(friend.avatarConfig).toEqual(sampleAvatarConfig);
     expect(friend.featuredMedals).toHaveLength(1);
     expect(friend.featuredMedals[0].name).toBe('Reciclador Inicial');
     expect(friend.featuredMedals[0].imageUrl).toBe('https://cdn.example.com/medal-1.png');
@@ -112,6 +131,18 @@ describe('getFriends', () => {
 
     // Afirmar
     expect(result[0].lastActivityAt).toBeNull();
+  });
+
+  test('Debería manejar amigos sin avatar_config (avatarConfig null)', async () => {
+    // Preparar
+    const rowSinConfig = { ...sampleRow, avatar_config: null };
+    mockedRpc.mockResolvedValue({ data: [rowSinConfig], error: null });
+
+    // Actuar
+    const result = await getFriends('user-123');
+
+    // Afirmar
+    expect(result[0].avatarConfig).toBeNull();
   });
 
   test('Debería lanzar Error cuando la RPC devuelve un error de Supabase', async () => {

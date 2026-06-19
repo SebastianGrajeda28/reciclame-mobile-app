@@ -1,5 +1,5 @@
 export { theme } from '@/src/ui/theme';
-export { STREAK_LEVEL_COLORS, type StreakLevel } from '@/src/ui/streakColors';
+export { STREAK_LEVEL_COLORS, levelForStreakDays, type StreakLevel } from '@/src/ui/streakColors';
 
 export { AppScreen } from '@/src/ui/components/AppScreen';
 export { AppText } from '@/src/ui/components/AppText';

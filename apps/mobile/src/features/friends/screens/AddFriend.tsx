@@ -1,23 +1,38 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAddFriendByCode } from '@/src/features/friends/hooks/useAddFriendByCode';
+import { useMyFriendCode } from '@/src/features/friends/hooks/useMyFriendCode';
+import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
-
-const MOCK_FRIEND_CODE = '123456';
 
 export function AddFriend() {
   const [friendCode, setFriendCode] = useState('');
+  const currentUser = useCurrentUser();
+
+  const { code, loading: codeLoading, error: codeError } = useMyFriendCode(currentUser?.id ?? null);
+  const { submit, status, error: addError, reset } = useAddFriendByCode();
 
   function handleBack() {
     if (router.canGoBack()) {
       router.back();
       return;
     }
-
     router.replace('/(tabs)/amigos');
   }
+
+  async function handleAddFriend() {
+    if (!friendCode.trim()) return;
+    const success = await submit(friendCode.trim());
+    if (success) {
+      setFriendCode('');
+    }
+  }
+
+  const isAdding = status === 'loading';
+  const addSuccess = status === 'success';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -50,9 +65,17 @@ export function AddFriend() {
                 Tu código:
               </AppText>
               <View style={styles.codeBox}>
-                <AppText variant="h2" style={styles.codeText}>
-                  {MOCK_FRIEND_CODE}
-                </AppText>
+                {codeLoading ? (
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : codeError ? (
+                  <AppText variant="caption" muted>
+                    {codeError}
+                  </AppText>
+                ) : (
+                  <AppText variant="h2" style={styles.codeText}>
+                    {code ?? '—'}
+                  </AppText>
+                )}
               </View>
             </View>
 
@@ -63,17 +86,23 @@ export function AddFriend() {
               <View style={styles.inputRow}>
                 <TextInput
                   value={friendCode}
-                  onChangeText={setFriendCode}
+                  onChangeText={(text) => {
+                    setFriendCode(text);
+                    if (addError || addSuccess) reset();
+                  }}
                   keyboardType="number-pad"
                   placeholder="Código de amigo.."
                   placeholderTextColor={theme.colors.textSecondary}
                   style={styles.input}
                   maxLength={8}
+                  editable={!isAdding}
                 />
                 <AppIconButton
                   accessibilityLabel="Agregar codigo de amigo"
                   variant="primary"
-                  onPress={() => undefined}
+                  onPress={handleAddFriend}
+                  disabled={!friendCode.trim()}
+                  loading={isAdding}
                   icon={
                     <AppIcon
                       name="plus"
@@ -84,6 +113,15 @@ export function AddFriend() {
                   style={styles.addButton}
                 />
               </View>
+              {addError ? (
+                <AppText variant="caption" style={styles.errorText}>
+                  {addError}
+                </AppText>
+              ) : addSuccess ? (
+                <AppText variant="caption" style={styles.successText}>
+                  ¡Amigo agregado!
+                </AppText>
+              ) : null}
             </View>
 
             <Image
@@ -150,6 +188,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.border,
     paddingVertical: theme.spacing.s3,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
   },
   codeText: {
     fontWeight: theme.fontWeights.extrabold,
@@ -187,6 +227,12 @@ const styles = StyleSheet.create({
     height: 36,
     borderWidth: 2,
     borderColor: theme.colors.textPrimary,
+  },
+  errorText: {
+    color: theme.colors.danger,
+  },
+  successText: {
+    color: theme.colors.success,
   },
   illustration: {
     alignSelf: 'center',

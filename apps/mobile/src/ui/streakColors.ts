@@ -12,3 +12,13 @@ export const STREAK_LEVEL_COLORS: Record<StreakLevel, string> = {
   6: '#38BDF8',
   7: '#A78BFA',
 };
+
+export function levelForStreakDays(streakDays: number): StreakLevel {
+  if (streakDays >= 189) return 7;
+  if (streakDays >= 93) return 6;
+  if (streakDays >= 45) return 5;
+  if (streakDays >= 21) return 4;
+  if (streakDays >= 9) return 3;
+  if (streakDays >= 3) return 2;
+  return 1;
+}
