@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { getUserCosmetics, UnlockedCosmetics } from '@/src/features/profile/api/avatar';
+import { getRestrictedCosmetics, getEarnedRestrictedCosmetics, RestrictedCosmetics } from '@/src/features/profile/api/avatar';
 import { useAuth } from '@/src/hooks/useAuth';
 
-const EMPTY: UnlockedCosmetics = {
+const EMPTY: RestrictedCosmetics = {
   hat: new Set(),
   clothes: new Set(),
   hair: new Set(),
@@ -11,10 +11,17 @@ const EMPTY: UnlockedCosmetics = {
   moustache: new Set(),
 };
 
-export function useUnlockedCosmetics() {
+type UnlockedCosmeticsState = {
+  restricted: RestrictedCosmetics;
+  earned: RestrictedCosmetics;
+  loading: boolean;
+};
+
+export function useUnlockedCosmetics(): UnlockedCosmeticsState {
   const { session } = useAuth();
   const userId = session?.user?.id;
-  const [cosmetics, setCosmetics] = useState<UnlockedCosmetics>(EMPTY);
+  const [restricted, setRestricted] = useState<RestrictedCosmetics>(EMPTY);
+  const [earned, setEarned] = useState<RestrictedCosmetics>(EMPTY);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,10 +33,15 @@ export function useUnlockedCosmetics() {
 
     (async () => {
       try {
-        const unlocked = await getUserCosmetics(userId);
-        if (!cancelled) setCosmetics(unlocked);
+        const [restrictedData, earnedData] = await Promise.all([
+          getRestrictedCosmetics(),
+          getEarnedRestrictedCosmetics(userId),
+        ]);
+        if (!cancelled) {
+          setRestricted(restrictedData);
+          setEarned(earnedData);
+        }
       } catch {
-        // silently fall back to empty — avatar editor just shows nothing locked
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -38,5 +50,5 @@ export function useUnlockedCosmetics() {
     return () => { cancelled = true; };
   }, [userId]);
 
-  return { cosmetics, loading };
+  return { restricted, earned, loading };
 }

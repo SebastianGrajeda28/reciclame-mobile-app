@@ -126,13 +126,6 @@ begin
   values (new.id, user_name)
   on conflict (user_id) do nothing;
 
-  -- Grant all starter cosmetics automatically
-  insert into public.user_rewards (user_id, reward_id, unlocked_at, is_equipped, is_active)
-  select new.id, r.id, now(), false, true
-  from public.rewards r
-  where r.reward_type = 'cosmetic_starter' and r.is_active = true
-  on conflict (user_id, reward_id) do nothing;
-
   return new;
 end;
 $$;

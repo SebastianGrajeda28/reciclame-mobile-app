@@ -126,6 +126,10 @@ ALTER TABLE "public"."friend_codes" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."friendships" ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "friend_codes_select_own" ON "public"."friend_codes" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "friendships_select_own" ON "public"."friendships" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "requester_id") OR ("auth"."uid"() = "addressee_id"));
+
 CREATE OR REPLACE FUNCTION "app_social"."get_my_friend_code"() RETURNS "text"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'

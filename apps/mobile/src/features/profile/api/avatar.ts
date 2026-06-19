@@ -27,16 +27,12 @@ export async function saveAvatarConfig(userId: string, config: AvatarConfig): Pr
   }
 }
 
-export type UnlockedCosmetics = {
-  hat: Set<string>;
-  clothes: Set<string>;
-  hair: Set<string>;
-  beard: Set<string>;
-  moustache: Set<string>;
-};
+export type CosmeticCategory = 'hat' | 'clothes' | 'hair' | 'beard' | 'moustache';
 
-export async function getUserCosmetics(userId: string): Promise<UnlockedCosmetics> {
-  const result: UnlockedCosmetics = {
+export type RestrictedCosmetics = Record<CosmeticCategory, Set<string>>;
+
+export async function getRestrictedCosmetics(): Promise<RestrictedCosmetics> {
+  const result: RestrictedCosmetics = {
     hat: new Set(),
     clothes: new Set(),
     hair: new Set(),
@@ -45,20 +41,61 @@ export async function getUserCosmetics(userId: string): Promise<UnlockedCosmetic
   };
 
   const { data, error } = await supabase
-    .from('user_rewards')
-    .select('rewards(item_key, item_type)')
-    .eq('user_id', userId)
-    .eq('is_active', true);
+    .from('rewards')
+    .select('item_key, item_type')
+    .eq('requires_unlock', true)
+    .eq('is_active', true)
+    .in('item_type', ['hat', 'clothes', 'hair', 'beard', 'moustache']);
 
   if (error) throw new Error(error.message);
   if (!data) return result;
 
   for (const row of data) {
-    const rewardRaw = row.rewards as unknown;
-    const reward = (Array.isArray(rewardRaw) ? rewardRaw[0] : rewardRaw) as { item_key: string | null; item_type: string | null } | null;
-    if (!reward?.item_key || !reward?.item_type) continue;
-    const bucket = result[reward.item_type as keyof UnlockedCosmetics];
-    if (bucket) bucket.add(reward.item_key);
+    if (!row.item_key || !row.item_type) continue;
+    const bucket = result[row.item_type as CosmeticCategory];
+    if (bucket) bucket.add(row.item_key);
+  }
+
+  return result;
+}
+
+export async function getEarnedRestrictedCosmetics(userId: string): Promise<RestrictedCosmetics> {
+  const result: RestrictedCosmetics = {
+    hat: new Set(),
+    clothes: new Set(),
+    hair: new Set(),
+    beard: new Set(),
+    moustache: new Set(),
+  };
+
+  // Step 1: get achievement_ids the user has earned
+  const { data: earned, error: earnedError } = await supabase
+    .from('user_achievements')
+    .select('achievement_id')
+    .eq('user_id', userId)
+    .eq('is_active', true);
+
+  if (earnedError) throw new Error(earnedError.message);
+  if (!earned || earned.length === 0) return result;
+
+  const earnedIds = earned.map((r) => r.achievement_id);
+
+  // Step 2: get restricted rewards whose achievement the user has earned
+  const { data, error } = await supabase
+    .from('rewards')
+    .select('item_key, item_type')
+    .eq('requires_unlock', true)
+    .eq('is_active', true)
+    .in('achievement_id', earnedIds)
+    .in('item_type', ['hat', 'clothes', 'hair', 'beard', 'moustache']);
+
+  if (error) throw new Error(error.message);
+  if (!data) return result;
+
+  for (const row of data) {
+    if (!row.item_key || !row.item_type) continue;
+    const bucket = result[row.item_type as CosmeticCategory];
+    if (bucket) bucket.add(row.item_key);
   }
 
   return result;
