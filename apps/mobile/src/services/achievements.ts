@@ -1,17 +1,16 @@
 import { supabase } from '@/src/services/supabase/client';
-import type { ProfileBadge } from '@/src/features/profile/data/profileGamification';
-import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 
-/**
- * Checks for newly unlocked achievements after a recycling action.
- * Queries the backend database to check if any achievement requirements were met.
- * 
- * @param userId - The user ID to check achievements for
- * @returns The newly unlocked achievement or null if none were unlocked
- */
-export async function checkUnlockedAchievements(userId: string): Promise<ProfileBadge | null> {
+export type UnlockedAchievementResult = {
+  slug: string;
+  name: string;
+  rewardName: string | null;
+  unlockDescription: string | null;
+};
+
+export async function checkUnlockedAchievements(
+  userId: string
+): Promise<UnlockedAchievementResult | null> {
   try {
-    // Call the database function to check for newly unlocked achievements
     const { data, error } = await supabase.rpc('check_and_unlock_achievements', {
       p_user_id: userId,
     });
@@ -21,66 +20,43 @@ export async function checkUnlockedAchievements(userId: string): Promise<Profile
       return null;
     }
 
-    if (!data || data.length === 0) {
-      return null;
+    if (!data || data.length === 0) return null;
+
+    const row = data[0] as {
+      achievement_id: string;
+      achievement_name: string;
+      achievement_slug: string | null;
+      reward_id: string | null;
+    };
+
+    if (!row.achievement_slug) return null;
+
+    let rewardName: string | null = null;
+    if (row.reward_id) {
+      const { data: reward } = await supabase
+        .from('rewards')
+        .select('name')
+        .eq('id', row.reward_id)
+        .maybeSingle();
+      rewardName = reward?.name ?? null;
     }
 
-    // Get the first newly unlocked achievement
-    const unlockedAchievement = data[0];
-    
-    // Map the database achievement to the ProfileBadge type
-    // In a real implementation, you would query the achievements table to get full details
-    // For now, we'll use the mock data to find the matching badge
-    const allBadges = profileGamificationSnapshot.allBadges;
-    
-    // Try to find a matching badge by name (this is a simplified approach)
-    // In production, you would have a proper mapping between database IDs and badge IDs
-    const matchingBadge = allBadges.find(b => 
-      b.name.toLowerCase().includes(unlockedAchievement.achievement_name.toLowerCase()) ||
-      b.description.toLowerCase().includes(unlockedAchievement.achievement_name.toLowerCase())
-    );
+    let unlockDescription: string | null = null;
+    const { data: ach } = await supabase
+      .from('achievements')
+      .select('unlock_description')
+      .eq('id', row.achievement_id)
+      .maybeSingle();
+    unlockDescription = ach?.unlock_description ?? null;
 
-    return matchingBadge ?? null;
+    return {
+      slug: row.achievement_slug,
+      name: row.achievement_name,
+      rewardName,
+      unlockDescription,
+    };
   } catch (err) {
     console.error('[checkUnlockedAchievements] Error:', err);
     return null;
   }
-}
-
-/**
- * Gets all achievements for a user from the database.
- * 
- * @param userId - The user ID to get achievements for
- * @returns Array of user achievements
- */
-export async function getUserAchievements(userId: string) {
-  const { data, error } = await supabase
-    .from('user_achievements')
-    .select(`
-      *,
-      achievements (
-        id,
-        name,
-        description,
-        condition_type,
-        condition_value,
-        reward_id,
-        rewards (
-          id,
-          name,
-          description,
-          reward_type,
-          asset_url
-        )
-      )
-    `)
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .order('unlocked_at', { ascending: false });
-
-  if (error) {
-    throw new Error(`Failed to get user achievements: ${error.message}`);
-  }
-
-  return data;
 }

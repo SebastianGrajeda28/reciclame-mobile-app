@@ -82,10 +82,14 @@ export function InstructionsScreen() {
       // Check if any achievement was unlocked
       const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
       if (unlockedAchievement) {
-        // Navigate to reward screen with the unlocked achievement
         router.replace({
           pathname: '/recycle/reward',
-          params: { badgeId: unlockedAchievement.id },
+          params: {
+            badgeId: unlockedAchievement.slug,
+            badgeName: unlockedAchievement.name,
+            badgeReward: unlockedAchievement.rewardName ?? undefined,
+            badgeDescription: unlockedAchievement.unlockDescription ?? undefined,
+          },
         });
       } else {
         router.replace('/recycle/success');

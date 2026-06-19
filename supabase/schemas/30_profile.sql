@@ -5,8 +5,6 @@ CREATE TABLE IF NOT EXISTS "public"."avatars" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "user_id" "uuid" NOT NULL,
     "base_style" "text",
-    "frame_reward_id" "uuid",
-    "accessory_reward_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone,
     "is_active" boolean DEFAULT true NOT NULL,
@@ -62,12 +60,6 @@ ALTER TABLE ONLY "public"."user_settings"
     ADD CONSTRAINT "user_settings_user_id_key" UNIQUE ("user_id");
 
 ALTER TABLE ONLY "public"."avatars"
-    ADD CONSTRAINT "avatars_accessory_reward_id_fkey" FOREIGN KEY ("accessory_reward_id") REFERENCES "public"."rewards"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."avatars"
-    ADD CONSTRAINT "avatars_frame_reward_id_fkey" FOREIGN KEY ("frame_reward_id") REFERENCES "public"."rewards"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."avatars"
     ADD CONSTRAINT "avatars_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."user_profiles"
@@ -76,47 +68,127 @@ ALTER TABLE ONLY "public"."user_profiles"
 ALTER TABLE ONLY "public"."user_settings"
     ADD CONSTRAINT "user_settings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
-CREATE OR REPLACE FUNCTION "app_profile"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") RETURNS TABLE("success" boolean, "message" "text")
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  asset text;
-begin
-  if not exists (select 1 from public.rewards where id = p_reward_id) then
-    return query select false, 'reward_not_found';
-    return;
-  end if;
+CREATE OR REPLACE FUNCTION "public"."save_avatar_config"("p_user_id" "uuid", "p_config" "jsonb")
+  RETURNS TABLE("success" boolean, "message" "text")
+  LANGUAGE "plpgsql" SECURITY DEFINER
+  SET "search_path" TO 'public'
+AS $$
+DECLARE
+  hat_key       text;
+  clothes_key   text;
+  hair_key      text;
+  beard_key     text;
+  moustache_key text;
+  race_key      text := p_config->>'race';
+  bg_key        text := p_config->>'bg';
+  ears_key      text := p_config->>'ears';
+  eyes_key      text := p_config->>'eyeStyle';
+  nose_key      text := p_config->>'nose';
+  mouth_key     text := p_config->>'mouth';
+  brows_key     text;
+  invalid_items text[] := '{}';
+  locked_items  text[] := '{}';
+  r             RECORD;
+BEGIN
+  hat_key       := CASE WHEN p_config->>'hat'       IS NOT NULL THEN reverse(split_part(reverse(p_config->>'hat'),       '_', 1)) ELSE NULL END;
+  clothes_key   := CASE WHEN p_config->>'clothes'   IS NOT NULL THEN reverse(split_part(reverse(p_config->>'clothes'),   '_', 1)) ELSE NULL END;
+  hair_key      := CASE WHEN p_config->>'hair'      IS NOT NULL THEN reverse(split_part(reverse(p_config->>'hair'),      '_', 1)) ELSE NULL END;
+  beard_key     := CASE WHEN p_config->>'beard'     IS NOT NULL THEN reverse(split_part(reverse(p_config->>'beard'),     '_', 1)) ELSE NULL END;
+  moustache_key := CASE WHEN p_config->>'moustache' IS NOT NULL THEN reverse(split_part(reverse(p_config->>'moustache'), '_', 1)) ELSE NULL END;
+  brows_key     := CASE WHEN p_config->>'brows'     IS NOT NULL THEN regexp_replace(p_config->>'brows', '^[^_]+_', '') ELSE NULL END;
+  bg_key        := regexp_replace(COALESCE(p_config->>'bg', ''), '^light_', '');
 
-  if not exists (select 1 from public.user_rewards where user_id = p_user_id and reward_id = p_reward_id) then
-    return query select false, 'reward_not_unlocked';
-    return;
-  end if;
+  IF race_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'race' AND item_key = race_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'race:' || race_key);
+  END IF;
+  IF bg_key IS NOT NULL AND bg_key <> '' AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'bg' AND item_key = bg_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'bg:' || bg_key);
+  END IF;
+  IF ears_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'ears' AND item_key = ears_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'ears:' || ears_key);
+  END IF;
+  IF eyes_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'eyes' AND item_key = eyes_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'eyes:' || eyes_key);
+  END IF;
+  IF nose_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'nose' AND item_key = nose_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'nose:' || nose_key);
+  END IF;
+  IF mouth_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'mouth' AND item_key = mouth_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'mouth:' || mouth_key);
+  END IF;
+  IF brows_key IS NOT NULL AND brows_key <> '' AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'brows' AND item_key = brows_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'brows:' || brows_key);
+  END IF;
+  IF hat_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'hat' AND item_key = hat_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'hat:' || hat_key);
+  END IF;
+  IF clothes_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'clothes' AND item_key = clothes_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'clothes:' || clothes_key);
+  END IF;
+  IF hair_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'hair' AND item_key = hair_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'hair:' || hair_key);
+  END IF;
+  IF beard_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'beard' AND item_key = beard_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'beard:' || beard_key);
+  END IF;
+  IF moustache_key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.rewards WHERE item_type = 'moustache' AND item_key = moustache_key AND is_active = true) THEN
+    invalid_items := array_append(invalid_items, 'moustache:' || moustache_key);
+  END IF;
 
-  select asset_url into asset from public.rewards where id = p_reward_id;
+  IF array_length(invalid_items, 1) > 0 THEN
+    RETURN QUERY SELECT false, 'cosmetics_invalid:' || array_to_string(invalid_items, ',');
+    RETURN;
+  END IF;
 
-  insert into public.avatars (user_id, base_style, updated_at)
-  values (p_user_id, asset, now())
-  on conflict (user_id) do update set
-    base_style = excluded.base_style,
-    updated_at = now();
+  FOR r IN
+    SELECT item_type, item_key, achievement_id FROM public.rewards
+    WHERE is_active = true AND requires_unlock = true
+      AND ((item_type = 'hat' AND item_key = hat_key) OR (item_type = 'clothes' AND item_key = clothes_key) OR
+           (item_type = 'hair' AND item_key = hair_key) OR (item_type = 'beard' AND item_key = beard_key) OR
+           (item_type = 'moustache' AND item_key = moustache_key))
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM public.user_achievements ua WHERE ua.user_id = p_user_id AND ua.achievement_id = r.achievement_id AND ua.is_active = true) THEN
+      locked_items := array_append(locked_items, r.item_type || ':' || r.item_key);
+    END IF;
+  END LOOP;
 
-  return query select true, 'avatar_updated';
-end;
+  IF array_length(locked_items, 1) > 0 THEN
+    RETURN QUERY SELECT false, 'cosmetics_not_unlocked:' || array_to_string(locked_items, ',');
+    RETURN;
+  END IF;
+
+  INSERT INTO public.avatars (user_id, avatar_config, updated_at)
+  VALUES (p_user_id, p_config, now())
+  ON CONFLICT (user_id) DO UPDATE SET avatar_config = EXCLUDED.avatar_config, updated_at = now();
+
+  RETURN QUERY SELECT true, 'avatar_saved';
+END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") RETURNS TABLE("success" boolean, "message" "text")
-    LANGUAGE "sql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'app_profile'
-    AS $$
-  select * from app_profile.update_user_avatar(p_user_id, p_reward_id);
-$$;
+GRANT EXECUTE ON FUNCTION public.save_avatar_config(uuid, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.save_avatar_config(uuid, jsonb) TO service_role;
 
 ALTER TABLE "public"."avatars" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."user_profiles" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."user_settings" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "avatars_select_own" ON "public"."avatars" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "avatars_insert_own" ON "public"."avatars" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "avatars_update_own" ON "public"."avatars" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "user_profiles_select_authenticated" ON "public"."user_profiles" FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "user_profiles_update_own" ON "public"."user_profiles" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "user_settings_select_own" ON "public"."user_settings" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "user_settings_insert_own" ON "public"."user_settings" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "user_settings_update_own" ON "public"."user_settings" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 GRANT USAGE ON SCHEMA "app_profile" TO "service_role";
 

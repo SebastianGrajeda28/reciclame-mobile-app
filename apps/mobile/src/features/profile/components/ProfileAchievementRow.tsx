@@ -20,11 +20,7 @@ export function ProfileAchievementRow({ badge, onPress }: Readonly<ProfileAchiev
       <View style={styles.imageWrap}>
         {earned ? (
           <Image
-            source={
-              badge.imageUrl
-                ? { uri: badge.imageUrl }
-                : require('@/assets/images/badge-placeholder.png')
-            }
+            source={badge.image}
             style={styles.image}
             resizeMode="contain"
           />
@@ -38,7 +34,7 @@ export function ProfileAchievementRow({ badge, onPress }: Readonly<ProfileAchiev
           {earned ? badge.name : '???'}
         </AppText>
         <AppText variant="caption" muted style={styles.hint}>
-          {badge.hint}
+          {badge.description}
         </AppText>
       </View>
 

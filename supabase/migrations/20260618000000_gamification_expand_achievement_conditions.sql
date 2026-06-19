@@ -1,212 +1,8 @@
--- Progression, streaks, medals and rewards logic.
--- Includes progress state, reward ownership, progression functions and trigger-driven updates.
+-- Expand check_and_unlock_achievements with 16 new condition types:
+--   bin type, waste type, location diversity, social, and behavioral conditions.
+-- Also seeds 25 achievements and restores the PERFORM call in the progress trigger.
 
-CREATE TABLE IF NOT EXISTS "public"."user_achievements" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "achievement_id" "uuid" NOT NULL,
-    "unlocked_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone,
-    "is_active" boolean DEFAULT true NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS "public"."user_featured_medals" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "achievement_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
-    "updated_at" timestamp with time zone,
-    CONSTRAINT "max_featured_medals" CHECK (("array_length"("achievement_ids", 1) <= 5))
-);
-
-CREATE TABLE IF NOT EXISTS "public"."user_progress" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "points" integer DEFAULT 0 NOT NULL,
-    "streak_days" integer DEFAULT 0 NOT NULL,
-    "best_streak_days" integer DEFAULT 0 NOT NULL,
-    "heat" numeric,
-    "level" integer DEFAULT 1 NOT NULL,
-    "last_recycling_date" "date",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone,
-    "is_active" boolean DEFAULT true NOT NULL
-);
-
-ALTER TABLE "public"."user_achievements" OWNER TO "postgres";
-
-ALTER TABLE "public"."user_featured_medals" OWNER TO "postgres";
-
-ALTER TABLE "public"."user_progress" OWNER TO "postgres";
-
-ALTER TABLE ONLY "public"."user_achievements"
-    ADD CONSTRAINT "user_achievements_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."user_achievements"
-    ADD CONSTRAINT "user_achievements_user_id_achievement_id_key" UNIQUE ("user_id", "achievement_id");
-
-ALTER TABLE ONLY "public"."user_featured_medals"
-    ADD CONSTRAINT "user_featured_medals_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."user_featured_medals"
-    ADD CONSTRAINT "user_featured_medals_user_id_key" UNIQUE ("user_id");
-
-ALTER TABLE ONLY "public"."user_progress"
-    ADD CONSTRAINT "user_progress_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."user_progress"
-    ADD CONSTRAINT "user_progress_user_id_key" UNIQUE ("user_id");
-
-ALTER TABLE ONLY "public"."user_achievements"
-    ADD CONSTRAINT "user_achievements_achievement_id_fkey" FOREIGN KEY ("achievement_id") REFERENCES "public"."achievements"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."user_achievements"
-    ADD CONSTRAINT "user_achievements_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."user_featured_medals"
-    ADD CONSTRAINT "user_featured_medals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
-
-ALTER TABLE ONLY "public"."user_progress"
-    ADD CONSTRAINT "user_progress_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
-
-CREATE OR REPLACE FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) RETURNS TABLE("success" boolean, "message" "text")
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  invalid_ids uuid[];
-begin
-  if array_length(p_achievement_ids, 1) > 5 then
-    return query select false, 'max_featured_medals_exceeded';
-    return;
-  end if;
-
-  select array_agg(id)
-  into invalid_ids
-  from unnest(p_achievement_ids) as id
-  where not exists (
-    select 1 from public.user_achievements
-    where user_id = p_user_id and achievement_id = id
-  );
-
-  if invalid_ids is not null then
-    return query select false, 'invalid_or_unlocked_achievements';
-    return;
-  end if;
-
-  insert into public.user_featured_medals (user_id, achievement_ids, updated_at)
-  values (p_user_id, p_achievement_ids, now())
-  on conflict (user_id) do update set
-    achievement_ids = excluded.achievement_ids,
-    updated_at = now();
-
-  return query select true, 'featured_medals_updated';
-end;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."app_today"() RETURNS "date"
-    LANGUAGE "sql" STABLE
-    AS $$
-  SELECT (now() AT TIME ZONE 'America/Lima')::date;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."apply_daily_heat_decay"() RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-BEGIN
-  UPDATE public.user_progress
-  SET
-    heat        = CASE WHEN heat - 30 <= 0 THEN 50 ELSE heat - 30 END,
-    streak_days = CASE WHEN heat - 30 <= 0 THEN 0  ELSE streak_days END,
-    updated_at  = now()
-  WHERE
-    is_active = true
-    AND streak_days > 0
-    AND (last_recycling_date IS NULL OR last_recycling_date < public.app_today());
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."compute_streak_level"("p_streak_days" integer) RETURNS integer
-    LANGUAGE "plpgsql" IMMUTABLE
-    AS $$
-BEGIN
-  IF p_streak_days >= 189 THEN RETURN 7;
-  ELSIF p_streak_days >= 93  THEN RETURN 6;
-  ELSIF p_streak_days >= 45  THEN RETURN 5;
-  ELSIF p_streak_days >= 21  THEN RETURN 4;
-  ELSIF p_streak_days >= 9   THEN RETURN 3;
-  ELSIF p_streak_days >= 3   THEN RETURN 2;
-  ELSE RETURN 1;
-  END IF;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "heat" integer, "level" integer, "last_recycling_date" "date", "streak_expires_at" timestamp with time zone, "streak_just_expired" boolean)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  rec              public.user_progress%ROWTYPE;
-  days_missed      int := 0;
-  effective_heat   int;
-  effective_streak int;
-  just_expired     boolean := false;
-  today            date := public.app_today();
-  expires          timestamptz;
-BEGIN
-  SELECT * INTO rec
-  FROM public.user_progress
-  WHERE user_id = p_user_id AND is_active = true;
-
-  IF NOT FOUND THEN
-    RETURN QUERY SELECT 0, 0, 1, NULL::date, NULL::timestamptz, false;
-    RETURN;
-  END IF;
-
-  IF rec.last_recycling_date IS NOT NULL THEN
-    days_missed := GREATEST(0, (today - rec.last_recycling_date) - 1);
-  END IF;
-
-  effective_heat   := COALESCE(rec.heat, 50)::int;
-  effective_streak := COALESCE(rec.streak_days, 0);
-
-  IF effective_streak > 0 AND days_missed > 0
-     AND (rec.updated_at AT TIME ZONE 'America/Lima')::date < today THEN
-    effective_heat := effective_heat - (30 * days_missed);
-
-    IF effective_heat <= 0 THEN
-      effective_heat   := 50;
-      effective_streak := 0;
-      just_expired     := true;
-    END IF;
-
-    UPDATE public.user_progress
-    SET
-      heat        = effective_heat,
-      streak_days = effective_streak,
-      updated_at  = now()
-    WHERE user_id = p_user_id;
-  END IF;
-
-  IF effective_streak > 0 THEN
-    expires := ((today + CEIL(effective_heat / 30.0)::int)::timestamp)
-                 AT TIME ZONE 'America/Lima';
-  ELSE
-    expires := NULL;
-  END IF;
-
-  RETURN QUERY SELECT
-    effective_streak,
-    effective_heat,
-    COALESCE(rec.level, 1),
-    rec.last_recycling_date,
-    expires,
-    just_expired;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."check_and_unlock_achievements"("p_user_id" "uuid") RETURNS TABLE("achievement_id" "uuid", "achievement_name" "text", "achievement_slug" "text")
+CREATE OR REPLACE FUNCTION "public"."check_and_unlock_achievements"("p_user_id" "uuid") RETURNS TABLE("achievement_id" "uuid", "achievement_name" "text", "reward_id" "uuid")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -261,15 +57,12 @@ BEGIN
   SELECT COUNT(*) INTO manual_count FROM public.recycling_records WHERE user_id = p_user_id AND status = 'confirmed' AND detection_type = 'manual';
   SELECT COUNT(*) INTO friend_count FROM public.friendships WHERE (requester_id = p_user_id OR addressee_id = p_user_id) AND status = 'accepted' AND is_active = true;
 
-  -- Inline macro: insert + return newly unlocked for a given condition_type + threshold
-  -- (repeated per threshold to keep the logic readable and avoid dynamic SQL)
-
   IF recycling_count >= 1 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'first_recycling' AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'first_recycling' AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -278,7 +71,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'streak_days' AND condition_value = 7 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'streak_days' AND a.condition_value = 7 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -287,7 +80,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'streak_days' AND condition_value = 30 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'streak_days' AND a.condition_value = 30 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -296,7 +89,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'best_streak_days' AND condition_value = 7 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'best_streak_days' AND a.condition_value = 7 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -305,7 +98,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'best_streak_days' AND condition_value = 30 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'best_streak_days' AND a.condition_value = 30 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -314,7 +107,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'total_recycling_count' AND condition_value = 10 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'total_recycling_count' AND a.condition_value = 10 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -323,7 +116,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'total_recycling_count' AND condition_value = 100 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'total_recycling_count' AND a.condition_value = 100 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -332,7 +125,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'total_recycling_count' AND condition_value = 500 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'total_recycling_count' AND a.condition_value = 500 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -341,7 +134,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'unique_waste_types' AND condition_value = 5 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'unique_waste_types' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -350,7 +143,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_pilas_count' AND condition_value = 3 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_pilas_count' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -359,7 +152,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_raee_count' AND condition_value = 3 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_raee_count' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -368,7 +161,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_vidrio_count' AND condition_value = 5 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_vidrio_count' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -377,7 +170,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_paper_count' AND condition_value = 5 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_paper_count' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -386,7 +179,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_plastico_count' AND condition_value = 10 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_plastico_count' AND a.condition_value = 10 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -395,7 +188,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'unique_bin_types' AND condition_value = 4 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'unique_bin_types' AND a.condition_value = 4 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -404,7 +197,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'bin_type_plastico_count' AND condition_value = 10 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'bin_type_plastico_count' AND a.condition_value = 10 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -413,7 +206,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'bin_type_raee_count' AND condition_value = 3 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'bin_type_raee_count' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -422,7 +215,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'bin_type_pilas_count' AND condition_value = 1 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'bin_type_pilas_count' AND a.condition_value = 1 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -431,7 +224,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'unique_recycling_points' AND condition_value = 2 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'unique_recycling_points' AND a.condition_value = 2 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -440,7 +233,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'unique_recycling_points' AND condition_value = 3 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'unique_recycling_points' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -449,7 +242,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'recycling_point_biblioteca_count' AND condition_value = 5 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'recycling_point_biblioteca_count' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -458,7 +251,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_overridden_count' AND condition_value = 1 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_overridden_count' AND a.condition_value = 1 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -467,7 +260,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'manual_detection_count' AND condition_value = 5 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'manual_detection_count' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -476,7 +269,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'friend_count' AND condition_value = 1 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'friend_count' AND a.condition_value = 1 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -485,7 +278,7 @@ BEGIN
     SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'friend_count' AND condition_value = 3 AND is_active = true
       AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
-    RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
+    RETURN QUERY SELECT a.id, a.name, a.reward_id FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'friend_count' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
   END IF;
 
@@ -493,6 +286,7 @@ BEGIN
 END;
 $$;
 
+-- Restore PERFORM call dropped in 20260616231435
 CREATE OR REPLACE FUNCTION "public"."handle_post_segregation_progress"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -557,207 +351,36 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."heat_gain_for_level"("p_level" integer) RETURNS integer
-    LANGUAGE "plpgsql" IMMUTABLE
-    AS $$
-BEGIN
-  RETURN (p_level * (p_level + 1)) / 2;
-END;
-$$;
+GRANT ALL ON FUNCTION "public"."check_and_unlock_achievements"("p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."check_and_unlock_achievements"("p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_and_unlock_achievements"("p_user_id" "uuid") TO "service_role";
 
-CREATE OR REPLACE FUNCTION "public"."streak_level_checkpoint"("p_level" integer) RETURNS integer
-    LANGUAGE "plpgsql" IMMUTABLE
-    AS $$
-BEGIN
-  CASE p_level
-    WHEN 7 THEN RETURN 189;
-    WHEN 6 THEN RETURN 93;
-    WHEN 5 THEN RETURN 45;
-    WHEN 4 THEN RETURN 21;
-    WHEN 3 THEN RETURN 9;
-    WHEN 2 THEN RETURN 3;
-    ELSE        RETURN 0;
-  END CASE;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "best_streak_days" integer, "recycled_today" boolean, "total_today" integer, "daily_average" numeric, "week_days" "jsonb", "heat_map" "jsonb")
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  today         date := public.app_today();
-  week_start    date;
-  map_start     date;
-  v_streak      int;
-  v_best        int;
-  v_heat        int;
-  v_level       int;
-  v_last_date   date;
-  v_just_exp    boolean;
-BEGIN
-  SELECT sa.streak_days, sa.heat, sa.level, sa.last_recycling_date, sa.streak_just_expired
-  INTO v_streak, v_heat, v_level, v_last_date, v_just_exp
-  FROM public.get_progress_with_decay(p_user_id) sa;
-
-  IF v_streak IS NULL THEN v_streak := 0; END IF;
-
-  SELECT COALESCE(up.best_streak_days, 0)
-  INTO v_best
-  FROM public.user_progress up
-  WHERE up.user_id = p_user_id;
-
-  IF v_best IS NULL THEN v_best := 0; END IF;
-
-  week_start := today - EXTRACT(ISODOW FROM today)::int + 1;
-  map_start  := today - 27;
-
-  RETURN QUERY
-  WITH
-  daily_counts AS (
-    SELECT
-      (rr.created_at AT TIME ZONE 'America/Lima')::date AS rec_date,
-      COUNT(*)::int AS cnt
-    FROM public.recycling_records rr
-    WHERE rr.user_id = p_user_id
-      AND rr.is_active = true
-      AND (rr.created_at AT TIME ZONE 'America/Lima')::date >= map_start
-      AND (rr.created_at AT TIME ZONE 'America/Lima')::date <= today
-    GROUP BY rec_date
-  ),
-  day_series AS (
-    SELECT generate_series(map_start, today, '1 day'::interval)::date AS d
-  ),
-  full_map AS (
-    SELECT ds.d, COALESCE(dc.cnt, 0) AS cnt
-    FROM day_series ds
-    LEFT JOIN daily_counts dc ON dc.rec_date = ds.d
-  ),
-  week_series AS (
-    SELECT generate_series(week_start, week_start + 6, '1 day'::interval)::date AS wd
-  )
-  SELECT
-    v_streak::int,
-    v_best::int,
-    (COALESCE(v_last_date, '1900-01-01') >= today),
-    COALESCE((SELECT cnt FROM full_map WHERE d = today), 0)::int,
-    COALESCE(
-      (SELECT ROUND(AVG(cnt)::numeric, 1) FROM full_map WHERE cnt > 0),
-      0
-    )::numeric,
-    (
-      SELECT jsonb_agg(
-        jsonb_build_object(
-          'date',     to_char(ws.wd, 'YYYY-MM-DD'),
-          'recycled', EXISTS (SELECT 1 FROM daily_counts dc WHERE dc.rec_date = ws.wd)
-        )
-        ORDER BY ws.wd
-      )
-      FROM week_series ws
-    ),
-    (
-      SELECT jsonb_agg(
-        jsonb_build_object('date', to_char(fm.d, 'YYYY-MM-DD'), 'count', fm.cnt)
-        ORDER BY fm.d
-      )
-      FROM full_map fm
-    );
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) RETURNS TABLE("success" boolean, "message" "text")
-    LANGUAGE "sql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'app_gamification'
-    AS $$
-  select * from app_gamification.update_featured_medals(p_user_id, p_achievement_ids);
-$$;
-
-CREATE OR REPLACE TRIGGER "on_recycling_record_created" AFTER INSERT ON "public"."recycling_records" FOR EACH ROW EXECUTE FUNCTION "public"."handle_post_segregation_progress"();
-
-ALTER TABLE "public"."user_achievements" ENABLE ROW LEVEL SECURITY;
-
-ALTER TABLE "public"."user_progress" ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "user_achievements_select_own" ON "public"."user_achievements" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
-
-CREATE POLICY "user_progress_select_own" ON "public"."user_progress" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
-
-GRANT USAGE ON SCHEMA "app_gamification" TO "service_role";
-
-REVOKE ALL ON FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) FROM PUBLIC;
-
-GRANT ALL ON FUNCTION "app_gamification"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."apply_daily_heat_decay"() TO "anon";
-
-GRANT ALL ON FUNCTION "public"."apply_daily_heat_decay"() TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."apply_daily_heat_decay"() TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."compute_streak_level"("p_streak_days" integer) TO "anon";
-
-GRANT ALL ON FUNCTION "public"."compute_streak_level"("p_streak_days" integer) TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."compute_streak_level"("p_streak_days" integer) TO "service_role";
-
-GRANT EXECUTE ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "authenticated";
-
-GRANT EXECUTE ON FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."handle_post_segregation_progress"() TO "anon";
-
-GRANT ALL ON FUNCTION "public"."handle_post_segregation_progress"() TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."handle_post_segregation_progress"() TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "anon";
-
-GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."heat_gain_for_level"("p_level" integer) TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."streak_level_checkpoint"("p_level" integer) TO "anon";
-
-GRANT ALL ON FUNCTION "public"."streak_level_checkpoint"("p_level" integer) TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."streak_level_checkpoint"("p_level" integer) TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "anon";
-
-GRANT ALL ON FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) TO "service_role";
-
-GRANT ALL ON TABLE "public"."user_achievements" TO "anon";
-
-GRANT ALL ON TABLE "public"."user_achievements" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."user_achievements" TO "service_role";
-
-GRANT ALL ON TABLE "public"."user_featured_medals" TO "anon";
-
-GRANT ALL ON TABLE "public"."user_featured_medals" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."user_featured_medals" TO "service_role";
-
-GRANT ALL ON TABLE "public"."user_progress" TO "anon";
-
-GRANT ALL ON TABLE "public"."user_progress" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."user_progress" TO "service_role";
-
-GRANT ALL ON TABLE "public"."user_rewards" TO "anon";
-
-GRANT ALL ON TABLE "public"."user_rewards" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."user_rewards" TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."app_today"() TO "anon";
-
-GRANT ALL ON FUNCTION "public"."app_today"() TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."app_today"() TO "service_role";
-
-GRANT EXECUTE ON FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") TO "authenticated";
-
-GRANT EXECUTE ON FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") TO "service_role";
+-- Seed 25 achievements
+INSERT INTO public.achievements (name, description, condition_type, condition_value, is_active)
+VALUES
+  ('Primer paso',          'Completaste tu primer reciclaje exitoso.',                           'first_recycling',                    0,   true),
+  ('Semana verde',         'Reciclaste durante 7 días consecutivos.',                            'streak_days',                        7,   true),
+  ('Mes eco',              'Reciclaste durante 30 días consecutivos.',                           'streak_days',                        30,  true),
+  ('Decena',               'Reciclaste 10 artículos en total.',                                  'total_recycling_count',              10,  true),
+  ('Centurión',            'Reciclaste 100 artículos en total.',                                 'total_recycling_count',              100, true),
+  ('Leyenda',              'Reciclaste 500 artículos en total.',                                 'total_recycling_count',              500, true),
+  ('Cazador de pilas',     'Depositaste pilas en el contenedor correcto 3 veces.',               'waste_type_pilas_count',             3,   true),
+  ('Especialista RAEE',    'Depositaste residuos electrónicos (RAEE) 3 veces.',                  'waste_type_raee_count',              3,   true),
+  ('Vidriero',             'Reciclaste vidrio 5 veces.',                                         'waste_type_vidrio_count',            5,   true),
+  ('Papelero',             'Reciclaste papel o cartón 5 veces.',                                 'waste_type_paper_count',             5,   true),
+  ('Plástico cero',        'Reciclaste plásticos 10 veces.',                                     'waste_type_plastico_count',          10,  true),
+  ('Todo el espectro',     'Reciclaste al menos 5 tipos diferentes de residuos.',                'unique_waste_types',                 5,   true),
+  ('Polímero pro',         'Usaste el contenedor de plásticos 10 veces.',                        'bin_type_plastico_count',            10,  true),
+  ('El separador',         'Usaste al menos 4 tipos distintos de contenedores.',                 'unique_bin_types',                   4,   true),
+  ('Responsable',          'Depositaste correctamente un residuo peligroso.',                    'bin_type_pilas_count',               1,   true),
+  ('Ingeniero electrónico','Depositaste residuos en el contenedor RAEE 3 veces.',                'bin_type_raee_count',                3,   true),
+  ('Explorador',           'Reciclaste en al menos 2 puntos del campus.',                        'unique_recycling_points',            2,   true),
+  ('Nómade verde',         'Reciclaste en todos los puntos de reciclaje del campus.',            'unique_recycling_points',            3,   true),
+  ('Bibliófilo',           'Reciclaste 5 veces en la Biblioteca Central.',                       'recycling_point_biblioteca_count',   5,   true),
+  ('Racha perfecta',       'Alcanzaste una racha de 7 días en algún momento.',                   'best_streak_days',                   7,   true),
+  ('Constancia de hierro', 'Alcanzaste una racha de 30 días en algún momento.',                  'best_streak_days',                   30,  true),
+  ('Corrector',            'Corregiste la clasificación automática al menos una vez.',           'waste_type_overridden_count',        1,   true),
+  ('Meticuloso',           'Registraste 5 reciclajes en modo manual.',                           'manual_detection_count',             5,   true),
+  ('Amigo reciclador',     'Agregaste a tu primer amigo en la app.',                             'friend_count',                       1,   true),
+  ('Red verde',            'Tienes al menos 3 amigos en la app.',                                'friend_count',                       3,   true)
+ON CONFLICT DO NOTHING;
