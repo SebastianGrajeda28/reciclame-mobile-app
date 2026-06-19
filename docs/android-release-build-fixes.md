@@ -149,6 +149,35 @@ module.exports = function (api) {
 
 ---
 
+## Fix 6 — Metro resuelve `./index.js` desde la raíz del monorepo en lugar de `apps/mobile`
+
+**Error:**
+```
+Error: Unable to resolve module ./index.js from E:\a/.:
+None of these files exist:
+  * ..\..\index.js(.android.ts|.native.ts|.ts|...)
+  * ..\..\index.js
+> Task :app:createBundleReleaseJsAndAssets FAILED
+```
+
+**Causa:** `@expo/metro-config` setea `server.unstable_serverRoot` al resultado de `getMetroServerRoot(projectRoot)`, que en un monorepo devuelve la raíz del workspace (`E:\a`) en lugar de `apps/mobile`. Gradle pasa `--entry-file index.js` (relativo). Metro convierte ese path a `./index.js` y lo resuelve relativo a `unstable_serverRoot = E:\a`, buscando `E:\a\index.js`, que no existe.
+
+**Solución:** Sobreescribir `unstable_serverRoot` en `apps/mobile/metro.config.js` para apuntar al `projectRoot` real (`apps/mobile`):
+
+```js
+// apps/mobile/metro.config.js
+config.server = {
+  ...config.server,
+  unstable_serverRoot: projectRoot,
+};
+```
+
+Con esto, Metro resuelve `./index.js` relativo a `apps/mobile/index.js`, que sí existe y contiene `import 'expo-router/entry'`.
+
+> **Nota:** `unstable_serverRoot = workspaceRoot` lo setea Expo para soporte de proyectos web en monorepo. Al sobrescribirlo a `projectRoot` para builds Android no se pierde funcionalidad relevante para mobile.
+
+---
+
 ## Resultado final
 
 | Métrica | Valor |

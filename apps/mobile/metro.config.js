@@ -39,4 +39,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+// Expo sets unstable_serverRoot to the monorepo workspace root (E:\a) so that
+// Metro can serve web assets from the workspace root. For Android builds,
+// Gradle passes --entry-file index.js (relative), which Metro resolves relative
+// to unstable_serverRoot. Overriding it to projectRoot makes ./index.js resolve
+// to apps/mobile/index.js instead of E:\a\index.js (which doesn't exist).
+config.server = {
+  ...config.server,
+  unstable_serverRoot: projectRoot,
+};
+
 module.exports = config;
