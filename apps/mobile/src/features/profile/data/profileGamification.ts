@@ -1,12 +1,12 @@
 export type ProfileBadge = {
   id: string;
   name: string;
-  image: number; // static require() result — React Native image asset
-  hint: string; // Vague hint on how to unlock — intentionally ambiguous
-  userPercentage: number; // 0–100: % of users who have this badge
-  earnedAt?: string; // ISO date — undefined means locked
-  description: string; // Detailed description of the achievement
-  reward: string; // Reward associated with the achievement
+  image: number;
+  description: string | null;
+  unlockDescription: string | null;
+  userPercentage: number;
+  earnedAt: string | null;
+  reward: string | null;
 };
 
 export type ProfileStat = {
@@ -16,247 +16,39 @@ export type ProfileStat = {
   icon: 'scale' | 'recycle' | 'calendar' | 'award';
 };
 
-// TODO(profile): replace this snapshot with a real profile achievements/stats query
-// once the backend exposes streak, totals, and badge inventory for the signed-in user.
-export const profileGamificationSnapshot = {
-  currentStreakDays: 7,
-  nextStreakMilestoneDays: 10,
-  allBadges: [
-    {
-      id: 'primer-paso',
-      name: 'Primer paso',
-      image: require('@/assets/images/achievements/ach_Icons_19.png'),
-      hint: 'Todo gran camino empieza con un pequeño paso.',
-      userPercentage: 89,
-      earnedAt: '2024-01-15',
-      description: 'Completaste tu primer reciclaje exitoso.',
-      reward: 'Cosmético: Jubón',
-    },
-    {
-      id: 'semana-verde',
-      name: 'Semana verde',
-      image: require('@/assets/images/achievements/ach_Icons_30.png'),
-      hint: 'La constancia transforma hábitos en estilo de vida.',
-      userPercentage: 54,
-      earnedAt: '2024-02-03',
-      description: 'Reciclaste durante 7 días consecutivos.',
-      reward: 'Cosmético: Gorro Beanie',
-    },
-    {
-      id: 'mes-eco',
-      name: 'Mes eco',
-      image: require('@/assets/images/achievements/ach_Icons_20.png'),
-      hint: 'Un mes entero sin romper la cadena.',
-      userPercentage: 12,
-      description: 'Reciclaste durante 30 días consecutivos.',
-      reward: 'Cosmético: Túnica',
-    },
-    {
-      id: 'decena',
-      name: 'Decena',
-      image: require('@/assets/images/achievements/ach_Icons_13.png'),
-      hint: 'El primer dígito doble lo cambia todo.',
-      userPercentage: 67,
-      earnedAt: '2024-01-20',
-      description: 'Reciclaste 10 artículos en total.',
-      reward: 'Cosmético: Gorro Trampero',
-    },
-    {
-      id: 'centurion',
-      name: 'Centurión',
-      image: require('@/assets/images/achievements/ach_Icons_16.png'),
-      hint: 'Hay un número redondo que pocos alcanzan.',
-      userPercentage: 14,
-      description: 'Reciclaste 100 artículos en total.',
-      reward: 'Cosmético: Sombrero de Copa',
-    },
-    {
-      id: 'leyenda',
-      name: 'Leyenda',
-      image: require('@/assets/images/achievements/ach_Icons_18.png'),
-      hint: 'Solo los que van más allá conocen este camino.',
-      userPercentage: 3,
-      description: 'Reciclaste 500 artículos en total.',
-      reward: 'Cosmético: Casco Guerrero',
-    },
-    {
-      id: 'cazador-pilas',
-      name: 'Cazador de pilas',
-      image: require('@/assets/images/achievements/desert_Icons_05.png'),
-      hint: 'Hay un residuo peligroso que muy pocos traen.',
-      userPercentage: 28,
-      description: 'Depositaste pilas en el contenedor correcto 3 veces.',
-      reward: 'Cosmético: Gorro Ingeniero',
-    },
-    {
-      id: 'especialista-raee',
-      name: 'Especialista RAEE',
-      image: require('@/assets/images/achievements/ach_Icons_34.png'),
-      hint: 'Los residuos eléctricos necesitan manos expertas.',
-      userPercentage: 19,
-      description: 'Depositaste residuos electrónicos (RAEE) 3 veces.',
-      reward: 'Cosmético: Casco Soldado',
-    },
-    {
-      id: 'vidriero',
-      name: 'Vidriero',
-      image: require('@/assets/images/achievements/desert_Icons_07.png'),
-      hint: 'El vidrio nunca miente sobre quién lo separó bien.',
-      userPercentage: 33,
-      description: 'Reciclaste vidrio 5 veces.',
-      reward: 'Cosmético: Capucha',
-    },
-    {
-      id: 'papelero',
-      name: 'Papelero',
-      image: require('@/assets/images/achievements/desert_Icons_20.png'),
-      hint: 'Papel y cartón tienen más vida de la que parece.',
-      userPercentage: 41,
-      description: 'Reciclaste papel o cartón 5 veces.',
-      reward: 'Cosmético: Barba Clásica',
-    },
-    {
-      id: 'plastico-cero',
-      name: 'Plástico cero',
-      image: require('@/assets/images/achievements/desert_Icons_21.png'),
-      hint: 'Un tipo de material domina más que los demás.',
-      userPercentage: 22,
-      description: 'Reciclaste plásticos 10 veces.',
-      reward: 'Cosmético: Peto',
-    },
-    {
-      id: 'todo-espectro',
-      name: 'Todo el espectro',
-      image: require('@/assets/images/achievements/ach_Icons_37.png'),
-      hint: 'La variedad es la esencia del reciclaje completo.',
-      userPercentage: 17,
-      description: 'Reciclaste al menos 5 tipos diferentes de residuos.',
-      reward: 'Cosmético: Sombrero Cowboy',
-    },
-    {
-      id: 'polimero-pro',
-      name: 'Polímero pro',
-      image: require('@/assets/images/achievements/ach_Icons_38.png'),
-      hint: 'Hay una familia de materiales que dominas.',
-      userPercentage: 25,
-      description: 'Usaste el contenedor de plásticos 10 veces.',
-      reward: 'Cosmético: Chaleco',
-    },
-    {
-      id: 'el-separador',
-      name: 'El separador',
-      image: require('@/assets/images/achievements/ach_Icons_39.png'),
-      hint: 'Conoces el color de cada contenedor.',
-      userPercentage: 15,
-      description: 'Usaste al menos 4 tipos distintos de contenedores.',
-      reward: 'Cosmético: Casco Caballero',
-    },
-    {
-      id: 'residuos-peligrosos',
-      name: 'Responsable',
-      image: require('@/assets/images/achievements/desert_Icons_40.png'),
-      hint: 'Algunos residuos requieren más cuidado que otros.',
-      userPercentage: 36,
-      description: 'Depositaste correctamente un residuo peligroso (pilas o RAEE).',
-      reward: 'Cosmético: Barba Vikinga',
-    },
-    {
-      id: 'ingeniero-electronico',
-      name: 'Ingeniero electrónico',
-      image: require('@/assets/images/achievements/ach_Icons_36.png'),
-      hint: 'La tecnología también tiene un ciclo de vida.',
-      userPercentage: 11,
-      description: 'Depositaste residuos electrónicos en el contenedor RAEE 3 veces.',
-      reward: 'Cosmético: Barba Horquilla',
-    },
-    {
-      id: 'explorador',
-      name: 'Explorador',
-      image: require('@/assets/images/achievements/ach_Icons_29.png'),
-      hint: 'El campus esconde más de un punto verde.',
-      userPercentage: 44,
-      description: 'Reciclaste en al menos 2 puntos del campus.',
-      reward: 'Cosmético: Gorro Explorador',
-    },
-    {
-      id: 'nomade-verde',
-      name: 'Nómade verde',
-      image: require('@/assets/images/achievements/ach_Icons_54.png'),
-      hint: 'Conoces cada rincón verde del campus.',
-      userPercentage: 21,
-      description: 'Reciclaste en todos los puntos de reciclaje del campus.',
-      reward: 'Cosmético: Armadura Bruta',
-    },
-    {
-      id: 'bibliofilo',
-      name: 'Bibliófilo',
-      image: require('@/assets/images/achievements/desert_Icons_09.png'),
-      hint: 'Un lugar específico te conoce mejor que nadie.',
-      userPercentage: 38,
-      description: 'Reciclaste 5 veces en la Biblioteca Central.',
-      reward: 'Cosmético: Fedora',
-    },
-    {
-      id: 'racha-perfecta',
-      name: 'Racha perfecta',
-      image: require('@/assets/images/achievements/ach_Icons_25.png'),
-      hint: 'El pasado también cuenta.',
-      userPercentage: 48,
-      description: 'Alcanzaste una racha de 7 días en algún momento.',
-      reward: 'Cosmético: Bigote Cowboy',
-    },
-    {
-      id: 'constancia-hierro',
-      name: 'Constancia de hierro',
-      image: require('@/assets/images/achievements/ach_Icons_28.png'),
-      hint: 'Tu mejor versión dejó huella.',
-      userPercentage: 9,
-      description: 'Alcanzaste una racha de 30 días en algún momento.',
-      reward: 'Cosmético: Barba Leñador',
-    },
-    {
-      id: 'corrector',
-      name: 'Corrector',
-      image: require('@/assets/images/achievements/ach_Icons_31.png'),
-      hint: 'La IA no siempre tiene la última palabra.',
-      userPercentage: 31,
-      description: 'Corregiste la clasificación automática al menos una vez.',
-      reward: 'Cosmético: Bigote Herradura',
-    },
-    {
-      id: 'meticuloso',
-      name: 'Meticuloso',
-      image: require('@/assets/images/achievements/ach_Icons_35.png'),
-      hint: 'Prefieres clasificar tú mismo.',
-      userPercentage: 16,
-      description: 'Registraste 5 reciclajes en modo manual.',
-      reward: 'Cosmético: Barba Chamán',
-    },
-    {
-      id: 'amigo-reciclador',
-      name: 'Amigo reciclador',
-      image: require('@/assets/images/achievements/ach_Icons_48.png'),
-      hint: 'El reciclaje es mejor en compañía.',
-      userPercentage: 52,
-      description: 'Agregaste a tu primer amigo en la app.',
-      reward: 'Cosmético: Bigote Húngaro',
-    },
-    {
-      id: 'red-verde',
-      name: 'Red verde',
-      image: require('@/assets/images/achievements/ach_Icons_50.png'),
-      hint: 'Has construido una comunidad eco.',
-      userPercentage: 23,
-      description: 'Tienes al menos 3 amigos en la app.',
-      reward: 'Cosmético: Barba Garibaldi',
-    },
-  ] satisfies ProfileBadge[],
-  featuredBadgeIds: ['primer-paso', 'semana-verde', 'decena', 'explorador', 'amigo-reciclador'],
-  // TODO(profile): replace these totals with user-specific aggregates from the recycling history.
-  stats: [
-    { id: 'weight', value: '15.2 kg', label: 'Peso total', icon: 'scale' },
-    { id: 'items', value: '124', label: 'Articulos reciclados', icon: 'recycle' },
-    { id: 'active-since', value: '6 meses', label: 'Activo desde', icon: 'calendar' },
-    { id: 'badges', value: '8', label: 'Insignias ganadas', icon: 'award' },
-  ] satisfies ProfileStat[],
+type BadgeStaticData = {
+  image: number;
+  userPercentage: number;
 };
+
+export const BADGE_STATIC_DATA: Record<string, BadgeStaticData> = {
+  'primer-paso':           { image: require('@/assets/images/achievements/ach_Icons_19.png'),   userPercentage: 89 },
+  'semana-verde':          { image: require('@/assets/images/achievements/ach_Icons_30.png'),   userPercentage: 54 },
+  'mes-eco':               { image: require('@/assets/images/achievements/ach_Icons_20.png'),   userPercentage: 12 },
+  'decena':                { image: require('@/assets/images/achievements/ach_Icons_13.png'),   userPercentage: 67 },
+  'centurion':             { image: require('@/assets/images/achievements/ach_Icons_16.png'),   userPercentage: 14 },
+  'leyenda':               { image: require('@/assets/images/achievements/ach_Icons_18.png'),   userPercentage: 3  },
+  'cazador-pilas':         { image: require('@/assets/images/achievements/desert_Icons_05.png'), userPercentage: 28 },
+  'especialista-raee':     { image: require('@/assets/images/achievements/ach_Icons_34.png'),   userPercentage: 19 },
+  'vidriero':              { image: require('@/assets/images/achievements/desert_Icons_07.png'), userPercentage: 33 },
+  'papelero':              { image: require('@/assets/images/achievements/desert_Icons_20.png'), userPercentage: 41 },
+  'plastico-cero':         { image: require('@/assets/images/achievements/desert_Icons_21.png'), userPercentage: 22 },
+  'todo-espectro':         { image: require('@/assets/images/achievements/ach_Icons_37.png'),   userPercentage: 17 },
+  'polimero-pro':          { image: require('@/assets/images/achievements/ach_Icons_38.png'),   userPercentage: 25 },
+  'el-separador':          { image: require('@/assets/images/achievements/ach_Icons_39.png'),   userPercentage: 15 },
+  'residuos-peligrosos':   { image: require('@/assets/images/achievements/desert_Icons_40.png'), userPercentage: 36 },
+  'ingeniero-electronico': { image: require('@/assets/images/achievements/ach_Icons_36.png'),   userPercentage: 11 },
+  'explorador':            { image: require('@/assets/images/achievements/ach_Icons_29.png'),   userPercentage: 44 },
+  'nomade-verde':          { image: require('@/assets/images/achievements/ach_Icons_54.png'),   userPercentage: 21 },
+  'bibliofilo':            { image: require('@/assets/images/achievements/desert_Icons_09.png'), userPercentage: 38 },
+  'racha-perfecta':        { image: require('@/assets/images/achievements/ach_Icons_25.png'),   userPercentage: 48 },
+  'constancia-hierro':     { image: require('@/assets/images/achievements/ach_Icons_28.png'),   userPercentage: 9  },
+  'corrector':             { image: require('@/assets/images/achievements/ach_Icons_31.png'),   userPercentage: 31 },
+  'meticuloso':            { image: require('@/assets/images/achievements/ach_Icons_35.png'),   userPercentage: 16 },
+  'amigo-reciclador':      { image: require('@/assets/images/achievements/ach_Icons_48.png'),   userPercentage: 52 },
+  'red-verde':             { image: require('@/assets/images/achievements/ach_Icons_50.png'),   userPercentage: 23 },
+};
+
+export const FEATURED_BADGE_SLUG_FALLBACK = [
+  'primer-paso', 'semana-verde', 'decena', 'explorador', 'amigo-reciclador',
+];

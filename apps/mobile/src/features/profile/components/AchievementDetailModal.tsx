@@ -66,7 +66,7 @@ export function AchievementDetailModal({ visible, badge, onClose }: AchievementD
               Pista
             </AppText>
             <AppText variant="caption" muted style={styles.hint}>
-              {badge.hint}
+              {badge.description}
             </AppText>
           </View>
 

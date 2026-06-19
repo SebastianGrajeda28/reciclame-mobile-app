@@ -4,7 +4,9 @@
 CREATE TABLE IF NOT EXISTS "public"."achievements" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
+    "slug" "text",
     "description" "text",
+    "unlock_description" "text",
     "condition_type" "text",
     "condition_value" integer,
     "reward_id" "uuid",
@@ -90,6 +92,9 @@ ALTER TABLE "public"."waste_types" OWNER TO "postgres";
 
 ALTER TABLE ONLY "public"."achievements"
     ADD CONSTRAINT "achievements_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."achievements"
+    ADD CONSTRAINT "achievements_slug_key" UNIQUE ("slug");
 
 ALTER TABLE ONLY "public"."bin_types"
     ADD CONSTRAINT "bin_types_pkey" PRIMARY KEY ("id");

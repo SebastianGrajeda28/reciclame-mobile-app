@@ -2,67 +2,67 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
-import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
+import { BADGE_STATIC_DATA } from '@/src/features/profile/data/profileGamification';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 type AchievementRewardScreenProps = {
   badgeId: string;
+  badgeName?: string;
+  badgeReward?: string;
+  badgeDescription?: string;
 };
 
-export function AchievementRewardScreen({ badgeId }: AchievementRewardScreenProps) {
+export function AchievementRewardScreen({
+  badgeId,
+  badgeName,
+  badgeReward,
+  badgeDescription,
+}: AchievementRewardScreenProps) {
   const [animate, setAnimate] = useState(false);
-  const badge = profileGamificationSnapshot.allBadges.find(b => b.id === badgeId);
+  const staticData = BADGE_STATIC_DATA[badgeId];
 
   useEffect(() => {
+    if (!staticData) {
+      router.replace('/recycle/success');
+      return;
+    }
     const timer = setTimeout(() => setAnimate(true), 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [staticData]);
 
-  useEffect(() => {
-    if (!badge) {
-      router.replace('/recycle/success');
-    }
-  }, [badge]);
-
-  if (!badge) {
-    return null;
-  }
-
-  const handleContinue = () => {
-    router.replace('/recycle/success');
-  };
+  if (!staticData) return null;
 
   return (
     <AppScreen padded centered style={styles.root}>
       <View style={[styles.iconWrap, animate && styles.iconWrapAnimated]}>
         <View style={styles.iconCircle}>
-          <Image
-            source={badge.image}
-            style={styles.image}
-            resizeMode="contain"
-          />
+          <Image source={staticData.image} style={styles.image} resizeMode="contain" />
         </View>
       </View>
 
       <AppText style={styles.title}>¡Logro desbloqueado!</AppText>
 
-      <AppText style={styles.name}>{badge.name}</AppText>
+      {badgeName ? <AppText style={styles.name}>{badgeName}</AppText> : null}
 
-      <View style={styles.rewardCard}>
-        <AppText variant="caption" muted style={styles.rewardLabel}>
-          Recompensa
-        </AppText>
-        <AppText variant="h3" style={styles.rewardText}>
-          {badge.reward}
-        </AppText>
-      </View>
+      {badgeReward ? (
+        <View style={styles.rewardCard}>
+          <AppText variant="caption" muted style={styles.rewardLabel}>
+            Recompensa
+          </AppText>
+          <AppText variant="h3" style={styles.rewardText}>
+            {badgeReward}
+          </AppText>
+        </View>
+      ) : null}
 
-      <AppText variant="body" style={styles.description}>
-        {badge.description}
-      </AppText>
+      {badgeDescription ? (
+        <AppText variant="body" style={styles.description}>
+          {badgeDescription}
+        </AppText>
+      ) : null}
 
       <View style={styles.actions}>
-        <AppButton label="Continuar" onPress={handleContinue} />
+        <AppButton label="Continuar" onPress={() => router.replace('/recycle/success')} />
       </View>
     </AppScreen>
   );

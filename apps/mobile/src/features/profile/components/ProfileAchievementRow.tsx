@@ -34,7 +34,7 @@ export function ProfileAchievementRow({ badge, onPress }: Readonly<ProfileAchiev
           {earned ? badge.name : '???'}
         </AppText>
         <AppText variant="caption" muted style={styles.hint}>
-          {badge.hint}
+          {badge.description}
         </AppText>
       </View>
 
