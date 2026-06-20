@@ -25,3 +25,12 @@ export type FriendMedal = {
   description?: string | null;
   imageUrl?: string | null;
 };
+
+export type FriendRequest = {
+  id: string;
+  requesterId: string;
+  name: string;
+  avatarConfig?: Record<string, unknown> | null;
+  featuredMedals: FriendMedal[];
+  createdAt: string;
+};

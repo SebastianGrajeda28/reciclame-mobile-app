@@ -119,7 +119,7 @@ export function AddFriend() {
                 </AppText>
               ) : addSuccess ? (
                 <AppText variant="caption" style={styles.successText}>
-                  ¡Amigo agregado!
+                  ¡Solicitud enviada!
                 </AppText>
               ) : null}
             </View>

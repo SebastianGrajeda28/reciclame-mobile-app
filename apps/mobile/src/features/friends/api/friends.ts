@@ -1,5 +1,5 @@
 import { supabase } from '@/src/services/supabase/client';
-import type { FriendMedal, FriendSummary } from '@/src/types/friend';
+import type { FriendMedal, FriendRequest, FriendSummary } from '@/src/types/friend';
 
 type FriendMedalRow = {
   id: string;
@@ -89,6 +89,60 @@ export async function addFriendByCode(code: string): Promise<AddFriendResult> {
   }
   const row = data as { friendship_id: string; friend_id: string; created: boolean };
   return { friendshipId: row.friendship_id, friendId: row.friend_id, created: row.created };
+}
+
+type FriendRequestRow = {
+  friendship_id: string;
+  requester_id: string;
+  name: string;
+  avatar_config: Record<string, unknown> | null;
+  featured_medals: FriendMedalRow[] | null;
+  created_at: string;
+};
+
+function mapFriendRequest(row: FriendRequestRow): FriendRequest {
+  return {
+    id: row.friendship_id,
+    requesterId: row.requester_id,
+    name: row.name,
+    avatarConfig: row.avatar_config ?? null,
+    featuredMedals: (row.featured_medals ?? []).map(mapFriendMedal),
+    createdAt: row.created_at,
+  };
+}
+
+export async function getPendingRequests(): Promise<FriendRequest[]> {
+  const { data, error } = await supabase.rpc('get_pending_friend_requests');
+  if (error) {
+    throw new Error(`No se pudieron obtener las solicitudes: ${error.message}`);
+  }
+  return (data ?? []).map(mapFriendRequest);
+}
+
+export type RespondResult = { friendshipId: string; action: 'accept' | 'decline' };
+
+const RESPOND_ERRORS: Record<string, string> = {
+  unauthenticated: 'Debes iniciar sesión para responder solicitudes.',
+  'invalid action': 'Acción no válida.',
+  'request not found or already responded': 'La solicitud ya fue respondida o no existe.',
+};
+
+export async function respondToRequest(
+  friendshipId: string,
+  action: 'accept' | 'decline',
+): Promise<RespondResult> {
+  const { data, error } = await supabase.rpc('respond_to_friend_request', {
+    p_friendship_id: friendshipId,
+    p_action: action,
+  });
+  if (error) {
+    throw new Error(RESPOND_ERRORS[error.message] ?? `No se pudo responder la solicitud: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error('No se pudo responder la solicitud.');
+  }
+  const row = data as { friendship_id: string; action: string };
+  return { friendshipId: row.friendship_id, action: row.action as 'accept' | 'decline' };
 }
 
 export async function getFriends(userId: string): Promise<FriendSummary[]> {
