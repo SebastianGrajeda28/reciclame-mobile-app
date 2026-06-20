@@ -77,6 +77,9 @@ const ADD_FRIEND_ERRORS: Record<string, string> = {
   'friend code not found': 'No encontramos ningún usuario con ese código.',
   'cannot add yourself': 'No puedes agregarte a ti mismo.',
   unauthenticated: 'Debes iniciar sesión para agregar amigos.',
+  'friend request already pending': 'Ya tienes una solicitud pendiente con este usuario.',
+  'already friends': 'Ya son amigos.',
+  'user blocked': 'No puedes enviar una solicitud a este usuario.',
 };
 
 export async function addFriendByCode(code: string): Promise<AddFriendResult> {

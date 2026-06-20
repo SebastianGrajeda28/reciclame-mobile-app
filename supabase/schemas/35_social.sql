@@ -207,6 +207,7 @@ declare
   v_code text := nullif(btrim(p_code), '');
   v_friend_id uuid;
   v_friendship_id uuid;
+  v_existing_status text;
   v_created boolean := false;
 begin
   if v_uid is null then raise exception 'unauthenticated'; end if;
@@ -226,10 +227,27 @@ begin
     returning id into v_friendship_id;
     v_created := true;
   exception when unique_violation then
-    select id into v_friendship_id
+    select id, status into v_friendship_id, v_existing_status
     from public.friendships
     where user_low = least(v_uid, v_friend_id) and user_high = greatest(v_uid, v_friend_id)
     limit 1;
+
+    if v_existing_status = 'declined' then
+      update public.friendships
+      set status = 'pending',
+          requester_id = v_uid,
+          addressee_id = v_friend_id,
+          responded_at = null,
+          updated_at = now()
+      where id = v_friendship_id;
+      v_created := true;
+    elsif v_existing_status = 'pending' then
+      raise exception 'friend request already pending';
+    elsif v_existing_status = 'accepted' then
+      raise exception 'already friends';
+    elsif v_existing_status = 'blocked' then
+      raise exception 'user blocked';
+    end if;
   end;
 
   return jsonb_build_object('friendship_id', v_friendship_id, 'friend_id', v_friend_id, 'created', v_created);
