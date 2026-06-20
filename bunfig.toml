@@ -1,4 +1,5 @@
 [test]
 preload = ["./tests/bun-setup.ts"]
 [install]
-nodeLinker = "hoisted"
+linker = "hoisted"
+backend = "copyfile"

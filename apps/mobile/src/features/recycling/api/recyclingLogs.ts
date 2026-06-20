@@ -104,14 +104,6 @@ export async function confirmSegregation(input: RecyclingLogInput): Promise<Stre
 }
 
 export async function getRecyclingLogs(userId: string): Promise<RecyclingLogListItem[]> {
-  const { data, error } = await supabase
-    .from('recycling_records')
-    .select(
-      'id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)',
-    )
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-export async function getRecyclingLogs(userId: string): Promise<RecyclingLogListItem[]> {
   console.log(`[HISTORY] Cargando historial para userId=${userId}...`);
   try {
     const { data, error } = await supabase
