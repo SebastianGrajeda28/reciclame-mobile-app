@@ -11,13 +11,14 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { useStudentLocation } from '@/src/hooks/useStudentLocation';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
 import { checkUnlockedAchievements } from '@/src/services/achievements';
+import { findClosestContainerWithBinType } from '@/src/services/closestRecyclingPoint';
 import { verifyLocationProximity } from '@/src/services/locationVerification';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import { createRecyclingLog } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
-  const { state, clearSelectedContainer, markStep, markConfirmed } = useRecycleFlow();
+  const { state, clearSelectedContainer, markStep, markConfirmed, setSelectedContainerId } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType } = useResolvedBinType(
     state.finalWasteTypeId,
@@ -107,6 +108,49 @@ export function InstructionsScreen() {
       return;
     }
 
+    // Check if selected container has the required bin type
+    if (resolvedBinType && !selectedContainer.availableBinTypeIds.includes(resolvedBinType.id)) {
+      const nearestContainer = findClosestContainerWithBinType(
+        studentLocation.latitude,
+        studentLocation.longitude,
+        resolvedBinType.id,
+        selectedContainer.id,
+      );
+
+      const buttons = [
+        nearestContainer ? {
+          text: 'Seleccionar punto cercano',
+          onPress: () => {
+            setSelectedContainerId(nearestContainer!.id);
+          },
+          style: 'default' as const,
+        } : null,
+        {
+          text: 'Continuar sin punto',
+          onPress: () => {
+            clearSelectedContainer();
+            setSubmitting(true);
+            proceedWithRegistration();
+          },
+          style: 'destructive' as const,
+        },
+        {
+          text: 'Cancelar',
+          onPress: () => {
+            // Cancel the action
+          },
+          style: 'cancel' as const,
+        },
+      ].filter((button): button is NonNullable<typeof button> => button !== null);
+
+      Alert.alert(
+        'Contenedor no disponible',
+        `El punto de reciclaje seleccionado no tiene el contenedor requerido para este tipo de residuo. ${nearestContainer ? `El punto más cercano con el contenedor adecuado es "${nearestContainer.name}".` : ''}`,
+        buttons,
+      );
+      return;
+    }
+
     // Verify location proximity if enabled
     if (settings?.locationVerificationEnabled) {
       const isWithinRange = verifyLocationProximity(
@@ -152,7 +196,7 @@ export function InstructionsScreen() {
 
     setSubmitting(true);
     proceedWithRegistration();
-  }, [finalWasteType, selectedContainer, session, settings, studentLocation, proceedWithRegistration, notify]);
+  }, [finalWasteType, selectedContainer, session, settings, studentLocation, proceedWithRegistration, notify, resolvedBinType, setSelectedContainerId, clearSelectedContainer]);
 
   useEffect(() => {
     if (
