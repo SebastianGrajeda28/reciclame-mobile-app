@@ -380,6 +380,7 @@ export function LoginScreen({ onContinueOffline }: LoginScreenProps) {
         return;
       }
 
+      console.error('Google sign-in failed:', err);
       setState('error');
     }
   };

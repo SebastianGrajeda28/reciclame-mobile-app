@@ -1,6 +1,11 @@
 import { Session } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+import {
+  createSessionFromUrl,
+  isOAuthRedirectUrl,
+} from '@/src/features/auth/services/googleAuth';
 import { supabase } from '@/src/services/supabase/client';
 
 type AuthContextType = {
@@ -45,6 +50,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Handle OAuth deep links when Android cold-starts the app after Google sign-in.
+  useEffect(() => {
+    const handleDeepLink = async (url: string) => {
+      if (!isOAuthRedirectUrl(url)) return;
+      try {
+        await createSessionFromUrl(url);
+      } catch (error) {
+        console.error('Error processing OAuth redirect:', error);
+      }
+    };
+
+    void Linking.getInitialURL().then((url) => {
+      if (url) void handleDeepLink(url);
+    });
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      void handleDeepLink(url);
+    });
+
+    return () => subscription.remove();
   }, []);
 
   /**
