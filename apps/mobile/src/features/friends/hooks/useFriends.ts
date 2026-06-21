@@ -57,12 +57,15 @@ export function useFriends(userId: string | null): {
     load('initial');
   }, [load]);
 
+  const refetch = useCallback(() => load('initial'), [load]);
+  const refresh = useCallback(() => load('refresh'), [load]);
+
   return {
     data,
     loading,
     refreshing,
     error,
-    refetch: () => load('initial'),
-    refresh: () => load('refresh'),
+    refetch,
+    refresh,
   };
 }
