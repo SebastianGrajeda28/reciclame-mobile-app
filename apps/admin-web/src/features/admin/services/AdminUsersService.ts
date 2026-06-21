@@ -43,6 +43,15 @@ type GetUsersListResponse = {
   items: UserListRow[];
 };
 
+type UserRoleRow = {
+  id: string;
+  user_id: string;
+  role_id: string;
+  is_active: boolean;
+  updated_at: string | null;
+  roles: { name: string } | { name: string }[] | null;
+};
+
 function mapUserRow(row: UserListRow): AppUser {
   return {
     id: row.id,
@@ -55,6 +64,17 @@ function mapUserRow(row: UserListRow): AppUser {
     roleId: row.roleId ?? null,
     roleName: row.roleName ?? null,
     userRoleAssignmentId: row.userRoleAssignmentId ?? null,
+  };
+}
+
+function mapUserRoleRow(row: UserRoleRow): UserRoleAssignment {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    roleId: row.role_id,
+    roleName: Array.isArray(row.roles) ? row.roles[0]?.name ?? "" : row.roles?.name ?? "",
+    isActive: row.is_active,
+    updatedAt: row.updated_at ?? null,
   };
 }
 
@@ -127,14 +147,7 @@ export async function getUserRoleAssignments(userId?: string): Promise<UserRoleA
   const { data, error } = await query;
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row: any) => ({
-    id: row.id,
-    userId: row.user_id,
-    roleId: row.role_id,
-    roleName: Array.isArray(row.roles) ? row.roles[0]?.name ?? "" : row.roles?.name ?? "",
-    isActive: row.is_active,
-    updatedAt: row.updated_at ?? null,
-  }));
+  return (data ?? []).map((row) => mapUserRoleRow(row as UserRoleRow));
 }
 
 export async function assignUserRole(userId: string, roleId: string): Promise<UserRoleAssignment> {
@@ -148,15 +161,7 @@ export async function assignUserRole(userId: string, roleId: string): Promise<Us
     .single();
 
   if (error) throw new Error(error.message);
-  const row = data as any;
-  return {
-    id: row.id,
-    userId: row.user_id,
-    roleId: row.role_id,
-    roleName: Array.isArray(row.roles) ? row.roles[0]?.name ?? "" : row.roles?.name ?? "",
-    isActive: row.is_active,
-    updatedAt: row.updated_at ?? null,
-  };
+  return mapUserRoleRow(data as UserRoleRow);
 }
 
 export async function deactivateUserRole(assignmentId: string): Promise<void> {
