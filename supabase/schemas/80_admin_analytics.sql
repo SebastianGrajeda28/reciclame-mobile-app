@@ -278,7 +278,15 @@ end;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "app_analytics"."get_users_list"() RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "app_analytics"."get_users_list"(
+  p_limit int DEFAULT 10,
+  p_offset int DEFAULT 0,
+  p_is_active boolean DEFAULT NULL,
+  p_role_filter text DEFAULT 'all',
+  p_search text DEFAULT NULL,
+  p_sort_by text DEFAULT 'createdAt',
+  p_sort_dir text DEFAULT 'desc'
+) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
     AS $$
@@ -286,6 +294,10 @@ declare
   v_uid uuid := auth.uid();
   v_is_admin boolean;
   v_result jsonb;
+  v_total int;
+  v_sort_column text;
+  v_sort_dir text;
+  v_query text;
 begin
   if v_uid is null then
     raise exception 'unauthenticated';
@@ -306,32 +318,110 @@ begin
     raise exception 'admin role required';
   end if;
 
-  select jsonb_agg(
-    jsonb_build_object(
-      'id', u.id,
-      'email', u.email,
-      'name', coalesce(au.raw_user_meta_data ->> 'full_name', u.email),
-      'createdAt', u.created_at,
-      'updatedAt', u.updated_at,
-      'lastLoginAt', u.last_login_at,
-      'isActive', u.is_active,
-      'roleId', ur.role_id,
-      'roleName', r.name
-    )
-    order by u.created_at desc
-  )
-  into v_result
+  v_sort_column := case p_sort_by
+    when 'email' then 'u.email'
+    when 'lastLoginAt' then 'u.last_login_at'
+    when 'updatedAt' then 'ur.updated_at'
+    when 'createdAt' then 'u.created_at'
+    else 'u.created_at'
+  end;
+
+  v_sort_dir := case lower(coalesce(p_sort_dir, 'desc'))
+    when 'asc' then 'asc'
+    else 'desc'
+  end;
+
+  select count(*)::int
+  into v_total
   from public.users u
-  left join auth.users au on au.id = u.id
-  left join public.user_roles ur on ur.user_id = u.id and ur.is_active = true
-  left join public.roles r on r.id = ur.role_id and r.is_active = true;
+  join public.user_roles ur on ur.user_id = u.id and ur.is_active = true
+  join public.roles r on r.id = ur.role_id and r.is_active = true
+  where (p_is_active is null or u.is_active = p_is_active)
+    and (
+      p_role_filter is null or p_role_filter = 'all'
+      or (p_role_filter = 'admin' and r.name = 'ADMIN')
+      or (p_role_filter = 'manager' and r.name = 'MANAGER')
+    )
+    and (
+      p_search is null or length(trim(p_search)) = 0
+      or u.email ilike '%' || p_search || '%'
+    );
 
-  return coalesce(v_result, '[]'::jsonb);
+  v_query := format(
+    $f$
+      select jsonb_build_object(
+        'total', %L::int,
+        'items', coalesce(
+          jsonb_agg(
+            jsonb_build_object(
+              'id', sub.id,
+              'email', sub.email,
+              'name', sub.name,
+              'createdAt', sub.created_at,
+              'updatedAt', sub.updated_at,
+              'lastLoginAt', sub.last_login_at,
+              'isActive', sub.is_active,
+              'roleId', sub.role_id,
+              'roleName', sub.role_name,
+              'userRoleAssignmentId', sub.user_role_assignment_id
+            )
+            order by sub.sort_key %s
+          ),
+          '[]'::jsonb
+        )
+      )
+      from (
+        select
+          u.id,
+          u.email,
+          coalesce(au.raw_user_meta_data ->> 'full_name', u.email) as name,
+          u.created_at,
+          ur.updated_at,
+          u.last_login_at,
+          u.is_active,
+          ur.role_id,
+          r.name as role_name,
+          ur.id as user_role_assignment_id,
+          %s as sort_key
+        from public.users u
+        join public.user_roles ur on ur.user_id = u.id and ur.is_active = true
+        join public.roles r on r.id = ur.role_id and r.is_active = true
+        left join auth.users au on au.id = u.id
+        where ($1 is null or u.is_active = $1)
+          and (
+            $2 is null or $2 = 'all'
+            or ($2 = 'admin' and r.name = 'ADMIN')
+            or ($2 = 'manager' and r.name = 'MANAGER')
+          )
+          and (
+            $3 is null or length(trim($3)) = 0
+            or u.email ilike '%%' || $3 || '%%'
+          )
+        order by %s %s
+        limit $4
+        offset $5
+      ) sub
+    $f$,
+    v_total, v_sort_dir, v_sort_column, v_sort_column, v_sort_dir
+  );
+
+  execute v_query
+  into v_result
+  using p_is_active, p_role_filter, p_search, p_limit, p_offset;
+
+  return v_result;
 end;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "app_analytics"."get_universities_list"() RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "app_analytics"."get_universities_list"(
+  p_limit int DEFAULT 10,
+  p_offset int DEFAULT 0,
+  p_is_active boolean DEFAULT NULL,
+  p_search text DEFAULT NULL,
+  p_sort_by text DEFAULT 'createdAt',
+  p_sort_dir text DEFAULT 'desc'
+) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
     AS $$
@@ -339,6 +429,10 @@ declare
   v_uid uuid := auth.uid();
   v_is_admin boolean;
   v_result jsonb;
+  v_total int;
+  v_sort_column text;
+  v_sort_dir text;
+  v_query text;
 begin
   if v_uid is null then
     raise exception 'unauthenticated';
@@ -359,32 +453,108 @@ begin
     raise exception 'admin role required';
   end if;
 
-  select jsonb_agg(
-    jsonb_build_object(
-      'id', u.id,
-      'name', u.name,
-      'isActive', u.is_active,
-      'createdAt', u.created_at,
-      'updatedAt', u.updated_at,
-      'campusCount', coalesce(c.campus_count, 0)
-    )
-    order by u.name asc
-  )
-  into v_result
-  from public.universities u
-  left join (
-    select university_id, count(*)::int as campus_count
-    from public.campuses
-    where is_active = true
-    group by university_id
-  ) c on c.university_id = u.id;
+  v_sort_column := case p_sort_by
+    when 'name' then 'u.name'
+    when 'isActive' then 'u.is_active'
+    when 'campusCount' then 'coalesce(campus_agg.campus_count, 0)'
+    when 'recyclingPointCount' then 'coalesce(point_agg.point_count, 0)'
+    when 'lastModifiedAt' then 'coalesce(campus_agg.last_campus_modified, u.created_at)'
+    when 'createdAt' then 'u.created_at'
+    else 'u.created_at'
+  end;
 
-  return coalesce(v_result, '[]'::jsonb);
+  v_sort_dir := case lower(coalesce(p_sort_dir, 'desc'))
+    when 'asc' then 'asc'
+    else 'desc'
+  end;
+
+  select count(*)::int
+  into v_total
+  from public.universities u
+  where (p_is_active is null or u.is_active = p_is_active)
+    and (
+      p_search is null or length(trim(p_search)) = 0
+      or u.name ilike '%' || p_search || '%'
+    );
+
+  v_query := format(
+    $f$
+      select jsonb_build_object(
+        'total', %L::int,
+        'items', coalesce(
+          jsonb_agg(
+            jsonb_build_object(
+              'id', sub.id,
+              'name', sub.name,
+              'isActive', sub.is_active,
+              'campusCount', sub.campus_count,
+              'recyclingPointCount', sub.point_count,
+              'lastModifiedAt', sub.last_modified,
+              'createdAt', sub.created_at
+            )
+            order by sub.sort_key %s
+          ),
+          '[]'::jsonb
+        )
+      )
+      from (
+        select
+          u.id,
+          u.name,
+          u.is_active,
+          u.created_at,
+          coalesce(campus_agg.campus_count, 0) as campus_count,
+          coalesce(point_agg.point_count, 0) as point_count,
+          coalesce(campus_agg.last_campus_modified, u.created_at) as last_modified,
+          %s as sort_key
+        from public.universities u
+        left join (
+          select
+            university_id,
+            count(*) filter (where is_active)::int as campus_count,
+            max(coalesce(updated_at, created_at)) as last_campus_modified
+          from public.campuses
+          group by university_id
+        ) campus_agg on campus_agg.university_id = u.id
+        left join (
+          select
+            c.university_id,
+            count(rp.id) filter (where rp.is_active)::int as point_count
+          from public.campuses c
+          join public.recycling_points rp on rp.campus_id = c.id
+          group by c.university_id
+        ) point_agg on point_agg.university_id = u.id
+        where ($1 is null or u.is_active = $1)
+          and (
+            $2 is null or length(trim($2)) = 0
+            or u.name ilike '%%' || $2 || '%%'
+          )
+        order by %s %s
+        limit $3
+        offset $4
+      ) sub
+    $f$,
+    v_total, v_sort_dir, v_sort_column, v_sort_column, v_sort_dir
+  );
+
+  execute v_query
+  into v_result
+  using p_is_active, p_search, p_limit, p_offset;
+
+  return v_result;
 end;
 $$;
 
 
-CREATE OR REPLACE FUNCTION "app_analytics"."get_university_campuses"("p_university_id" "uuid") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "app_analytics"."get_university_campuses"(
+  p_university_id uuid,
+  p_limit int DEFAULT 10,
+  p_offset int DEFAULT 0,
+  p_is_active boolean DEFAULT NULL,
+  p_search text DEFAULT NULL,
+  p_sort_by text DEFAULT 'name',
+  p_sort_dir text DEFAULT 'asc'
+) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
     AS $$
@@ -392,6 +562,10 @@ declare
   v_uid uuid := auth.uid();
   v_is_admin boolean;
   v_result jsonb;
+  v_total int;
+  v_sort_column text;
+  v_sort_dir text;
+  v_query text;
 begin
   if v_uid is null then
     raise exception 'unauthenticated';
@@ -416,22 +590,212 @@ begin
     raise exception 'admin role required';
   end if;
 
-  select jsonb_agg(
-    jsonb_build_object(
-      'id', c.id,
-      'name', c.name,
-      'address', c.address,
-      'isActive', c.is_active,
-      'createdAt', c.created_at,
-      'updatedAt', c.updated_at
-    )
-    order by c.name asc
-  )
-  into v_result
-  from public.campuses c
-  where c.university_id = p_university_id;
+  v_sort_column := case p_sort_by
+    when 'name' then 'c.name'
+    when 'isActive' then 'c.is_active'
+    when 'recyclingPointCount' then 'coalesce(point_agg.point_count, 0)'
+    when 'createdAt' then 'c.created_at'
+    else 'c.name'
+  end;
 
-  return coalesce(v_result, '[]'::jsonb);
+  v_sort_dir := case lower(coalesce(p_sort_dir, 'asc'))
+    when 'desc' then 'desc'
+    else 'asc'
+  end;
+
+  select count(*)::int
+  into v_total
+  from public.campuses c
+  where c.university_id = p_university_id
+    and (p_is_active is null or c.is_active = p_is_active)
+    and (
+      p_search is null or length(trim(p_search)) = 0
+      or c.name ilike '%' || p_search || '%'
+    );
+
+  v_query := format(
+    $f$
+      select jsonb_build_object(
+        'total', %L::int,
+        'items', coalesce(
+          jsonb_agg(
+            jsonb_build_object(
+              'id', sub.id,
+              'name', sub.name,
+              'address', sub.address,
+              'isActive', sub.is_active,
+              'recyclingPointCount', sub.point_count,
+              'createdAt', sub.created_at
+            )
+            order by sub.sort_key %s
+          ),
+          '[]'::jsonb
+        )
+      )
+      from (
+        select
+          c.id,
+          c.name,
+          c.address,
+          c.is_active,
+          c.created_at,
+          coalesce(point_agg.point_count, 0) as point_count,
+          %s as sort_key
+        from public.campuses c
+        left join (
+          select
+            campus_id,
+            count(*) filter (where is_active)::int as point_count
+          from public.recycling_points
+          group by campus_id
+        ) point_agg on point_agg.campus_id = c.id
+        where c.university_id = $1
+          and ($2 is null or c.is_active = $2)
+          and (
+            $3 is null or length(trim($3)) = 0
+            or c.name ilike '%%' || $3 || '%%'
+          )
+        order by %s %s
+        limit $4
+        offset $5
+      ) sub
+    $f$,
+    v_total, v_sort_dir, v_sort_column, v_sort_column, v_sort_dir
+  );
+
+  execute v_query
+  into v_result
+  using p_university_id, p_is_active, p_search, p_limit, p_offset;
+
+  return v_result;
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "app_analytics"."create_university"(
+  p_name text
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_is_admin boolean;
+  v_university_id uuid;
+  v_created_at timestamptz;
+begin
+  if v_uid is null then
+    raise exception 'unauthenticated';
+  end if;
+
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.roles r on r.id = ur.role_id
+    where ur.user_id = v_uid
+      and ur.is_active = true
+      and r.is_active = true
+      and r.name = 'ADMIN'
+  )
+  into v_is_admin;
+
+  if not coalesce(v_is_admin, false) then
+    raise exception 'admin role required';
+  end if;
+
+  if p_name is null or length(trim(p_name)) = 0 then
+    raise exception 'university name is required';
+  end if;
+
+  insert into public.universities (name)
+  values (trim(p_name))
+  returning id, created_at into v_university_id, v_created_at;
+
+  return jsonb_build_object(
+    'id', v_university_id,
+    'name', trim(p_name),
+    'isActive', true,
+    'createdAt', v_created_at
+  );
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "app_analytics"."create_university_campuses"(
+  p_university_id uuid,
+  p_campuses jsonb
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_is_admin boolean;
+  v_university_exists boolean;
+  v_campus jsonb;
+  v_campus_name text;
+  v_campus_address text;
+  v_campus_id uuid;
+  v_campuses_result jsonb := '[]'::jsonb;
+begin
+  if v_uid is null then
+    raise exception 'unauthenticated';
+  end if;
+
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.roles r on r.id = ur.role_id
+    where ur.user_id = v_uid
+      and ur.is_active = true
+      and r.is_active = true
+      and r.name = 'ADMIN'
+  )
+  into v_is_admin;
+
+  if not coalesce(v_is_admin, false) then
+    raise exception 'admin role required';
+  end if;
+
+  if p_university_id is null then
+    raise exception 'p_university_id is required';
+  end if;
+
+  select exists (select 1 from public.universities u where u.id = p_university_id)
+  into v_university_exists;
+
+  if not v_university_exists then
+    raise exception 'university not found';
+  end if;
+
+  if p_campuses is null or jsonb_typeof(p_campuses) <> 'array' or jsonb_array_length(p_campuses) = 0 then
+    raise exception 'at least one campus is required';
+  end if;
+
+  for v_campus in select * from jsonb_array_elements(p_campuses)
+  loop
+    v_campus_name := v_campus->>'name';
+    v_campus_address := v_campus->>'address';
+
+    if v_campus_name is null or length(trim(v_campus_name)) = 0 then
+      raise exception 'campus name is required for every campus';
+    end if;
+
+    insert into public.campuses (university_id, name, address)
+    values (p_university_id, trim(v_campus_name), v_campus_address)
+    returning id into v_campus_id;
+
+    v_campuses_result := v_campuses_result || jsonb_build_object(
+      'id', v_campus_id,
+      'name', v_campus_name,
+      'address', v_campus_address
+    );
+  end loop;
+
+  return jsonb_build_object(
+    'universityId', p_university_id,
+    'campuses', v_campuses_result
+  );
 end;
 $$;
 
@@ -452,25 +816,73 @@ CREATE OR REPLACE FUNCTION "public"."get_admin_dashboard"("p_start" timestamp wi
   select app_analytics.get_admin_dashboard(p_start, p_end);
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_users_list"() RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_users_list"(
+  p_limit int DEFAULT 10,
+  p_offset int DEFAULT 0,
+  p_is_active boolean DEFAULT NULL,
+  p_role_filter text DEFAULT 'all',
+  p_search text DEFAULT NULL,
+  p_sort_by text DEFAULT 'createdAt',
+  p_sort_dir text DEFAULT 'desc'
+) RETURNS "jsonb"
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth', 'app_analytics'
     AS $$
-  select app_analytics.get_users_list();
+  select app_analytics.get_users_list(
+    p_limit, p_offset, p_is_active, p_role_filter, p_search, p_sort_by, p_sort_dir
+  );
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_universities_list"() RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_universities_list"(
+  p_limit int DEFAULT 10,
+  p_offset int DEFAULT 0,
+  p_is_active boolean DEFAULT NULL,
+  p_search text DEFAULT NULL,
+  p_sort_by text DEFAULT 'createdAt',
+  p_sort_dir text DEFAULT 'desc'
+) RETURNS "jsonb"
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth', 'app_analytics'
     AS $$
-  select app_analytics.get_universities_list();
+  select app_analytics.get_universities_list(
+    p_limit, p_offset, p_is_active, p_search, p_sort_by, p_sort_dir
+  );
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_university_campuses"("p_university_id" "uuid") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_university_campuses"(
+  p_university_id uuid,
+  p_limit int DEFAULT 10,
+  p_offset int DEFAULT 0,
+  p_is_active boolean DEFAULT NULL,
+  p_search text DEFAULT NULL,
+  p_sort_by text DEFAULT 'name',
+  p_sort_dir text DEFAULT 'asc'
+) RETURNS "jsonb"
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth', 'app_analytics'
     AS $$
-  select app_analytics.get_university_campuses(p_university_id);
+  select app_analytics.get_university_campuses(
+    p_university_id, p_limit, p_offset, p_is_active, p_search, p_sort_by, p_sort_dir
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."create_university"(
+  p_name text
+) RETURNS "jsonb"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_analytics'
+    AS $$
+  select app_analytics.create_university(p_name);
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."create_university_campuses"(
+  p_university_id uuid,
+  p_campuses jsonb
+) RETURNS "jsonb"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_analytics'
+    AS $$
+  select app_analytics.create_university_campuses(p_university_id, p_campuses);
 $$;
 
 ALTER TABLE "public"."metric_snapshots" ENABLE ROW LEVEL SECURITY;
@@ -483,17 +895,25 @@ REVOKE ALL ON FUNCTION "app_analytics"."get_admin_dashboard"("p_start" timestamp
 
 GRANT ALL ON FUNCTION "app_analytics"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "service_role";
 
-REVOKE ALL ON FUNCTION "app_analytics"."get_users_list"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_analytics"."get_users_list"(int, int, boolean, text, text, text, text) FROM PUBLIC;
 
-GRANT ALL ON FUNCTION "app_analytics"."get_users_list"() TO "service_role";
+GRANT ALL ON FUNCTION "app_analytics"."get_users_list"(int, int, boolean, text, text, text, text) TO "service_role";
 
-REVOKE ALL ON FUNCTION "app_analytics"."get_universities_list"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_analytics"."get_universities_list"(int, int, boolean, text, text, text) FROM PUBLIC;
 
-GRANT ALL ON FUNCTION "app_analytics"."get_universities_list"() TO "service_role";
+GRANT ALL ON FUNCTION "app_analytics"."get_universities_list"(int, int, boolean, text, text, text) TO "service_role";
 
-REVOKE ALL ON FUNCTION "app_analytics"."get_university_campuses"("uuid") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_analytics"."get_university_campuses"(uuid, int, int, boolean, text, text, text) FROM PUBLIC;
 
-GRANT ALL ON FUNCTION "app_analytics"."get_university_campuses"("uuid") TO "service_role";
+GRANT ALL ON FUNCTION "app_analytics"."get_university_campuses"(uuid, int, int, boolean, text, text, text) TO "service_role";
+
+REVOKE ALL ON FUNCTION "app_analytics"."create_university"(text) FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "app_analytics"."create_university"(text) TO "service_role";
+
+REVOKE ALL ON FUNCTION "app_analytics"."create_university_campuses"(uuid, jsonb) FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "app_analytics"."create_university_campuses"(uuid, jsonb) TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."count_public_tables"() TO "anon";
 
@@ -507,23 +927,35 @@ GRANT ALL ON FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with ti
 
 GRANT ALL ON FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."get_users_list"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_users_list"(int, int, boolean, text, text, text, text) TO "anon";
 
-GRANT ALL ON FUNCTION "public"."get_users_list"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_users_list"(int, int, boolean, text, text, text, text) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_users_list"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_users_list"(int, int, boolean, text, text, text, text) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."get_universities_list"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_universities_list"(int, int, boolean, text, text, text) TO "anon";
 
-GRANT ALL ON FUNCTION "public"."get_universities_list"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_universities_list"(int, int, boolean, text, text, text) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_universities_list"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_universities_list"(int, int, boolean, text, text, text) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."get_university_campuses"("uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_university_campuses"(uuid, int, int, boolean, text, text, text) TO "anon";
 
-GRANT ALL ON FUNCTION "public"."get_university_campuses"("uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_university_campuses"(uuid, int, int, boolean, text, text, text) TO "authenticated";
 
-GRANT ALL ON FUNCTION "public"."get_university_campuses"("uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_university_campuses"(uuid, int, int, boolean, text, text, text) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."create_university"(text) TO "anon";
+
+GRANT ALL ON FUNCTION "public"."create_university"(text) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."create_university"(text) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."create_university_campuses"(uuid, jsonb) TO "anon";
+
+GRANT ALL ON FUNCTION "public"."create_university_campuses"(uuid, jsonb) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."create_university_campuses"(uuid, jsonb) TO "service_role";
 
 GRANT ALL ON TABLE "public"."health_check" TO "anon";
 
