@@ -1,5 +1,6 @@
 export { theme } from '@/src/ui/theme';
 export { STREAK_LEVEL_COLORS, type StreakLevel } from '@/src/ui/streakColors';
+export { BADGE_STATIC_DATA, type BadgeStaticData } from '@/src/ui/badgeData';
 
 export { AppScreen } from '@/src/ui/components/AppScreen';
 export { AppText } from '@/src/ui/components/AppText';

@@ -7,9 +7,8 @@ import {
   View,
 } from 'react-native';
 
-import { BADGE_STATIC_DATA } from '@/src/features/profile/data/profileGamification';
 import { useRewardOverlay } from '@/src/contexts/RewardOverlayContext';
-import { AppIcon, AppText, BadgeFrame, STREAK_LEVEL_COLORS, theme, type StreakLevel } from '@/src/ui';
+import { AppIcon, AppText, BADGE_STATIC_DATA, BadgeFrame, STREAK_LEVEL_COLORS, theme, type StreakLevel } from '@/src/ui';
 
 // ─── Phase machine ────────────────────────────────────────────────────────────
 // ENTERING  : overlay fades in, title shown, tap interrupts and goes to ITEM

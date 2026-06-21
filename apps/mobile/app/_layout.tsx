@@ -1,9 +1,6 @@
 import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-WebBrowser.maybeCompleteAuthSession();
-
 import { AppGate } from '@/src/features/auth/components/AppGate';
 import { AvatarConfigProvider } from '@/src/features/profile/hooks/useAvatarConfig';
 import { RecycleFlowProvider } from '@/src/features/recycling/hooks/useRecycleFlow';
@@ -14,6 +11,8 @@ import { StreakInvalidationProvider } from '@/src/contexts/StreakInvalidationCon
 import { RewardOverlayProvider } from '@/src/contexts/RewardOverlayContext';
 import { RecycleRewardOverlay } from '@/src/features/recycling/components/RecycleRewardOverlay';
 import { DevPanel } from '@/src/dev/DevPanel';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RootLayout() {
   return (

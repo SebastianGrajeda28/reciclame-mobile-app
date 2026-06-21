@@ -2,8 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { BADGE_STATIC_DATA } from '@/src/features/profile/data/profileGamification';
-import { AppButton, AppScreen, AppText, BadgeFrame, theme } from '@/src/ui';
+import { AppButton, AppScreen, AppText, BADGE_STATIC_DATA, BadgeFrame, theme } from '@/src/ui';
 
 type QueuedItem =
   | { type: 'achievement'; badgeId: string; badgeName?: string; badgeReward?: string; badgeDescription?: string }
