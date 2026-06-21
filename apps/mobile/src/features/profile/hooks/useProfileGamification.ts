@@ -6,11 +6,11 @@ import {
   getUserAchievements,
 } from '@/src/features/profile/api/achievements';
 import {
-  BADGE_STATIC_DATA,
   FEATURED_BADGE_SLUG_FALLBACK,
   type ProfileBadge,
   type ProfileStat,
 } from '@/src/features/profile/data/profileGamification';
+import { BADGE_STATIC_DATA } from '@/src/ui';
 import { useAuth } from '@/src/hooks/useAuth';
 
 type ProfileGamification = {
