@@ -2,11 +2,14 @@ import { Link, useLocation } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import ProfilePopover from "./ProfilePopover";
 
-const NAV_ITEMS = [
-  { label: "Métricas", path: "/metricas" },
-  { label: "Datos Curiosos", path: "/fun-facts" },
-  { label: "Instrucciones", path: "/instrucciones" },
-];
+export type NavItem = {
+  label: string;
+  path: string;
+};
+
+interface RoleNavbarProps {
+  items: NavItem[];
+}
 
 function linkClasses(active: boolean) {
   return active
@@ -14,7 +17,7 @@ function linkClasses(active: boolean) {
     : "relative block min-w-[132px] px-2 py-5 text-center text-[1rem] font-medium text-white/88 transition hover:text-white";
 }
 
-export default function RoleNavbar() {
+export default function RoleNavbar({ items }: RoleNavbarProps) {
   const location = useLocation();
   const { account, loading } = useUser();
 
@@ -32,7 +35,7 @@ export default function RoleNavbar() {
         <div className="pointer-events-auto">
           <nav aria-label="Navegacion principal">
             <ul className="flex items-center gap-10">
-              {NAV_ITEMS.map((item) => (
+              {items.map((item) => (
                 <li key={item.path}>
                   <Link to={item.path} className={linkClasses(location.pathname === item.path)}>
                     {item.label}

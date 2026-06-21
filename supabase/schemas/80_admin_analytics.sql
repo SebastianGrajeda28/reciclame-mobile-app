@@ -68,12 +68,11 @@ begin
     where ur.user_id = v_uid
       and ur.is_active = true
       and r.is_active = true
-      and r.name = 'ADMIN'
   )
   into v_is_admin;
 
   if not coalesce(v_is_admin, false) then
-    raise exception 'admin role required';
+    raise exception 'role required';
   end if;
 
   with session_scope as (
@@ -278,6 +277,165 @@ begin
 end;
 $$;
 
+
+CREATE OR REPLACE FUNCTION "app_analytics"."get_users_list"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_is_admin boolean;
+  v_result jsonb;
+begin
+  if v_uid is null then
+    raise exception 'unauthenticated';
+  end if;
+
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.roles r on r.id = ur.role_id
+    where ur.user_id = v_uid
+      and ur.is_active = true
+      and r.is_active = true
+      and r.name = 'ADMIN'
+  )
+  into v_is_admin;
+
+  if not coalesce(v_is_admin, false) then
+    raise exception 'admin role required';
+  end if;
+
+  select jsonb_agg(
+    jsonb_build_object(
+      'id', u.id,
+      'email', u.email,
+      'name', coalesce(au.raw_user_meta_data ->> 'full_name', u.email),
+      'createdAt', u.created_at,
+      'updatedAt', u.updated_at,
+      'lastLoginAt', u.last_login_at,
+      'isActive', u.is_active,
+      'roleId', ur.role_id,
+      'roleName', r.name
+    )
+    order by u.created_at desc
+  )
+  into v_result
+  from public.users u
+  left join auth.users au on au.id = u.id
+  left join public.user_roles ur on ur.user_id = u.id and ur.is_active = true
+  left join public.roles r on r.id = ur.role_id and r.is_active = true;
+
+  return coalesce(v_result, '[]'::jsonb);
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "app_analytics"."get_universities_list"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_is_admin boolean;
+  v_result jsonb;
+begin
+  if v_uid is null then
+    raise exception 'unauthenticated';
+  end if;
+
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.roles r on r.id = ur.role_id
+    where ur.user_id = v_uid
+      and ur.is_active = true
+      and r.is_active = true
+      and r.name = 'ADMIN'
+  )
+  into v_is_admin;
+
+  if not coalesce(v_is_admin, false) then
+    raise exception 'admin role required';
+  end if;
+
+  select jsonb_agg(
+    jsonb_build_object(
+      'id', u.id,
+      'name', u.name,
+      'isActive', u.is_active,
+      'createdAt', u.created_at,
+      'updatedAt', u.updated_at,
+      'campusCount', coalesce(c.campus_count, 0)
+    )
+    order by u.name asc
+  )
+  into v_result
+  from public.universities u
+  left join (
+    select university_id, count(*)::int as campus_count
+    from public.campuses
+    where is_active = true
+    group by university_id
+  ) c on c.university_id = u.id;
+
+  return coalesce(v_result, '[]'::jsonb);
+end;
+$$;
+
+
+CREATE OR REPLACE FUNCTION "app_analytics"."get_university_campuses"("p_university_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_is_admin boolean;
+  v_result jsonb;
+begin
+  if v_uid is null then
+    raise exception 'unauthenticated';
+  end if;
+
+  if p_university_id is null then
+    raise exception 'p_university_id is required';
+  end if;
+
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.roles r on r.id = ur.role_id
+    where ur.user_id = v_uid
+      and ur.is_active = true
+      and r.is_active = true
+      and r.name = 'ADMIN'
+  )
+  into v_is_admin;
+
+  if not coalesce(v_is_admin, false) then
+    raise exception 'admin role required';
+  end if;
+
+  select jsonb_agg(
+    jsonb_build_object(
+      'id', c.id,
+      'name', c.name,
+      'address', c.address,
+      'isActive', c.is_active,
+      'createdAt', c.created_at,
+      'updatedAt', c.updated_at
+    )
+    order by c.name asc
+  )
+  into v_result
+  from public.campuses c
+  where c.university_id = p_university_id;
+
+  return coalesce(v_result, '[]'::jsonb);
+end;
+$$;
+
+
 CREATE OR REPLACE FUNCTION "public"."count_public_tables"() RETURNS TABLE("table_name" "text")
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
@@ -294,6 +452,27 @@ CREATE OR REPLACE FUNCTION "public"."get_admin_dashboard"("p_start" timestamp wi
   select app_analytics.get_admin_dashboard(p_start, p_end);
 $$;
 
+CREATE OR REPLACE FUNCTION "public"."get_users_list"() RETURNS "jsonb"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_analytics'
+    AS $$
+  select app_analytics.get_users_list();
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_universities_list"() RETURNS "jsonb"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_analytics'
+    AS $$
+  select app_analytics.get_universities_list();
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_university_campuses"("p_university_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_analytics'
+    AS $$
+  select app_analytics.get_university_campuses(p_university_id);
+$$;
+
 ALTER TABLE "public"."metric_snapshots" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."system_config" ENABLE ROW LEVEL SECURITY;
@@ -303,6 +482,18 @@ GRANT USAGE ON SCHEMA "app_analytics" TO "service_role";
 REVOKE ALL ON FUNCTION "app_analytics"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) FROM PUBLIC;
 
 GRANT ALL ON FUNCTION "app_analytics"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "service_role";
+
+REVOKE ALL ON FUNCTION "app_analytics"."get_users_list"() FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "app_analytics"."get_users_list"() TO "service_role";
+
+REVOKE ALL ON FUNCTION "app_analytics"."get_universities_list"() FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "app_analytics"."get_universities_list"() TO "service_role";
+
+REVOKE ALL ON FUNCTION "app_analytics"."get_university_campuses"("uuid") FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "app_analytics"."get_university_campuses"("uuid") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."count_public_tables"() TO "anon";
 
@@ -315,6 +506,24 @@ GRANT ALL ON FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with ti
 GRANT ALL ON FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."get_admin_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone) TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."get_users_list"() TO "anon";
+
+GRANT ALL ON FUNCTION "public"."get_users_list"() TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."get_users_list"() TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."get_universities_list"() TO "anon";
+
+GRANT ALL ON FUNCTION "public"."get_universities_list"() TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."get_universities_list"() TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."get_university_campuses"("uuid") TO "anon";
+
+GRANT ALL ON FUNCTION "public"."get_university_campuses"("uuid") TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."get_university_campuses"("uuid") TO "service_role";
 
 GRANT ALL ON TABLE "public"."health_check" TO "anon";
 

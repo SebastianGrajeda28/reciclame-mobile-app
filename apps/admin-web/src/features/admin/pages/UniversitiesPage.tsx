@@ -7,25 +7,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  type ColumnDef,
-  type PaginationState,
-  type SortingState,
+    flexRender,
+    getCoreRowModel,
+    useReactTable,
+    type ColumnDef,
+    type PaginationState,
+    type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Search, UserPlus, X } from "lucide-react";
+import { ArrowUpDown, Building2, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import CreateUserDialog from "../components/CreateUserDialog";
-import ManageUserModal from "../components/ManageUserModal";
+import CreateUniversityDialog from "../components/CreateUniversityDialog";
+import ManageUniversityModal from "../components/ManageUniversityModal";
 import {
-  getAdminUsers,
-  type AppUser,
-  type RoleFilter,
-  type SortColumn,
-} from "../services/AdminUsersService";
+    getAdminUniversities,
+    type AppUniversity,
+    type UniversitySortColumn,
+} from "../services/AdminUniversitiesService";
 
-type UsersTab = "active" | "inactive";
+type UniversitiesTab = "active" | "inactive";
 
 const SEARCH_DEBOUNCE_MS = 500;
 
@@ -35,23 +34,15 @@ function tabClasses(selected: boolean) {
   }`;
 }
 
-function translateRoleName(roleName: string | null): string {
-  if (roleName?.toUpperCase() === "ADMIN") return "Administrador";
-  if (roleName?.toUpperCase() === "MANAGER") return "Manager";
-  return roleName ?? "—";
-}
-
-export default function UsersPage() {
-  const [selectedTab, setSelectedTab] = useState<UsersTab>("active");
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+export default function UniversitiesPage() {
+  const [selectedTab, setSelectedTab] = useState<UniversitiesTab>("active");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
+  const [selectedUniversity, setSelectedUniversity] = useState<AppUniversity | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
-  // Debounce: solo dispara la búsqueda 500ms después de que el usuario deja de escribir.
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setDebouncedSearch(search.trim());
@@ -62,26 +53,24 @@ export default function UsersPage() {
 
   const isActive = selectedTab === "active";
   const activeSort = sorting[0];
-  const sortBy = (activeSort?.id as SortColumn | undefined) ?? "createdAt";
+  const sortBy = (activeSort?.id as UniversitySortColumn | undefined) ?? "createdAt";
   const sortDir = activeSort ? (activeSort.desc ? "desc" : "asc") : "desc";
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: [
-      "admin-users",
+      "admin-universities",
       pagination.pageIndex,
       pagination.pageSize,
       isActive,
-      roleFilter,
       debouncedSearch,
       sortBy,
       sortDir,
     ],
     queryFn: () =>
-      getAdminUsers({
+      getAdminUniversities({
         limit: pagination.pageSize,
         offset: pagination.pageIndex * pagination.pageSize,
         isActive,
-        roleFilter,
         search: debouncedSearch,
         sortBy,
         sortDir,
@@ -91,30 +80,22 @@ export default function UsersPage() {
     placeholderData: keepPreviousData,
   });
 
-  const users = data?.users ?? [];
+  const universities = data?.universities ?? [];
   const total = data?.total ?? 0;
 
-  const columns = useMemo<ColumnDef<AppUser>[]>(
+  const columns = useMemo<ColumnDef<AppUniversity>[]>(
     () => [
       {
-        accessorKey: "email",
+        accessorKey: "name",
         header: ({ column }) => (
           <button
             type="button"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700"
           >
-            Email
+            Nombre
             <ArrowUpDown className="h-3 w-3" />
           </button>
-        ),
-      },
-      {
-        id: "role",
-        accessorFn: (row) => row.roleName ?? "",
-        enableSorting: false,
-        header: () => (
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rol</span>
         ),
       },
       {
@@ -126,20 +107,33 @@ export default function UsersPage() {
         ),
       },
       {
-        accessorKey: "lastLoginAt",
+        accessorKey: "campusCount",
         header: ({ column }) => (
           <button
             type="button"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700"
           >
-            Último login
+            Campuses
             <ArrowUpDown className="h-3 w-3" />
           </button>
         ),
       },
       {
-        accessorKey: "updatedAt",
+        accessorKey: "recyclingPointCount",
+        header: ({ column }) => (
+          <button
+            type="button"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700"
+          >
+            Puntos de reciclaje
+            <ArrowUpDown className="h-3 w-3" />
+          </button>
+        ),
+      },
+      {
+        accessorKey: "lastModifiedAt",
         header: ({ column }) => (
           <button
             type="button"
@@ -169,12 +163,11 @@ export default function UsersPage() {
   );
 
   const table = useReactTable({
-    data: users,
+    data: universities,
     columns,
     state: { sorting },
     onSortingChange: (updater) => {
       const next = typeof updater === "function" ? updater(sorting) : updater;
-      // Single-sort: solo nos quedamos con la última columna activada.
       setSorting(next.slice(-1));
     },
     manualSorting: true,
@@ -183,10 +176,9 @@ export default function UsersPage() {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  // Resetear a la primera página cuando cambian filtros (no al cambiar de página).
   useEffect(() => {
     setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
-  }, [selectedTab, roleFilter, debouncedSearch, sortBy, sortDir]);
+  }, [selectedTab, debouncedSearch, sortBy, sortDir]);
 
   const pageRows = table.getRowModel().rows;
   const canGoPrevious = pagination.pageIndex > 0;
@@ -215,9 +207,9 @@ export default function UsersPage() {
     <AppPage>
       <div className="flex flex-col gap-3 md:min-h-[72px] md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">Gestión de Cuentas</h1>
+          <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">Universidades</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Administra las cuentas con acceso al panel web y sus roles asignados.
+            Gestión de universidades registradas en la plataforma.
           </p>
         </div>
         <Button
@@ -225,8 +217,8 @@ export default function UsersPage() {
           className="h-10 rounded-lg bg-[#18b566] px-5 text-sm font-semibold text-white hover:bg-[#129a56]"
           onClick={() => setShowCreate(true)}
         >
-          <UserPlus className="mr-2 h-4 w-4" />
-          Crear empleado
+          <Building2 className="mr-2 h-4 w-4" />
+          Crear universidad
         </Button>
       </div>
 
@@ -238,7 +230,7 @@ export default function UsersPage() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por email..."
+                placeholder="Buscar por nombre..."
                 className="bg-white pl-9 pr-9"
               />
               {search && (
@@ -253,17 +245,6 @@ export default function UsersPage() {
               )}
             </div>
 
-            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as RoleFilter)}>
-              <SelectTrigger className="w-[200px] bg-white">
-                <SelectValue placeholder="Filtrar por rol" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="admin">Administradores</SelectItem>
-                <SelectItem value="manager">Managers</SelectItem>
-              </SelectContent>
-            </Select>
-
             {isFetching && <span className="text-sm text-slate-500">Actualizando...</span>}
           </div>
 
@@ -273,21 +254,21 @@ export default function UsersPage() {
               onClick={() => setSelectedTab("active")}
               className={tabClasses(selectedTab === "active")}
             >
-              Activos
+              Activas
             </button>
             <button
               type="button"
               onClick={() => setSelectedTab("inactive")}
               className={tabClasses(selectedTab === "inactive")}
             >
-              Inactivos
+              Inactivas
             </button>
           </div>
         </div>
 
         {!!error && (
           <p className="mt-4 text-sm text-red-600">
-            No se pudieron cargar las cuentas. Intenta nuevamente.
+            No se pudieron cargar las universidades. Intenta nuevamente.
           </p>
         )}
 
@@ -295,12 +276,10 @@ export default function UsersPage() {
           <div className="mt-4 rounded-2xl border border-dashed border-[#b7c7d6] bg-[#eef3f8] px-8 py-12 text-center">
             <p className="text-sm text-slate-600">
               {debouncedSearch
-                ? "No hay cuentas que coincidan con la búsqueda."
-                : roleFilter !== "all"
-                  ? "No hay cuentas para el filtro de rol seleccionado."
-                  : selectedTab === "active"
-                    ? "No hay cuentas activas."
-                    : "No hay cuentas inactivas."}
+                ? "No hay universidades que coincidan con la búsqueda."
+                : selectedTab === "active"
+                  ? "No hay universidades activas."
+                  : "No hay universidades inactivas."}
             </p>
           </div>
         )}
@@ -316,7 +295,7 @@ export default function UsersPage() {
                         <TableHead
                           key={header.id}
                           className={`border-r border-slate-200 last:border-r-0 ${
-                            header.id === "email" ? "w-64 text-left" : "text-center"
+                            header.id === "name" ? "w-64 text-left" : "text-center"
                           }`}
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
@@ -327,32 +306,34 @@ export default function UsersPage() {
                 </TableHeader>
                 <TableBody>
                   {pageRows.map((row) => {
-                    const user = row.original;
+                    const university = row.original;
                     return (
                       <TableRow
-                        key={user.id}
+                        key={university.id}
                         className="cursor-pointer border-slate-200 hover:bg-slate-50"
-                        onClick={() => setSelectedUser(user)}
+                        onClick={() => setSelectedUniversity(university)}
                       >
                         <TableCell className="w-64 truncate border-r border-slate-200 font-medium text-left">
-                          {user.email}
+                          {university.name}
                         </TableCell>
                         <TableCell className="border-r border-slate-200 text-center">
-                          <Badge variant="outline">{translateRoleName(user.roleName)}</Badge>
-                        </TableCell>
-                        <TableCell className="border-r border-slate-200 text-center">
-                          <Badge variant={user.isActive ? "default" : "secondary"}>
-                            {user.isActive ? "Activo" : "Inactivo"}
+                          <Badge variant={university.isActive ? "default" : "secondary"}>
+                            {university.isActive ? "Activa" : "Inactiva"}
                           </Badge>
                         </TableCell>
                         <TableCell className="border-r border-slate-200 text-center text-sm text-slate-500">
-                          {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("es-PE") : "—"}
+                          {university.campusCount}
                         </TableCell>
                         <TableCell className="border-r border-slate-200 text-center text-sm text-slate-500">
-                          {user.updatedAt ? new Date(user.updatedAt).toLocaleString("es-PE") : "—"}
+                          {university.recyclingPointCount}
+                        </TableCell>
+                        <TableCell className="border-r border-slate-200 text-center text-sm text-slate-500">
+                          {university.lastModifiedAt
+                            ? new Date(university.lastModifiedAt).toLocaleString("es-PE")
+                            : "—"}
                         </TableCell>
                         <TableCell className="text-center text-sm text-slate-500">
-                          {new Date(user.createdAt).toLocaleDateString("es-PE")}
+                          {new Date(university.createdAt).toLocaleDateString("es-PE")}
                         </TableCell>
                       </TableRow>
                     );
@@ -363,7 +344,7 @@ export default function UsersPage() {
 
             <div className="mt-4 flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                Mostrando {pageRows.length} de {total} cuentas.
+                Mostrando {pageRows.length} de {total} universidades.
               </div>
               <div className="flex items-center gap-2">
                 <Select
@@ -408,16 +389,16 @@ export default function UsersPage() {
         )}
       </AppSurface>
 
-      {selectedUser && (
-        <ManageUserModal
-          user={selectedUser}
-          onClose={() => setSelectedUser(null)}
+      {selectedUniversity && (
+        <ManageUniversityModal
+          university={selectedUniversity}
+          onClose={() => setSelectedUniversity(null)}
           onUpdated={() => refetch()}
         />
       )}
 
       {showCreate && (
-        <CreateUserDialog onClose={() => setShowCreate(false)} onCreated={() => refetch()} />
+        <CreateUniversityDialog onClose={() => setShowCreate(false)} onCreated={() => refetch()} />
       )}
     </AppPage>
   );
