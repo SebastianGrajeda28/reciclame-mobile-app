@@ -69,7 +69,7 @@ export function useProfileGamification(): ProfileGamification {
           image: staticData?.image ?? require('@/assets/images/achievements/ach_Icons_19.png'),
           description: a.description,
           unlockDescription: a.unlockDescription,
-          userPercentage: staticData?.userPercentage ?? 0,
+          userPercentage: a.userPercentage,
           earnedAt: a.earnedAt,
           reward: a.rewardName,
         };

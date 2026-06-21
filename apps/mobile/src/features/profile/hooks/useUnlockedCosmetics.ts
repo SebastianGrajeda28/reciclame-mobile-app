@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { getRestrictedCosmetics, getEarnedRestrictedCosmetics, RestrictedCosmetics } from '@/src/features/profile/api/avatar';
+import { useCosmeticsInvalidation } from '@/src/contexts/CosmeticsInvalidationContext';
 import { useAuth } from '@/src/hooks/useAuth';
 
 const EMPTY: RestrictedCosmetics = {
@@ -20,6 +21,7 @@ type UnlockedCosmeticsState = {
 export function useUnlockedCosmetics(): UnlockedCosmeticsState {
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const { version } = useCosmeticsInvalidation();
   const [restricted, setRestricted] = useState<RestrictedCosmetics>(EMPTY);
   const [earned, setEarned] = useState<RestrictedCosmetics>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export function useUnlockedCosmetics(): UnlockedCosmeticsState {
     })();
 
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, version]);
 
   return { restricted, earned, loading };
 }

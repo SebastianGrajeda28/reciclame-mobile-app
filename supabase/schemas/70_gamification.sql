@@ -206,7 +206,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."check_and_unlock_achievements"("p_user_id" "uuid") RETURNS TABLE("achievement_id" "uuid", "achievement_name" "text", "achievement_slug" "text")
+CREATE OR REPLACE FUNCTION "public"."check_and_unlock_achievements"("p_user_id" "uuid") RETURNS TABLE("out_achievement_id" "uuid", "out_achievement_name" "text", "out_achievement_slug" "text")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -266,8 +266,9 @@ BEGIN
 
   IF recycling_count >= 1 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'first_recycling' AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'first_recycling' AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'first_recycling' AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -275,8 +276,9 @@ BEGIN
 
   IF up.streak_days >= 7 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'streak_days' AND condition_value = 7 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'streak_days' AND ach.condition_value = 7 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'streak_days' AND a.condition_value = 7 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -284,8 +286,9 @@ BEGIN
 
   IF up.streak_days >= 30 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'streak_days' AND condition_value = 30 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'streak_days' AND ach.condition_value = 30 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'streak_days' AND a.condition_value = 30 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -293,8 +296,9 @@ BEGIN
 
   IF up.best_streak_days >= 7 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'best_streak_days' AND condition_value = 7 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'best_streak_days' AND ach.condition_value = 7 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'best_streak_days' AND a.condition_value = 7 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -302,8 +306,9 @@ BEGIN
 
   IF up.best_streak_days >= 30 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'best_streak_days' AND condition_value = 30 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'best_streak_days' AND ach.condition_value = 30 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'best_streak_days' AND a.condition_value = 30 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -311,8 +316,9 @@ BEGIN
 
   IF recycling_count >= 10 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'total_recycling_count' AND condition_value = 10 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'total_recycling_count' AND ach.condition_value = 10 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'total_recycling_count' AND a.condition_value = 10 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -320,8 +326,9 @@ BEGIN
 
   IF recycling_count >= 100 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'total_recycling_count' AND condition_value = 100 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'total_recycling_count' AND ach.condition_value = 100 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'total_recycling_count' AND a.condition_value = 100 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -329,8 +336,9 @@ BEGIN
 
   IF recycling_count >= 500 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'total_recycling_count' AND condition_value = 500 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'total_recycling_count' AND ach.condition_value = 500 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'total_recycling_count' AND a.condition_value = 500 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -338,8 +346,9 @@ BEGIN
 
   IF unique_waste >= 5 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'unique_waste_types' AND condition_value = 5 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'unique_waste_types' AND ach.condition_value = 5 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'unique_waste_types' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -347,8 +356,9 @@ BEGIN
 
   IF pilas_count >= 3 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_pilas_count' AND condition_value = 3 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'waste_type_pilas_count' AND ach.condition_value = 3 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_pilas_count' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -356,8 +366,9 @@ BEGIN
 
   IF raee_count >= 3 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_raee_count' AND condition_value = 3 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'waste_type_raee_count' AND ach.condition_value = 3 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_raee_count' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -365,8 +376,9 @@ BEGIN
 
   IF vidrio_count >= 5 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_vidrio_count' AND condition_value = 5 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'waste_type_vidrio_count' AND ach.condition_value = 5 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_vidrio_count' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -374,8 +386,9 @@ BEGIN
 
   IF paper_count >= 5 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_paper_count' AND condition_value = 5 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'waste_type_paper_count' AND ach.condition_value = 5 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_paper_count' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -383,8 +396,9 @@ BEGIN
 
   IF plastico_count >= 10 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_plastico_count' AND condition_value = 10 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'waste_type_plastico_count' AND ach.condition_value = 10 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_plastico_count' AND a.condition_value = 10 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -392,8 +406,9 @@ BEGIN
 
   IF unique_bins >= 4 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'unique_bin_types' AND condition_value = 4 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'unique_bin_types' AND ach.condition_value = 4 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'unique_bin_types' AND a.condition_value = 4 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -401,8 +416,9 @@ BEGIN
 
   IF bin_plastico >= 10 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'bin_type_plastico_count' AND condition_value = 10 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'bin_type_plastico_count' AND ach.condition_value = 10 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'bin_type_plastico_count' AND a.condition_value = 10 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -410,8 +426,9 @@ BEGIN
 
   IF bin_raee >= 3 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'bin_type_raee_count' AND condition_value = 3 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'bin_type_raee_count' AND ach.condition_value = 3 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'bin_type_raee_count' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -419,8 +436,9 @@ BEGIN
 
   IF bin_pilas >= 1 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'bin_type_pilas_count' AND condition_value = 1 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'bin_type_pilas_count' AND ach.condition_value = 1 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'bin_type_pilas_count' AND a.condition_value = 1 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -428,8 +446,9 @@ BEGIN
 
   IF unique_points >= 2 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'unique_recycling_points' AND condition_value = 2 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'unique_recycling_points' AND ach.condition_value = 2 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'unique_recycling_points' AND a.condition_value = 2 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -437,8 +456,9 @@ BEGIN
 
   IF unique_points >= 3 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'unique_recycling_points' AND condition_value = 3 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'unique_recycling_points' AND ach.condition_value = 3 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'unique_recycling_points' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -446,8 +466,9 @@ BEGIN
 
   IF point_bib >= 5 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'recycling_point_biblioteca_count' AND condition_value = 5 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'recycling_point_biblioteca_count' AND ach.condition_value = 5 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'recycling_point_biblioteca_count' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -455,8 +476,9 @@ BEGIN
 
   IF overridden_count >= 1 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'waste_type_overridden_count' AND condition_value = 1 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'waste_type_overridden_count' AND ach.condition_value = 1 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'waste_type_overridden_count' AND a.condition_value = 1 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -464,8 +486,9 @@ BEGIN
 
   IF manual_count >= 5 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'manual_detection_count' AND condition_value = 5 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'manual_detection_count' AND ach.condition_value = 5 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'manual_detection_count' AND a.condition_value = 5 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -473,8 +496,9 @@ BEGIN
 
   IF friend_count >= 1 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'friend_count' AND condition_value = 1 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'friend_count' AND ach.condition_value = 1 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'friend_count' AND a.condition_value = 1 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -482,8 +506,9 @@ BEGIN
 
   IF friend_count >= 3 THEN
     INSERT INTO public.user_achievements (user_id, achievement_id, unlocked_at, is_active)
-    SELECT p_user_id, id, now(), true FROM public.achievements WHERE condition_type = 'friend_count' AND condition_value = 3 AND is_active = true
-      AND id NOT IN (SELECT achievement_id FROM public.user_achievements WHERE user_id = p_user_id)
+    SELECT p_user_id, ach.id, now(), true FROM public.achievements ach
+    WHERE ach.condition_type = 'friend_count' AND ach.condition_value = 3 AND ach.is_active = true
+      AND ach.id NOT IN (SELECT ua.achievement_id FROM public.user_achievements ua WHERE ua.user_id = p_user_id)
     ON CONFLICT (user_id, achievement_id) DO NOTHING;
     RETURN QUERY SELECT a.id, a.name, a.slug FROM public.achievements a JOIN public.user_achievements ua ON a.id = ua.achievement_id
     WHERE ua.user_id = p_user_id AND a.condition_type = 'friend_count' AND a.condition_value = 3 AND a.is_active = true AND ua.unlocked_at >= now() - interval '1 second';
@@ -665,6 +690,48 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION "public"."get_achievement_unlock_stats"() RETURNS TABLE("achievement_id" "uuid", "slug" "text", "unlocked_users" bigint, "total_users" bigint, "user_percentage" numeric)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  WITH active_users AS (
+    SELECT u.id
+    FROM public.users u
+    WHERE u.is_active = true
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.user_roles ur
+        WHERE ur.user_id = u.id
+          AND ur.is_active = true
+      )
+  ),
+  totals AS (
+    SELECT COUNT(*)::bigint AS total_users
+    FROM active_users
+  )
+  SELECT
+    a.id AS achievement_id,
+    a.slug,
+    COUNT(DISTINCT ua.user_id)::bigint AS unlocked_users,
+    totals.total_users,
+    ROUND(
+      COUNT(DISTINCT ua.user_id)::numeric * 100
+      / NULLIF(totals.total_users, 0),
+      2
+    ) AS user_percentage
+  FROM public.achievements a
+  CROSS JOIN totals
+  LEFT JOIN public.user_achievements ua
+    ON ua.achievement_id = a.id
+   AND ua.is_active = true
+  LEFT JOIN active_users au
+    ON au.id = ua.user_id
+  WHERE a.is_active = true
+    AND a.slug IS NOT NULL
+    AND (ua.user_id IS NULL OR au.id IS NOT NULL)
+  GROUP BY a.id, a.slug, totals.total_users;
+$$;
+
 CREATE OR REPLACE FUNCTION "public"."update_featured_medals"("p_user_id" "uuid", "p_achievement_ids" "uuid"[]) RETURNS TABLE("success" boolean, "message" "text")
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO 'public', 'app_gamification'
@@ -757,6 +824,10 @@ GRANT ALL ON FUNCTION "public"."app_today"() TO "anon";
 GRANT ALL ON FUNCTION "public"."app_today"() TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."app_today"() TO "service_role";
+
+GRANT EXECUTE ON FUNCTION "public"."get_achievement_unlock_stats"() TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."get_achievement_unlock_stats"() TO "service_role";
 
 GRANT EXECUTE ON FUNCTION "public"."get_streak_activity"("p_user_id" "uuid") TO "authenticated";
 

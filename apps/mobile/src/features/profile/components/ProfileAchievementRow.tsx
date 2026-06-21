@@ -1,7 +1,7 @@
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ProfileBadge } from '@/src/features/profile/data/profileGamification';
-import { AppIcon, AppText, theme } from '@/src/ui';
+import { AppIcon, AppText, BadgeFrame, theme } from '@/src/ui';
 
 type ProfileAchievementRowProps = {
   badge: Readonly<ProfileBadge>;
@@ -12,22 +12,12 @@ export function ProfileAchievementRow({ badge, onPress }: Readonly<ProfileAchiev
   const earned = !!badge.earnedAt;
 
   return (
-    <Pressable 
-      style={[styles.row, !earned && styles.rowLocked]} 
+    <Pressable
+      style={styles.row}
       onPress={onPress}
       disabled={!onPress}
     >
-      <View style={styles.imageWrap}>
-        {earned ? (
-          <Image
-            source={badge.image}
-            style={styles.image}
-            resizeMode="contain"
-          />
-        ) : (
-          <AppIcon name="lock" size={theme.iconSizes.md} color={theme.colors.textSecondary} />
-        )}
-      </View>
+      <BadgeFrame image={badge.image} size="sm" locked={!earned} userPercentage={badge.userPercentage} />
 
       <View style={styles.body}>
         <AppText variant="bodyS" style={[styles.name, !earned && styles.textMuted]}>
@@ -58,24 +48,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.s3,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-  },
-  rowLocked: {
-    opacity: 0.55,
-  },
-  imageWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    flexShrink: 0,
-  },
-  image: {
-    width: 38,
-    height: 38,
   },
   body: {
     flex: 1,
