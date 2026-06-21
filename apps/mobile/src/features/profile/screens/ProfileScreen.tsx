@@ -1,6 +1,6 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
 
 import { routes } from '@/src/constants/routes';
 import { ProfileAchievementsPreviewCard } from '@/src/features/profile/components/ProfileAchievementsPreviewCard';
@@ -8,10 +8,10 @@ import { ProfileHeroCard } from '@/src/features/profile/components/ProfileHeroCa
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileStatsGrid } from '@/src/features/profile/components/ProfileStatsGrid';
 import { ProfileStreakCard } from '@/src/features/profile/components/ProfileStreakCard';
-import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
+import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
+import { useProfileGamification } from '@/src/features/profile/hooks/useProfileGamification';
 import { useStreakProgress } from '@/src/features/profile/hooks/useStreakProgress';
 import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
-import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppButton, AppCard, AppIcon, AppText, theme } from '@/src/ui';
 
@@ -19,14 +19,10 @@ export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
+  const { featuredBadges, stats } = useProfileGamification();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
   const [lostDismissed, setLostDismissed] = useState(false);
   const showStreakLost = Boolean(streakData?.justExpired) && !lostDismissed;
-
-  const featuredIds = profileGamificationSnapshot.featuredBadgeIds as readonly string[];
-  const featuredBadges = profileGamificationSnapshot.allBadges.filter((b) =>
-    featuredIds.includes(b.id),
-  );
 
   return (
     <ProfileScreenContainer>
@@ -51,11 +47,7 @@ export function ProfileScreen() {
             Pasó el tiempo de gracia sin segregar. Tu nivel se mantiene — empieza una nueva racha
             reciclando hoy.
           </AppText>
-          <AppButton
-            variant="outline"
-            label="Entendido"
-            onPress={() => setLostDismissed(true)}
-          />
+          <AppButton variant="outline" label="Entendido" onPress={() => setLostDismissed(true)} />
         </AppCard>
       ) : null}
       <ProfileStreakCard
@@ -65,12 +57,22 @@ export function ProfileScreen() {
         recycledToday={streakData?.recycledToday ?? false}
         expiresAt={streakData?.expiresAt ?? null}
       />
+      <Pressable
+        style={({ pressed }) => [styles.historyRow, pressed && styles.historyRowPressed]}
+        onPress={() => router.push(routes.profileStreak)}
+      >
+        <View style={styles.historyLeft}>
+          <AppIcon name="flame" size={theme.iconSizes.sm} color={theme.colors.primary} />
+          <AppText style={styles.historyLabel}>Racha y actividad</AppText>
+        </View>
+        <AppIcon name="chevronRight" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
+      </Pressable>
       <ProfileAchievementsPreviewCard
         featuredBadges={featuredBadges}
         onSeeAllPress={() => router.push(routes.profileAchievements)}
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />
-      <ProfileStatsGrid stats={profileGamificationSnapshot.stats} />
+      <ProfileStatsGrid stats={stats} />
       <Pressable
         style={({ pressed }) => [styles.historyRow, pressed && styles.historyRowPressed]}
         onPress={() => router.push(routes.recycleHistory)}

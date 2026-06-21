@@ -9,13 +9,14 @@ import {
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
-import { confirmSegregation } from '../api/recyclingLogs';
+import { checkUnlockedAchievements } from '@/src/services/achievements';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import { createRecyclingLog } from '../api/recyclingLogs';
+import { confirmSegregation } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
-  const { state, clearSelectedContainer, markStep, markConfirmed, setStreakResult } =
-    useRecycleFlow();
+  const { state, clearSelectedContainer, markStep, markConfirmed } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType } = useResolvedBinType(
     state.finalWasteTypeId,
@@ -67,7 +68,7 @@ export function InstructionsScreen() {
       const usedManual =
         state.predictedWasteTypeId !== undefined &&
         state.predictedWasteTypeId !== state.finalWasteTypeId;
-      const streak = await confirmSegregation({
+      const log = await createRecyclingLog({
         userId: session.user.id,
         wasteTypeId: finalWasteType.id,
         binTypeId: '33333333-3333-3333-3333-000000000001',//esto es un parche, se deberia ver que datos se pone realmente en este log.
@@ -75,11 +76,26 @@ export function InstructionsScreen() {
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,
       });
-      markConfirmed(streak.recordId);
-      setStreakResult(streak);
-      router.replace('/recycle/success');
+
+      markConfirmed(log.id);
+      
+      // Check if any achievement was unlocked
+      const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
+      if (unlockedAchievement) {
+        router.replace({
+          pathname: '/recycle/reward',
+          params: {
+            badgeId: unlockedAchievement.slug,
+            badgeName: unlockedAchievement.name,
+            badgeReward: unlockedAchievement.rewardName ?? undefined,
+            badgeDescription: unlockedAchievement.unlockDescription ?? undefined,
+          },
+        });
+      } else {
+        router.replace('/recycle/success');
+      }
     } catch (err) {
-      console.error('[InstructionsScreen] confirmSegregation failed:', err);
+      console.error('[InstructionsScreen] createRecyclingLog failed:', err);
       notify(
         'No se pudo registrar',
         err instanceof Error ? err.message : 'Intenta nuevamente.',

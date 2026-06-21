@@ -62,10 +62,6 @@ export const HAT_STYLES = ['bandana', 'beanie', 'cowboy', 'engineer', 'fedora', 
 export const CLOTHES_COLORS = ['black', 'black_leather', 'blue', 'bronze', 'brown_leather', 'gold', 'green', 'grey', 'iron', 'lime', 'orange', 'pink', 'purple', 'red', 'silver', 'turquoise', 'white', 'white_leather', 'yellow'];
 export const CLOTHES_STYLES = ['breastplate', 'brute', 'doublet', 'robe', 'vest'];
 
-// TODO(#79): HAT_STYLES y CLOTHES_STYLES (y HAIR/BEARD/MOUSTACHE_STYLES) representan todos los
-// ítems existentes. Cuando se implemente el sistema de desbloqueo, el editor deberá filtrar
-// estos arrays mostrando solo los ítems presentes en user_rewards del usuario.
-// Requires: rewards.item_key + rewards.item_type en DB (ver migración 20260607000001).
 
 export const BEARD_COLORS = ['black', 'blonde', 'blue', 'brown', 'green', 'pink', 'purple', 'red', 'turquoise', 'white'];
 export const BEARD_STYLES = ['braided', 'chops', 'classic', 'curtain', 'dutch', 'egyptian', 'fork', 'garibaldi', 'goatee', 'long', 'lumberjack', 'shaft', 'shaman', 'sideburns', 'viking'];
