@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import {
-  getFeaturedAchievementIds,
-  getProfileStats,
-  getUserAchievements,
+    getFeaturedAchievementIds,
+    getProfileStats,
+    getUserAchievements,
 } from '@/src/features/profile/api/achievements';
 import {
-  BADGE_STATIC_DATA,
-  FEATURED_BADGE_SLUG_FALLBACK,
-  type ProfileBadge,
-  type ProfileStat,
+    BADGE_STATIC_DATA,
+    FEATURED_BADGE_SLUG_FALLBACK,
+    type ProfileBadge,
+    type ProfileStat,
 } from '@/src/features/profile/data/profileGamification';
 import { useAuth } from '@/src/hooks/useAuth';
 
@@ -19,6 +19,7 @@ type ProfileGamification = {
   featuredSlugs: string[];
   slugToAchievementId: Map<string, string>;
   stats: ProfileStat[];
+  lastUnlockedBadges: ProfileBadge[];
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -126,5 +127,15 @@ export function useProfileGamification(): ProfileGamification {
 
   const featuredBadges = allBadges.filter((b) => featuredSlugs.includes(b.id));
 
-  return { allBadges, featuredBadges, featuredSlugs, slugToAchievementId, stats, loading, error, refetch: load };
+  // Compute last 5 unlocked achievements (most recent first)
+  const lastUnlockedBadges = allBadges
+    .filter((b) => b.earnedAt)
+    .sort((a, b) => {
+      const dateA = new Date(a.earnedAt!).getTime();
+      const dateB = new Date(b.earnedAt!).getTime();
+      return dateB - dateA; // Most recent first
+    })
+    .slice(0, 5);
+
+  return { allBadges, featuredBadges, featuredSlugs, slugToAchievementId, stats, loading, error, refetch: load, lastUnlockedBadges };
 }
