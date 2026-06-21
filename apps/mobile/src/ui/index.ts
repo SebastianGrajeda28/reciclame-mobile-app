@@ -24,3 +24,4 @@ export { AppBadge } from '@/src/ui/components/AppBadge';
 export { AppChip } from '@/src/ui/components/AppChip';
 export { AppSegmentedControl } from '@/src/ui/components/AppSegmentedControl';
 export { AppSwitch } from '@/src/ui/components/AppSwitch';
+export { BadgeFrame } from '@/src/ui/BadgeFrame';

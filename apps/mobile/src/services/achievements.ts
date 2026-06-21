@@ -9,7 +9,7 @@ export type UnlockedAchievementResult = {
 
 export async function checkUnlockedAchievements(
   userId: string
-): Promise<UnlockedAchievementResult | null> {
+): Promise<UnlockedAchievementResult[]> {
   try {
     const { data, error } = await supabase.rpc('check_and_unlock_achievements', {
       p_user_id: userId,
@@ -17,46 +17,47 @@ export async function checkUnlockedAchievements(
 
     if (error) {
       console.error('[checkUnlockedAchievements] Database error:', error);
-      return null;
+      return [];
     }
 
-    if (!data || data.length === 0) return null;
+    if (!data || data.length === 0) return [];
 
-    const row = data[0] as {
-      achievement_id: string;
-      achievement_name: string;
-      achievement_slug: string | null;
-      reward_id: string | null;
-    };
+    const rows = (data as {
+      out_achievement_id: string;
+      out_achievement_name: string;
+      out_achievement_slug: string | null;
+    }[]).filter((r) => r.out_achievement_slug);
 
-    if (!row.achievement_slug) return null;
+    if (rows.length === 0) return [];
 
-    let rewardName: string | null = null;
-    if (row.reward_id) {
-      const { data: reward } = await supabase
+    const [rewardsRes, achsRes] = await Promise.all([
+      supabase
         .from('rewards')
-        .select('name')
-        .eq('id', row.reward_id)
-        .maybeSingle();
-      rewardName = reward?.name ?? null;
+        .select('achievement_id, name')
+        .in('achievement_id', rows.map((r) => r.out_achievement_id))
+        .eq('is_active', true),
+      supabase
+        .from('achievements')
+        .select('id, unlock_description')
+        .in('id', rows.map((r) => r.out_achievement_id)),
+    ]);
+
+    const rewardMap = new Map<string, string>();
+    for (const r of rewardsRes.data ?? []) rewardMap.set(r.achievement_id, r.name);
+
+    const unlockDescMap = new Map<string, string>();
+    for (const a of achsRes.data ?? []) {
+      if (a.unlock_description) unlockDescMap.set(a.id, a.unlock_description);
     }
 
-    let unlockDescription: string | null = null;
-    const { data: ach } = await supabase
-      .from('achievements')
-      .select('unlock_description')
-      .eq('id', row.achievement_id)
-      .maybeSingle();
-    unlockDescription = ach?.unlock_description ?? null;
-
-    return {
-      slug: row.achievement_slug,
-      name: row.achievement_name,
-      rewardName,
-      unlockDescription,
-    };
+    return rows.map((row) => ({
+      slug: row.out_achievement_slug!,
+      name: row.out_achievement_name,
+      rewardName: rewardMap.get(row.out_achievement_id) ?? null,
+      unlockDescription: unlockDescMap.get(row.out_achievement_id) ?? null,
+    }));
   } catch (err) {
     console.error('[checkUnlockedAchievements] Error:', err);
-    return null;
+    return [];
   }
 }

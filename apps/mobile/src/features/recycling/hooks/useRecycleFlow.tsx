@@ -100,12 +100,13 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
 
   const setFinalWasteTypeId = useCallback((wasteTypeId: string) => {
     setState((prev) => {
-      const overridden =
-        prev.predictedWasteTypeId !== undefined &&
-        prev.predictedWasteTypeId !== wasteTypeId;
+      const hasPrediction = prev.predictedWasteTypeId !== undefined;
+      const overridden = hasPrediction && prev.predictedWasteTypeId !== wasteTypeId;
       updateSession({
         finalWasteTypeId: wasteTypeId,
-        detectionType: 'manual',
+        // 'manual' only when the user picked without any AI prediction.
+        // If the AI predicted first, keep 'auto' regardless of whether they changed it.
+        detectionType: hasPrediction ? 'auto' : 'manual',
         wasteTypeOverridden: overridden,
       });
       return { ...prev, finalWasteTypeId: wasteTypeId };

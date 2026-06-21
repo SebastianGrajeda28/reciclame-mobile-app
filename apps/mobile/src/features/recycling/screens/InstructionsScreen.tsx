@@ -10,8 +10,9 @@ import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBi
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
 import { checkUnlockedAchievements } from '@/src/services/achievements';
+import { useCosmeticsInvalidation } from '@/src/contexts/CosmeticsInvalidationContext';
+import { useRewardOverlay, type RewardItem } from '@/src/contexts/RewardOverlayContext';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
-import { createRecyclingLog } from '../api/recyclingLogs';
 import { confirmSegregation } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
@@ -23,6 +24,8 @@ export function InstructionsScreen() {
   );
   const { session } = useAuth();
   const { settings, updateSetting } = useUserSettings();
+  const { invalidateCosmetics } = useCosmeticsInvalidation();
+  const { showReward } = useRewardOverlay();
   const [submitting, setSubmitting] = useState(false);
   const [showAgain, setShowAgain] = useState(() => !(settings?.skipRecyclingInstructions ?? false));
   const autoSubmitted = useRef(false);
@@ -68,31 +71,46 @@ export function InstructionsScreen() {
       const usedManual =
         state.predictedWasteTypeId !== undefined &&
         state.predictedWasteTypeId !== state.finalWasteTypeId;
-      const log = await createRecyclingLog({
+      const log = await confirmSegregation({
         userId: session.user.id,
         wasteTypeId: finalWasteType.id,
-        binTypeId: '33333333-3333-3333-3333-000000000001',//esto es un parche, se deberia ver que datos se pone realmente en este log.
+        binTypeId: resolvedBinType?.id ?? '33333333-3333-3333-3333-000000000001',
         recyclingPointId: selectedContainer.id,
         detectionType: usedManual ? 'manual' : 'auto',
         confidenceScore: state.predictionConfidence,
       });
 
-      markConfirmed(log.id);
-      
-      // Check if any achievement was unlocked
-      const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
-      if (unlockedAchievement) {
-        router.replace({
-          pathname: '/recycle/reward',
-          params: {
-            badgeId: unlockedAchievement.slug,
-            badgeName: unlockedAchievement.name,
-            badgeReward: unlockedAchievement.rewardName ?? undefined,
-            badgeDescription: unlockedAchievement.unlockDescription ?? undefined,
-          },
+      markConfirmed(log.recordId);
+
+      const unlocked = await checkUnlockedAchievements(session.user.id);
+      if (unlocked.some((a) => a.rewardName)) invalidateCosmetics();
+
+      const rewardItems: RewardItem[] = [];
+
+      if (log.streakDays > 0) {
+        rewardItems.push({
+          type: 'streak',
+          streakDays: log.streakDays,
+          leveledUp: log.leveledUp,
+          level: log.level,
+          streakExtendedToday: log.streakExtendedToday,
         });
-      } else {
-        router.replace('/recycle/success');
+      }
+
+      for (const a of unlocked) {
+        rewardItems.push({
+          type: 'achievement',
+          badgeId: a.slug,
+          badgeName: a.name,
+          badgeReward: a.rewardName ?? undefined,
+          badgeDescription: a.unlockDescription ?? undefined,
+        });
+      }
+
+      router.replace('/recycle/success');
+      if (rewardItems.length > 0) {
+        // Small defer so router.replace settles before the overlay mounts
+        setTimeout(() => showReward(rewardItems), 80);
       }
     } catch (err) {
       console.error('[InstructionsScreen] createRecyclingLog failed:', err);
@@ -103,7 +121,7 @@ export function InstructionsScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType]);
+  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType, invalidateCosmetics, showReward]);
 
   useEffect(() => {
     if (

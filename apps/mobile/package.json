@@ -15,7 +15,7 @@
     "format:check": "prettier \"app/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"*.{js,json,md}\" --check",
     "check": "npm run lint && npm run format:check",
     "test:watch": "bun test --env-file .env --watch",
-    "test:coverage": "bun test --env-file .env --coverage tests/utils tests/map tests/supabase-connection.test.ts tests/supabase.test.ts",
+    "test:coverage": "bun test --env-file .env --coverage tests/utils tests/map/distance.test.ts tests/map/filterContainers.test.ts tests/map/mockData.test.ts tests/supabase-connection.test.ts tests/supabase.test.ts",
     "test:components": "jest --config jest.components.config.js"
   },
   "dependencies": {
