@@ -42,5 +42,9 @@
     "@commitlint/config-conventional": "^21.0.1",
     "husky": "^8.0.0",
     "supabase": "^2.101.0"
-  }
+  },
+  "trustedDependencies": [
+    "unrs-resolver",
+    "@shopify/react-native-skia"
+  ]
 }
