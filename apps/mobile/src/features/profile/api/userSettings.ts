@@ -4,12 +4,13 @@ import type { UserSetting } from '@/src/types/user';
 export type UserSettingPatch = {
   notificationsEnabled?: boolean;
   skipRecyclingInstructions?: boolean;
+  locationVerificationEnabled?: boolean;
 };
 
 export async function getUserSettings(userId: string): Promise<UserSetting | null> {
   const { data, error } = await supabase
     .from('user_settings')
-    .select('id, user_id, notifications_enabled, skip_recycling_instructions, profile_visibility, language, updated_at')
+    .select('id, user_id, notifications_enabled, skip_recycling_instructions, profile_visibility, language, location_verification_enabled, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -26,6 +27,7 @@ export async function getUserSettings(userId: string): Promise<UserSetting | nul
     skipRecyclingInstructions: data.skip_recycling_instructions,
     profileVisibility: data.profile_visibility ?? null,
     language: data.language ?? null,
+    locationVerificationEnabled: data.location_verification_enabled ?? false,
     updatedAt: data.updated_at ?? null,
   };
 }
@@ -39,11 +41,14 @@ export async function updateUserSetting(userId: string, patch: UserSettingPatch)
   if (patch.skipRecyclingInstructions !== undefined) {
     snakePatch.skip_recycling_instructions = patch.skipRecyclingInstructions;
   }
+  if (patch.locationVerificationEnabled !== undefined) {
+    snakePatch.location_verification_enabled = patch.locationVerificationEnabled;
+  }
 
   const { data, error } = await supabase
     .from('user_settings')
     .upsert(snakePatch, { onConflict: 'user_id' })
-    .select('id, user_id, notifications_enabled, skip_recycling_instructions, profile_visibility, language, updated_at')
+    .select('id, user_id, notifications_enabled, skip_recycling_instructions, profile_visibility, language, location_verification_enabled, updated_at')
     .single();
 
   if (error || !data) {
@@ -57,6 +62,7 @@ export async function updateUserSetting(userId: string, patch: UserSettingPatch)
     skipRecyclingInstructions: data.skip_recycling_instructions,
     profileVisibility: data.profile_visibility ?? null,
     language: data.language ?? null,
+    locationVerificationEnabled: data.location_verification_enabled ?? false,
     updatedAt: data.updated_at ?? null,
   };
 }

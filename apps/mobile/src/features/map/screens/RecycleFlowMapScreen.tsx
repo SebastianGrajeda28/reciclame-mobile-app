@@ -5,14 +5,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
-import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import {
-  useRecycleFlow,
-  useResolvedRecycleSelection,
+    useRecycleFlow,
+    useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
+import { useStudentLocation } from '@/src/hooks/useStudentLocation';
 import { AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
 

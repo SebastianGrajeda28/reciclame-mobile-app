@@ -1,24 +1,24 @@
 import {
-  createContext,
-  PropsWithChildren,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
+    createContext,
+    PropsWithChildren,
+    useCallback,
+    useContext,
+    useMemo,
+    useRef,
+    useState,
 } from 'react';
 
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import type { StreakResult } from '../api/recyclingLogs';
 import {
-  advanceStep,
-  clearPendingSession,
-  flushAndStartNewSession,
-  flushSession,
-  type FlowStep,
-  type LocalRecyclingSession,
-  savePendingSession,
+    advanceStep,
+    clearPendingSession,
+    flushAndStartNewSession,
+    flushSession,
+    savePendingSession,
+    type FlowStep,
+    type LocalRecyclingSession,
 } from '../api/recyclingSessions';
 
 type RecycleFlowState = {
@@ -83,7 +83,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     setState((prev) => ({ ...prev, capturedPhotoUri: uri }));
   }, []);
 
-  const setPrediction = useCallback((wasteTypeId: string, confidence: number) => {
+  const setPrediction = useCallback((wasteTypeId: string, confidence: number, autoSelectContainer?: { lat: number; lon: number }) => {
     setState((prev) => ({
       ...prev,
       predictedWasteTypeId: wasteTypeId,
@@ -96,6 +96,11 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       confidenceScore: confidence,
       detectionType: 'auto',
     });
+
+    // Auto-select closest container if location is provided
+    if (autoSelectContainer) {
+      // This will be handled by the caller to avoid circular dependencies
+    }
   }, [updateSession]);
 
   const setFinalWasteTypeId = useCallback((wasteTypeId: string) => {

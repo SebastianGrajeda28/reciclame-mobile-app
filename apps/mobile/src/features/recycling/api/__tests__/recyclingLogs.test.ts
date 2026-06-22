@@ -1,4 +1,10 @@
-import { createRecyclingLog, getRecyclingLogs, getRecyclingLogsFiltered } from '@/src/features/recycling/api/recyclingLogs';
+import {
+  createRecyclingLog,
+  getRecyclingHistoryPage,
+  getRecyclingLogs,
+  getRecyclingLogsFiltered,
+  RECYCLING_HISTORY_PAGE_SIZE,
+} from '@/src/features/recycling/api/recyclingLogs';
 import { supabase } from '@/src/services/supabase/client';
 
 jest.mock('@/src/services/supabase/client', () => {
@@ -290,5 +296,111 @@ describe('getRecyclingLogsFiltered', () => {
     expect(chain.eq).toHaveBeenNthCalledWith(2, 'waste_type_id', 'waste-3');
     expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
     expect(result).toHaveLength(1);
+  });
+});
+
+function buildPageQueryChain(response: { data: unknown; error: unknown }) {
+  const query: {
+    eq: jest.Mock;
+    in: jest.Mock;
+    gte: jest.Mock;
+    order: jest.Mock;
+    range: jest.Mock;
+  } = {
+    eq: jest.fn(() => query),
+    in: jest.fn(() => query),
+    gte: jest.fn(() => query),
+    order: jest.fn(() => query),
+    range: jest.fn().mockResolvedValue(response),
+  };
+  const select = jest.fn(() => query);
+  return {
+    select,
+    eq: query.eq,
+    in: query.in,
+    gte: query.gte,
+    order: query.order,
+    range: query.range,
+  };
+}
+
+describe('getRecyclingHistoryPage', () => {
+  beforeEach(() => {
+    mockedFrom.mockReset();
+  });
+
+  test('Debería paginar por rango y mapear los campos, incluido heatGained', async () => {
+    const dbRows = [
+      {
+        id: 'r1',
+        created_at: '2026-06-18T10:00:00Z',
+        waste_type_id: 'w1',
+        heat_gained: 5,
+        detection_type: 'auto',
+        confidence_score: 0.9,
+        status: 'confirmed',
+        waste_types: { name: 'Plástico (PET)' },
+        recycling_points: { name: 'Punto A' },
+      },
+    ];
+    const chain = buildPageQueryChain({ data: dbRows, error: null });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    const result = await getRecyclingHistoryPage('user-1', 0, {});
+
+    expect(mockedFrom).toHaveBeenCalledWith('recycling_records');
+    expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(chain.range).toHaveBeenCalledWith(0, RECYCLING_HISTORY_PAGE_SIZE - 1);
+    expect(chain.order).toHaveBeenNthCalledWith(1, 'created_at', { ascending: false });
+    expect(chain.order).toHaveBeenNthCalledWith(2, 'id', { ascending: false });
+    expect(result.items[0]).toMatchObject({
+      id: 'r1',
+      wasteTypeId: 'w1',
+      wasteTypeName: 'Plástico (PET)',
+      recyclingPointName: 'Punto A',
+      heatGained: 5,
+    });
+    expect(result.hasMore).toBe(false);
+  });
+
+  test('Debería marcar hasMore=true cuando la página vuelve llena', async () => {
+    const full = Array.from({ length: RECYCLING_HISTORY_PAGE_SIZE }, (_, i) => ({
+      id: `r${i}`,
+      created_at: '2026-06-18T10:00:00Z',
+      waste_type_id: 'w1',
+      heat_gained: 0,
+      status: 'confirmed',
+      waste_types: { name: 'X' },
+      recycling_points: { name: 'Y' },
+    }));
+    const chain = buildPageQueryChain({ data: full, error: null });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    const result = await getRecyclingHistoryPage('user-1', 0, {});
+
+    expect(result.items).toHaveLength(RECYCLING_HISTORY_PAGE_SIZE);
+    expect(result.items[0].heatGained).toBe(0); // `?? undefined` preserva el 0
+    expect(result.hasMore).toBe(true);
+  });
+
+  test('Debería aplicar filtro de categoría (in), de fecha (gte) y el rango de la página solicitada', async () => {
+    const chain = buildPageQueryChain({ data: [], error: null });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    await getRecyclingHistoryPage('user-1', 2, {
+      wasteTypeIds: ['w1', 'w2'],
+      fromDate: '2026-06-01T00:00:00Z',
+    });
+
+    expect(chain.in).toHaveBeenCalledWith('waste_type_id', ['w1', 'w2']);
+    expect(chain.gte).toHaveBeenCalledWith('created_at', '2026-06-01T00:00:00Z');
+    expect(chain.range).toHaveBeenCalledWith(40, 59);
+  });
+
+  test('Debería lanzar Error con el mensaje de Supabase cuando la consulta falla', async () => {
+    const chain = buildPageQueryChain({ data: null, error: { message: 'rls denied' } });
+    mockedFrom.mockReturnValue({ select: chain.select });
+
+    await expect(getRecyclingHistoryPage('user-1', 0, {})).rejects.toThrow('rls denied');
   });
 });
