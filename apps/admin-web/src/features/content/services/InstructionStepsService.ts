@@ -8,7 +8,6 @@ type InstructionStepRow = {
   instruction_id: string;
   text: string;
   image_url: string | null;
-  is_active: boolean;
   created_at: string;
   updated_at: string | null;
 };
@@ -19,7 +18,7 @@ function mapInstructionStep(row: InstructionStepRow): InstructionStep {
     instructionId: row.instruction_id,
     text: row.text,
     imageUrl: row.image_url,
-    isActive: row.is_active,
+    isActive: true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -28,7 +27,7 @@ function mapInstructionStep(row: InstructionStepRow): InstructionStep {
 export async function getInstructionSteps(instructionId: string): Promise<InstructionStep[]> {
   const { data, error } = await supabase
     .from("instruction_steps")
-    .select("id, instruction_id, text, image_url, is_active, created_at, updated_at")
+    .select("id, instruction_id, text, image_url, created_at, updated_at")
     .eq("instruction_id", instructionId)
     .order("created_at", { ascending: true });
 
@@ -40,7 +39,7 @@ export async function createInstructionStep(values: { instructionId: string; tex
   const { data, error } = await supabase
     .from("instruction_steps")
     .insert({ instruction_id: values.instructionId, text: values.text })
-    .select("id, instruction_id, text, image_url, is_active, created_at, updated_at")
+    .select("id, instruction_id, text, image_url, created_at, updated_at")
     .single();
 
   if (error) throw new Error(error.message);
@@ -56,21 +55,18 @@ export async function updateInstructionStep(id: string, patch: { text?: string; 
     .from("instruction_steps")
     .update(nextPatch)
     .eq("id", id)
-    .select("id, instruction_id, text, image_url, is_active, created_at, updated_at")
+    .select("id, instruction_id, text, image_url, created_at, updated_at")
     .single();
 
   if (error) throw new Error(error.message);
   return mapInstructionStep(data);
 }
 
-export async function deactivateInstructionStep(id: string) {
-  const { data, error } = await supabase
+export async function deleteInstructionStep(id: string): Promise<void> {
+  const { error } = await supabase
     .from("instruction_steps")
-    .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("id, instruction_id, text, image_url, is_active, created_at, updated_at")
-    .single();
+    .delete()
+    .eq("id", id);
 
   if (error) throw new Error(error.message);
-  return mapInstructionStep(data);
 }

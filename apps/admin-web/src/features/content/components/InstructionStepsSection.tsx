@@ -24,7 +24,7 @@ import { useUser } from "@/shared/context/UserContext";
 import { uploadInstructionStepImage } from "@/features/admin/services/AdminStorageService";
 import {
   createInstructionStep,
-  deactivateInstructionStep,
+  deleteInstructionStep,
   getInstructionSteps,
   updateInstructionStep,
   type InstructionStep,
@@ -345,18 +345,17 @@ export function InstructionPreviewRail({
   });
 
   const orderedSteps = useMemo(() => {
-    const active = steps.filter((s) => s.isActive);
     const savedOrder = parseStepOrder(instruction);
     if (savedOrder.length === 0) {
-      return [...active].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return [...steps].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     }
-    const byId = new Map(active.map((s) => [s.id, s]));
+    const byId = new Map(steps.map((s) => [s.id, s]));
     const sorted: InstructionStep[] = [];
     for (const id of savedOrder) {
       const s = byId.get(id);
       if (s) sorted.push(s);
     }
-    for (const s of active) {
+    for (const s of steps) {
       if (!savedOrder.includes(s.id)) sorted.push(s);
     }
     return sorted;
@@ -406,21 +405,20 @@ export default function InstructionStepsSection({
   });
 
   function buildOrderedLocal(steps: InstructionStep[], inst: Instruction): LocalStep[] {
-    const active = steps.filter((s) => s.isActive);
     const savedOrder = parseStepOrder(inst);
     let ordered: InstructionStep[];
     if (savedOrder.length > 0) {
-      const byId = new Map(active.map((s) => [s.id, s]));
+      const byId = new Map(steps.map((s) => [s.id, s]));
       ordered = [];
       for (const id of savedOrder) {
         const s = byId.get(id);
         if (s) ordered.push(s);
       }
-      for (const s of active) {
+      for (const s of steps) {
         if (!savedOrder.includes(s.id)) ordered.push(s);
       }
     } else {
-      ordered = [...active].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      ordered = [...steps].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     }
     return ordered.map(toLocalStep);
   }
@@ -449,10 +447,9 @@ export default function InstructionStepsSection({
     if (localSteps.some((s) => s.isNew || s.isDeleted || s.isDirty || s.pendingImageFile)) return true;
     // Order changed vs saved order
     const savedOrder = parseStepOrder(instruction);
-    const serverActive = serverSteps.filter((s) => s.isActive);
     const referenceIds = savedOrder.length > 0
       ? savedOrder
-      : serverActive.map((s) => s.id);
+      : serverSteps.map((s) => s.id);
     const visIds = visibleSteps.map((s) => s.id);
     if (visIds.length !== referenceIds.length) return true;
     return visIds.some((id, i) => id !== referenceIds[i]);
@@ -526,11 +523,11 @@ export default function InstructionStepsSection({
         }),
       );
 
-      // 2. Soft-delete removed existing steps
+      // 2. Hard-delete removed existing steps
       await Promise.all(
         withImages
           .filter((s) => s.isDeleted && !s.isNew)
-          .map((s) => deactivateInstructionStep(s.id)),
+          .map((s) => deleteInstructionStep(s.id)),
       );
 
       // 3. Create new steps; map temp id → real id

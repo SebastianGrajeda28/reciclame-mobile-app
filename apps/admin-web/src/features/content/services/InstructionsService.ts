@@ -9,7 +9,6 @@ type InstructionRow = {
   body: string | null;
   image_url: string | null;
   waste_type_id: string | null;
-  is_active: boolean;
   created_at: string;
   updated_at: string | null;
 };
@@ -21,7 +20,7 @@ function mapInstruction(row: InstructionRow): Instruction {
     body: row.body,
     imageUrl: row.image_url,
     wasteTypeId: row.waste_type_id,
-    isActive: row.is_active,
+    isActive: true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -44,7 +43,7 @@ export function encodeStepOrder(ids: string[]): string {
 export async function getInstructions(): Promise<Instruction[]> {
   const { data, error } = await supabase
     .from("instructions")
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
+    .select("id, title, body, image_url, waste_type_id, created_at, updated_at")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -59,7 +58,7 @@ export async function createInstruction(values: InstructionPayload) {
       waste_type_id: values.wasteTypeId ?? null,
       body: values.body ?? null,
     })
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
+    .select("id, title, body, image_url, waste_type_id, created_at, updated_at")
     .single();
 
   if (error) throw new Error(error.message);
@@ -76,33 +75,18 @@ export async function updateInstruction(id: string, values: InstructionPayload) 
     .from("instructions")
     .update(patch)
     .eq("id", id)
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
+    .select("id, title, body, image_url, waste_type_id, created_at, updated_at")
     .single();
 
   if (error) throw new Error(error.message);
   return mapInstruction(data);
 }
 
-export async function deactivateInstruction(id: string) {
-  const { data, error } = await supabase
+export async function deleteInstruction(id: string): Promise<void> {
+  const { error } = await supabase
     .from("instructions")
-    .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
-    .single();
+    .delete()
+    .eq("id", id);
 
   if (error) throw new Error(error.message);
-  return mapInstruction(data);
-}
-
-export async function restoreInstruction(id: string) {
-  const { data, error } = await supabase
-    .from("instructions")
-    .update({ is_active: true, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
-    .single();
-
-  if (error) throw new Error(error.message);
-  return mapInstruction(data);
 }
