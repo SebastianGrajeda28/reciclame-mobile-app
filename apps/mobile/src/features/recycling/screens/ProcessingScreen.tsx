@@ -7,28 +7,33 @@ import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
 import { useRotatingFunFact } from '@/src/features/recycling/hooks/useFunFact';
 import {
-  useRecycleFlow,
-  useResolvedRecycleSelection,
+    useRecycleFlow,
+    useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
-  classifyWaste,
-  getConfidenceThreshold,
+    classifyWaste,
+    getConfidenceThreshold,
 } from '@/src/features/recycling/services/classification';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
 import type { WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
+import { useStudentLocation } from '@/src/hooks/useStudentLocation';
+import { useUserSettings } from '@/src/hooks/useUserSettings';
+import { findClosestRecyclingPoint } from '@/src/services/closestRecyclingPoint';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ProcessingScreen() {
   const navigation = useNavigation();
-  const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep } = useRecycleFlow();
+  const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainerId } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { fact } = useRotatingFunFact();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
   const loading = !state.finalWasteTypeId;
   const navigatingForward = useRef(false);
+  const studentLocation = useStudentLocation();
+  const { settings } = useUserSettings();
 
   const threshold = getConfidenceThreshold();
   const confidence = state.predictionConfidence ?? 0;
@@ -53,11 +58,23 @@ export function ProcessingScreen() {
     classifyWaste(state.capturedPhotoUri ?? 'manual-seed').then((result) => {
       if (!mounted) return;
       setPrediction(result.wasteTypeId, result.confidence);
+
+      // Auto-select closest recycling point if location verification is enabled
+      if (settings?.locationVerificationEnabled) {
+        const closestContainer = findClosestRecyclingPoint(
+          studentLocation.latitude,
+          studentLocation.longitude,
+          result.wasteTypeId,
+        );
+        if (closestContainer) {
+          setSelectedContainerId(closestContainer.id);
+        }
+      }
     });
     return () => {
       mounted = false;
     };
-  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId]);
+  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainerId]);
 
   const containerMismatch = useMemo(() => {
     if (!state.selectedContainerId || !resolvedBinType) return false;
