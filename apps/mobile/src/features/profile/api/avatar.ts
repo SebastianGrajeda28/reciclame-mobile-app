@@ -16,15 +16,27 @@ export async function getAvatarConfig(userId: string): Promise<AvatarConfig | nu
 }
 
 export async function saveAvatarConfig(userId: string, config: AvatarConfig): Promise<void> {
+  console.log('[AVATAR SAVE] Config enviada al servidor:', JSON.stringify(config, null, 2));
+  console.log('[AVATAR SAVE] clothes:', config.clothes, '| hat:', config.hat, '| hair:', config.hair);
+
   const { data, error } = await supabase
     .rpc('save_avatar_config', { p_user_id: userId, p_config: config });
 
-  if (error) throw new Error(error.message);
+  console.log('[AVATAR SAVE] Respuesta del servidor — data:', JSON.stringify(data), '| error:', error);
+
+  if (error) {
+    console.error('[AVATAR SAVE] Error de Supabase:', error.message, error.code, error.details);
+    throw new Error(error.message);
+  }
 
   const row = Array.isArray(data) ? data[0] : data;
+  console.log('[AVATAR SAVE] Row procesado:', JSON.stringify(row));
   if (row && !(row as { success: boolean }).success) {
+    console.error('[AVATAR SAVE] Servidor rechazó el guardado:', (row as { message: string }).message);
     throw new Error((row as { message: string }).message);
   }
+
+  console.log('[AVATAR SAVE] Guardado exitoso ✓');
 }
 
 export type CosmeticCategory = 'hat' | 'clothes' | 'hair' | 'beard' | 'moustache';
