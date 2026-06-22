@@ -8,11 +8,12 @@ import {
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useStudentLocation } from '@/src/hooks/useStudentLocation';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
 import { checkUnlockedAchievements } from '@/src/services/achievements';
+import { verifyLocationProximity } from '@/src/services/locationVerification';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import { createRecyclingLog } from '../api/recyclingLogs';
-import { confirmSegregation } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
@@ -23,6 +24,7 @@ export function InstructionsScreen() {
   );
   const { session } = useAuth();
   const { settings, updateSetting } = useUserSettings();
+  const studentLocation = useStudentLocation();
   const [submitting, setSubmitting] = useState(false);
   const [showAgain, setShowAgain] = useState(() => !(settings?.skipRecyclingInstructions ?? false));
   const autoSubmitted = useRef(false);
@@ -61,6 +63,23 @@ export function InstructionsScreen() {
     if (!session?.user) {
       router.replace('/recycle/success');
       return;
+    }
+
+    // Verify location proximity if enabled
+    if (settings?.locationVerificationEnabled) {
+      const isWithinRange = verifyLocationProximity(
+        studentLocation.latitude,
+        studentLocation.longitude,
+        selectedContainer,
+      );
+      
+      if (!isWithinRange) {
+        notify(
+          'Ubicación muy lejana',
+          'Debes estar cerca del punto de reciclaje para registrar esta acción.',
+        );
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -103,7 +122,7 @@ export function InstructionsScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType]);
+  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType, settings, studentLocation]);
 
   useEffect(() => {
     if (

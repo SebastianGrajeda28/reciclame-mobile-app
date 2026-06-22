@@ -5,23 +5,23 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
-import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import {
-  useRecycleFlow,
-  useResolvedRecycleSelection,
+    useRecycleFlow,
+    useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
-  BATTERIES_BIN_TYPE_ID,
-  GLASS_BIN_TYPE_ID,
-  NON_RECOVERABLE_BIN_TYPE_ID,
-  PAPER_CARDBOARD_BIN_TYPE_ID,
-  PLASTICS_BIN_TYPE_ID,
-  RAEE_BIN_TYPE_ID,
+    BATTERIES_BIN_TYPE_ID,
+    GLASS_BIN_TYPE_ID,
+    NON_RECOVERABLE_BIN_TYPE_ID,
+    PAPER_CARDBOARD_BIN_TYPE_ID,
+    PLASTICS_BIN_TYPE_ID,
+    RAEE_BIN_TYPE_ID,
 } from '@/src/features/recycling/services/bin-types.mock';
 import type { NearbyRecyclingPoint } from '@/src/features/recycling/services/recycling-points';
 import { useStreakProgress } from '@/src/hooks/useStreakProgress';
+import { useStudentLocation } from '@/src/hooks/useStudentLocation';
 import { AppButton, AppIcon, AppScreen, AppText, StreakHeatBadge, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
 

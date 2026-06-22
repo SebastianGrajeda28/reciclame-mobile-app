@@ -24,7 +24,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) {
-      setSettings((prev) => prev ?? { id: '', userId: '', notificationsEnabled: true, skipRecyclingInstructions: false, profileVisibility: null, language: null, updatedAt: null });
+      setSettings((prev: UserSetting | null) => prev ?? { id: '', userId: '', notificationsEnabled: true, skipRecyclingInstructions: false, profileVisibility: null, language: null, locationVerificationEnabled: false, updatedAt: null });
       return;
     }
 
@@ -39,7 +39,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
     async (patch: UserSettingPatch) => {
       const userId = session?.user?.id;
       if (!userId) {
-        setSettings((prev) => prev ? { ...prev, ...patch } : null);
+        setSettings((prev: UserSetting | null) => prev ? { ...prev, ...patch } : null);
         return;
       }
 
@@ -50,6 +50,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
         skipRecyclingInstructions: settings?.skipRecyclingInstructions ?? false,
         profileVisibility: settings?.profileVisibility ?? null,
         language: settings?.language ?? null,
+        locationVerificationEnabled: settings?.locationVerificationEnabled ?? false,
         ...patch,
         updatedAt: new Date().toISOString(),
       };
