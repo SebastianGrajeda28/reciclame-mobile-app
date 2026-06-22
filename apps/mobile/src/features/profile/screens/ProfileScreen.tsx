@@ -19,7 +19,7 @@ export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
-  const { featuredBadges, stats } = useProfileGamification();
+  const { lastUnlockedBadges, stats } = useProfileGamification();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
   const [lostDismissed, setLostDismissed] = useState(false);
   const showStreakLost = Boolean(streakData?.justExpired) && !lostDismissed;
@@ -68,7 +68,7 @@ export function ProfileScreen() {
         <AppIcon name="chevronRight" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
       </Pressable>
       <ProfileAchievementsPreviewCard
-        featuredBadges={featuredBadges}
+        featuredBadges={lastUnlockedBadges}
         onSeeAllPress={() => router.push(routes.profileAchievements)}
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />
