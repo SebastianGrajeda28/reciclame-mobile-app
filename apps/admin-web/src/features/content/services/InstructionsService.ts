@@ -82,10 +82,10 @@ export async function updateInstruction(id: string, values: InstructionPayload) 
   return mapInstruction(data);
 }
 
-export async function deleteInstruction(id: string): Promise<void> {
+export async function resetInstruction(id: string): Promise<void> {
   const { error } = await supabase
     .from("instructions")
-    .delete()
+    .update({ body: encodeSteps([]), updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) throw new Error(error.message);

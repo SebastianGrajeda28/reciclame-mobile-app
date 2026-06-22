@@ -15,11 +15,10 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Check, GripVertical, ImagePlus, Pencil, Plus, Save, Trash2, Undo2, X } from "lucide-react";
+import { Eraser, GripVertical, ImagePlus, Plus, Save, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { uploadInstructionStepImage } from "@/features/admin/services/AdminStorageService";
+import { uploadBinTypeImage, uploadInstructionStepImage } from "@/features/admin/services/AdminStorageService";
 import {
   encodeSteps,
   parseSteps,
@@ -27,6 +26,7 @@ import {
   type Instruction,
   type InstructionStep,
 } from "../services/InstructionsService";
+import { updateBinType, type BinType } from "../services/BinTypesService";
 
 const MAX_STEPS = 3;
 
@@ -60,6 +60,7 @@ function SortableStepRow({
   onEditSave,
   onEditCancel,
   onDelete,
+  onClear,
   onUploadImage,
 }: {
   step: LocalStep;
@@ -71,9 +72,11 @@ function SortableStepRow({
   onEditSave: () => void;
   onEditCancel: () => void;
   onDelete: () => void;
+  onClear: () => void;
   onUploadImage: (file: File) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id });
+  const cancellingRef = useRef(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -84,7 +87,15 @@ function SortableStepRow({
   const previewSrc = step.pendingImagePreview ?? step.imageUrl;
 
   return (
-    <li ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-lg bg-slate-50/60 px-3 py-2.5">
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 rounded-lg px-3 py-2.5 transition-colors ${
+        isEditing
+          ? "border border-emerald-300 bg-emerald-50/40 ring-1 ring-emerald-200"
+          : "bg-slate-50/60"
+      }`}
+    >
       <button
         type="button"
         {...attributes}
@@ -97,73 +108,75 @@ function SortableStepRow({
 
       <span className="shrink-0 w-5 text-xs font-semibold text-slate-400">{index + 1}.</span>
 
+      <label className="group shrink-0 cursor-pointer" title={previewSrc ? "Cambiar imagen" : "Subir imagen"}>
+        <input
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onUploadImage(file);
+            e.target.value = "";
+          }}
+        />
+        {previewSrc ? (
+          <span className="relative flex h-14 w-14 shrink-0">
+            <img src={previewSrc} alt="paso" className="h-14 w-14 rounded-lg object-cover ring-1 ring-slate-200 transition group-hover:ring-emerald-400" />
+            <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 transition group-hover:bg-black/40">
+              <ImagePlus className="h-5 w-5 text-white opacity-0 transition group-hover:opacity-100" />
+            </span>
+          </span>
+        ) : (
+          <span className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-emerald-400 hover:text-emerald-500 transition">
+            <ImagePlus className="h-5 w-5" />
+            <span className="text-[9px] font-medium">imagen</span>
+          </span>
+        )}
+      </label>
+
       {isEditing ? (
-        <>
-          <Input
-            value={editText}
-            onChange={(e) => onEditChange(e.target.value)}
-            className="h-8 flex-1 border-slate-200 bg-white text-sm"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onEditSave();
-              if (e.key === "Escape") onEditCancel();
-            }}
-          />
-          <button
-            type="button"
-            disabled={editText.trim().length === 0}
-            onClick={onEditSave}
-            className="shrink-0 rounded p-1 text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
-          >
-            <Check className="h-3.5 w-3.5" />
-          </button>
-          <button type="button" onClick={onEditCancel} className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100">
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </>
+        <input
+          value={editText}
+          onChange={(e) => onEditChange(e.target.value)}
+          placeholder="Texto del paso…"
+          className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 leading-snug outline-none placeholder:text-slate-400"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { cancellingRef.current = false; onEditSave(); }
+            if (e.key === "Escape") { cancellingRef.current = true; onEditCancel(); }
+          }}
+          onBlur={() => { if (!cancellingRef.current) onEditSave(); cancellingRef.current = false; }}
+        />
       ) : (
-        <>
-          <label className="shrink-0 cursor-pointer" title={previewSrc ? "Cambiar imagen" : "Subir imagen"}>
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onUploadImage(file);
-                e.target.value = "";
-              }}
-            />
-            {previewSrc ? (
-              <img src={previewSrc} alt="paso" className="h-14 w-14 rounded-lg object-cover ring-1 ring-slate-200 hover:ring-emerald-400 transition" />
-            ) : (
-              <span className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-emerald-400 hover:text-emerald-500 transition">
-                <ImagePlus className="h-5 w-5" />
-                <span className="text-[9px] font-medium">imagen</span>
-              </span>
-            )}
-          </label>
-
-          <span className="min-w-0 flex-1 text-sm text-slate-700 leading-snug">{step.text}</span>
-
-          <button
-            type="button"
-            onClick={onEditStart}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-          >
-            <Pencil className="h-3 w-3" />
-            Editar
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-100 bg-white px-2.5 py-1.5 text-xs font-medium text-red-500 transition hover:border-red-200 hover:bg-red-50"
-          >
-            <Trash2 className="h-3 w-3" />
-            Eliminar
-          </button>
-        </>
+        <span
+          className="min-w-0 flex-1 cursor-text text-sm text-slate-700 leading-snug select-none"
+          onDoubleClick={onEditStart}
+          title="Doble clic para editar"
+        >
+          {step.text}
+        </span>
       )}
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onClear}
+        className="h-7 shrink-0 gap-1 px-2 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+      >
+        <Eraser className="h-3 w-3" />
+        Limpiar
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onDelete}
+        className="h-7 shrink-0 gap-1 px-2 text-xs text-red-400 hover:bg-red-50 hover:text-red-600"
+      >
+        <Trash2 className="h-3 w-3" />
+        Eliminar
+      </Button>
     </li>
   );
 }
@@ -174,14 +187,19 @@ const SCALE = 0.62;
 const IMG_SIZE = Math.round(150 * SCALE);
 const NUM_SIZE = Math.round(32 * SCALE);
 
+type DepositStep = { text: string; imageUrl?: string | null };
+
 export function MobilePreview({
   steps,
   wasteTypeName,
+  depositStep,
 }: {
   steps: (InstructionStep | LocalStep)[];
   wasteTypeName?: string;
+  depositStep?: DepositStep;
 }) {
-  const allSteps = [...steps, null]; // null = locked final bin step
+  const finalDeposit: DepositStep = depositStep ?? { text: "Deposita en el contenedor correcto" };
+  const allSteps = [...steps, null] as ((InstructionStep | LocalStep) | null)[];
 
   return (
     <div className="flex flex-col items-center xl:items-end">
@@ -218,14 +236,17 @@ export function MobilePreview({
                   ? null
                   : (step as LocalStep).pendingImagePreview ?? step.imageUrl;
 
-                const imageBlock = isLocked || !imageUrl ? (
+                const lockedImageUrl = isLocked ? (finalDeposit.imageUrl ?? null) : null;
+                const displayImageUrl = isLocked ? lockedImageUrl : imageUrl;
+
+                const imageBlock = !displayImageUrl ? (
                   <div
                     className="shrink-0 rounded-xl"
                     style={{ width: IMG_SIZE, height: IMG_SIZE, backgroundColor: isLocked ? "#C8CDD1" : "#D9DEE2" }}
                   />
                 ) : (
                   <img
-                    src={imageUrl}
+                    src={displayImageUrl}
                     alt={`paso ${i + 1}`}
                     className="shrink-0 rounded-xl object-cover"
                     style={{ width: IMG_SIZE, height: IMG_SIZE }}
@@ -241,7 +262,7 @@ export function MobilePreview({
                       <span className="text-[7px] font-bold text-white">{i + 1}</span>
                     </div>
                     <p className="flex-1 text-[12px] leading-snug text-slate-400 italic">
-                      Deposita en el contenedor correcto
+                      {finalDeposit.text}
                     </p>
                   </div>
                 ) : (
@@ -266,9 +287,6 @@ export function MobilePreview({
                 );
               })}
 
-              {steps.length === 0 && (
-                <p className="py-2 text-center text-[10px] italic text-slate-400">Sin pasos aún</p>
-              )}
             </div>
           </div>
         </div>
@@ -300,11 +318,22 @@ export function MobilePreview({
 export function InstructionPreviewRail({
   instruction,
   wasteTypeName,
+  liveSteps,
+  binType,
 }: {
   instruction: Instruction;
   wasteTypeName?: string;
+  liveSteps?: InstructionStep[];
+  binType?: BinType | null;
 }) {
-  const steps = useMemo(() => parseSteps(instruction), [instruction]);
+  const steps = useMemo(
+    () => liveSteps ?? parseSteps(instruction),
+    [liveSteps, instruction],
+  );
+
+  const depositStep: DepositStep | undefined = binType
+    ? { text: binType.depositInstruction ?? "Deposita en el contenedor correcto", imageUrl: binType.imageUrl }
+    : undefined;
 
   return (
     <div className="flex h-full flex-col items-center justify-center rounded-[28px] border border-slate-200 bg-linear-to-b from-slate-50 via-white to-white px-5 py-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
@@ -312,7 +341,7 @@ export function InstructionPreviewRail({
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Vista previa</p>
       </div>
       <div className="flex justify-center">
-        <MobilePreview steps={steps} wasteTypeName={wasteTypeName} />
+        <MobilePreview steps={steps} wasteTypeName={wasteTypeName} depositStep={depositStep} />
       </div>
     </div>
   );
@@ -322,17 +351,36 @@ export function InstructionPreviewRail({
 
 export default function InstructionStepsSection({
   instruction,
+  binType,
+  onStepsChange,
+  onDepositChange,
 }: {
   instruction: Instruction;
+  binType?: BinType | null;
+  onStepsChange?: (steps: InstructionStep[]) => void;
+  onDepositChange?: (deposit: DepositStep) => void;
 }) {
   const queryClient = useQueryClient();
   const queryKey = ["admin-instructions"];
+  const binTypeQueryKey = ["admin-bin-types"];
 
-  const [newStepText, setNewStepText] = useState("");
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [localSteps, setLocalSteps] = useState<LocalStep[]>([]);
   const seededRef = useRef(false);
+
+  // Local bin type state for the deposit step
+  const [depositText, setDepositText] = useState(binType?.depositInstruction ?? "Deposita en el contenedor correcto");
+  const [depositImageFile, setDepositImageFile] = useState<File | undefined>();
+  const [depositImagePreview, setDepositImagePreview] = useState<string | undefined>(binType?.imageUrl ?? undefined);
+  const [isEditingDeposit, setIsEditingDeposit] = useState(false);
+  const depositCancellingRef = useRef(false);
+
+  useEffect(() => {
+    setDepositText(binType?.depositInstruction ?? "Deposita en el contenedor correcto");
+    setDepositImagePreview(binType?.imageUrl ?? undefined);
+    setDepositImageFile(undefined);
+  }, [binType?.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -343,10 +391,28 @@ export default function InstructionStepsSection({
     seededRef.current = true;
     setLocalSteps(parseSteps(instruction).map(toLocalStep));
     setEditingStepId(null);
-    setNewStepText("");
   }, [instruction.id]);
 
   const visibleSteps = localSteps.filter((s) => !s.isDeleted);
+
+  const onStepsChangeRef = useRef(onStepsChange);
+  onStepsChangeRef.current = onStepsChange;
+
+  const onDepositChangeRef = useRef(onDepositChange);
+  onDepositChangeRef.current = onDepositChange;
+
+  useEffect(() => {
+    const visible = localSteps.filter((s) => !s.isDeleted);
+    onStepsChangeRef.current?.(visible.map(({ id, text, imageUrl, pendingImagePreview }) => ({
+      id,
+      text: editingStepId === id ? editText : text,
+      imageUrl: pendingImagePreview ?? imageUrl,
+    })));
+  }, [localSteps, editingStepId, editText]);
+
+  useEffect(() => {
+    onDepositChangeRef.current?.({ text: depositText, imageUrl: depositImagePreview });
+  }, [depositText, depositImagePreview]);
 
   const isDirty = useMemo(() => {
     if (localSteps.some((s) => s.isNew || s.isDeleted || s.isDirty || s.pendingImageFile)) return true;
@@ -358,19 +424,29 @@ export default function InstructionStepsSection({
   }, [localSteps, visibleSteps, instruction]);
 
   function handleAddStep() {
-    const text = newStepText.trim();
-    if (!text || visibleSteps.length >= MAX_STEPS) return;
+    if (visibleSteps.length >= MAX_STEPS) return;
+    const newId = makeTempId();
     setLocalSteps((prev) => [
       ...prev,
-      { id: makeTempId(), text, imageUrl: null, isNew: true, isDeleted: false, isDirty: false },
+      { id: newId, text: "", imageUrl: null, isNew: true, isDeleted: false, isDirty: false },
     ]);
-    setNewStepText("");
+    setEditingStepId(newId);
+    setEditText("");
   }
 
   function handleEditSave() {
     if (!editingStepId) return;
     const trimmed = editText.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      // Discard new empty step on save with no text
+      setLocalSteps((prev) => {
+        const step = prev.find((s) => s.id === editingStepId);
+        if (step?.isNew) return prev.filter((s) => s.id !== editingStepId);
+        return prev;
+      });
+      setEditingStepId(null);
+      return;
+    }
     setLocalSteps((prev) =>
       prev.map((s) =>
         s.id === editingStepId
@@ -384,6 +460,18 @@ export default function InstructionStepsSection({
   function handleDelete(id: string) {
     setLocalSteps((prev) => prev.map((s) => s.id === id ? { ...s, isDeleted: true } : s));
     if (editingStepId === id) setEditingStepId(null);
+  }
+
+  function handleClear(id: string) {
+    setLocalSteps((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? { ...s, text: "", imageUrl: null, pendingImageFile: undefined, pendingImagePreview: undefined, isDirty: s.isNew ? s.isDirty : true }
+          : s,
+      ),
+    );
+    setEditingStepId(id);
+    setEditText("");
   }
 
   function handleUploadImage(id: string, file: File) {
@@ -435,10 +523,38 @@ export default function InstructionStepsSection({
     onError: () => toast.error("Error al guardar los pasos"),
   });
 
+  const binTypeMutation = useMutation({
+    mutationFn: async () => {
+      if (!binType) return;
+      let imageUrl = binType.imageUrl;
+      if (depositImageFile) {
+        imageUrl = await uploadBinTypeImage(binType.id, depositImageFile);
+      }
+      await updateBinType(binType.id, {
+        imageUrl,
+        depositInstruction: depositText.trim() || null,
+      });
+    },
+    onSuccess: async () => {
+      toast.success("Paso de depósito guardado");
+      setDepositImageFile(undefined);
+      await queryClient.invalidateQueries({ queryKey: binTypeQueryKey });
+    },
+    onError: () => toast.error("Error al guardar el paso de depósito"),
+  });
+
+  const isDepositDirty =
+    !!depositImageFile ||
+    depositText !== (binType?.depositInstruction ?? "Deposita en el contenedor correcto");
+
   function handleDiscard() {
     setLocalSteps(parseSteps(instruction).map(toLocalStep));
     setEditingStepId(null);
-    setNewStepText("");
+  }
+
+  function handleDepositImageUpload(file: File) {
+    setDepositImagePreview(URL.createObjectURL(file));
+    setDepositImageFile(file);
   }
 
   const atMax = visibleSteps.length >= MAX_STEPS;
@@ -448,7 +564,7 @@ export default function InstructionStepsSection({
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-[#0b2f4e]">
-            Pasos ({visibleSteps.length}/{MAX_STEPS})
+            Pasos ({visibleSteps.length + 1}/{MAX_STEPS + 1})
           </h3>
           <p className="mt-0.5 text-xs text-slate-400">Arrastra para reordenar.</p>
         </div>
@@ -470,8 +586,15 @@ export default function InstructionStepsSection({
                   onEditStart={() => { setEditingStepId(step.id); setEditText(step.text); }}
                   onEditChange={setEditText}
                   onEditSave={handleEditSave}
-                  onEditCancel={() => setEditingStepId(null)}
+                  onEditCancel={() => {
+                    // If new step was never given text, discard it entirely
+                    if (step.isNew && !step.text) {
+                      setLocalSteps((prev) => prev.filter((s) => s.id !== step.id));
+                    }
+                    setEditingStepId(null);
+                  }}
                   onDelete={() => handleDelete(step.id)}
+                  onClear={() => handleClear(step.id)}
                   onUploadImage={(file) => handleUploadImage(step.id, file)}
                 />
               ))}
@@ -481,27 +604,111 @@ export default function InstructionStepsSection({
       )}
 
       {atMax ? (
-        <p className="mt-3 text-xs text-amber-600">Máximo {MAX_STEPS} pasos por instrucción.</p>
+        <p className="mt-3 text-xs text-amber-600">Máximo {MAX_STEPS} pasos editables (+ el paso de depósito).</p>
       ) : (
-        <div className="mt-4 flex items-center gap-2">
-          <Input
-            value={newStepText}
-            onChange={(e) => setNewStepText(e.target.value)}
-            placeholder="Texto del nuevo paso…"
-            disabled={saveMutation.isPending}
-            className="h-9 flex-1 border-slate-200 bg-white text-sm"
-            onKeyDown={(e) => { if (e.key === "Enter" && newStepText.trim().length > 0) handleAddStep(); }}
-          />
+        <div className="mt-3 flex justify-start">
           <Button
             type="button"
-            className="h-9 shrink-0 bg-[#18b566] px-3 text-sm font-semibold text-white hover:bg-[#129a56]"
-            disabled={newStepText.trim().length === 0 || saveMutation.isPending}
+            variant="outline"
+            size="sm"
+            disabled={saveMutation.isPending}
             onClick={handleAddStep}
+            className="h-7 gap-1 px-2 text-xs text-slate-500"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3 w-3" />
+            Agregar paso
           </Button>
         </div>
       )}
+
+      {/* ── Deposit step (special, permanent) ───────────────────────── */}
+      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          {/* Grip placeholder — same width as grip button to keep columns aligned */}
+          <span className="shrink-0 w-4" />
+
+          {/* Step number — always visibleSteps.length + 1 */}
+          <span className="shrink-0 w-5 text-xs font-semibold text-amber-400">{visibleSteps.length + 1}.</span>
+
+          {/* Bin image upload */}
+          <label className="group shrink-0 cursor-pointer" title={depositImagePreview ? "Cambiar imagen del tacho" : "Subir imagen del tacho"}>
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleDepositImageUpload(file);
+                e.target.value = "";
+              }}
+            />
+            {depositImagePreview ? (
+              <span className="relative flex h-14 w-14 shrink-0">
+                <img src={depositImagePreview} alt="tacho" className="h-14 w-14 rounded-lg object-cover ring-1 ring-amber-200 transition group-hover:ring-amber-400" />
+                <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 transition group-hover:bg-black/40">
+                  <ImagePlus className="h-5 w-5 text-white opacity-0 transition group-hover:opacity-100" />
+                </span>
+              </span>
+            ) : (
+              <span className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-amber-300 bg-amber-50 text-amber-400 hover:border-amber-400 hover:text-amber-500 transition">
+                <ImagePlus className="h-5 w-5" />
+                <span className="text-[9px] font-medium">tacho</span>
+              </span>
+            )}
+          </label>
+
+          {/* Deposit instruction text */}
+          {isEditingDeposit ? (
+            <input
+              value={depositText}
+              onChange={(e) => setDepositText(e.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 leading-snug outline-none"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { depositCancellingRef.current = false; setIsEditingDeposit(false); }
+                if (e.key === "Escape") { depositCancellingRef.current = true; setIsEditingDeposit(false); }
+              }}
+              onBlur={() => { if (!depositCancellingRef.current) setIsEditingDeposit(false); depositCancellingRef.current = false; }}
+            />
+          ) : (
+            <span
+              className="min-w-0 flex-1 cursor-text text-sm text-slate-700 leading-snug select-none"
+              onDoubleClick={() => setIsEditingDeposit(true)}
+              title="Doble clic para editar"
+            >
+              {depositText}
+            </span>
+          )}
+
+          {/* Right side: save button or "sin tacho" + label */}
+          {isDepositDirty && binType ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={binTypeMutation.isPending}
+              onClick={() => binTypeMutation.mutate()}
+              className="h-7 shrink-0 gap-1 px-2 text-xs text-amber-600 hover:bg-amber-100 hover:text-amber-700"
+            >
+              <Save className="h-3 w-3" />
+              {binTypeMutation.isPending ? "Guardando…" : "Guardar"}
+            </Button>
+          ) : (
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-500">
+                Paso final
+              </span>
+              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium text-amber-700">
+                siempre visible
+              </span>
+            </div>
+          )}
+        </div>
+
+        {!binType && (
+          <p className="mt-1.5 pl-[calc(1rem+1.25rem+0.5rem)] text-[11px] text-slate-400 italic">Sin tacho asignado para este tipo de residuo</p>
+        )}
+      </div>
 
       <div className="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
         <button

@@ -1,11 +1,12 @@
 import { router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
+import { useInstructionsCache } from '@/src/features/recycling/hooks/useInstructionsCache';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useStudentLocation } from '@/src/hooks/useStudentLocation';
@@ -19,9 +20,8 @@ export function InstructionsScreen() {
   const navigation = useNavigation();
   const { state, clearSelectedContainer, markStep, markConfirmed } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
-  const { binType: resolvedBinType } = useResolvedBinType(
-    state.finalWasteTypeId,
-  );
+  const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
+  const { byWasteTypeId: instructionsByWasteTypeId } = useInstructionsCache();
   const { session } = useAuth();
   const { settings, updateSetting } = useUserSettings();
   const studentLocation = useStudentLocation();
@@ -144,8 +144,18 @@ export function InstructionsScreen() {
 
   if (!selectedContainer || !finalWasteType) return null;
 
-  const steps = selectedContainer.instructionsByWasteTypeId[finalWasteType.id] ?? [
-    'Deposita el residuo con cuidado en el contenedor seleccionado.',
+  const cachedSteps = instructionsByWasteTypeId[finalWasteType.id] ?? [];
+  const depositText = resolvedBinType?.depositInstruction ?? 'Deposita en el contenedor correcto';
+  const depositImageUrl = resolvedBinType?.imageUrl ?? null;
+
+  // All steps shown: editable steps from cache + fixed deposit step at the end
+  type StepItem =
+    | { kind: 'step'; text: string; imageUrl: string | null; key: string }
+    | { kind: 'deposit'; text: string; imageUrl: string | null; key: string };
+
+  const allSteps: StepItem[] = [
+    ...cachedSteps.map((s) => ({ kind: 'step' as const, text: s.text, imageUrl: s.imageUrl, key: s.id })),
+    { kind: 'deposit', text: depositText, imageUrl: depositImageUrl, key: '__deposit__' },
   ];
 
   return (
@@ -163,19 +173,33 @@ export function InstructionsScreen() {
         showsVerticalScrollIndicator={false}
         style={styles.scroll}
       >
-        {steps.map((step, index) => {
+        {allSteps.map((item, index) => {
+          const isDeposit = item.kind === 'deposit';
           const imageFirst = index % 2 === 0;
+
+          const imageBlock = item.imageUrl ? (
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={styles.stepImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.stepImage, isDeposit && styles.stepImageDeposit]} />
+          );
+
           const textBlock = (
             <View style={styles.textBlock}>
-              <View style={styles.stepNumber}>
+              <View style={[styles.stepNumber, isDeposit && styles.stepNumberDeposit]}>
                 <AppText style={styles.stepNumberText}>{index + 1}</AppText>
               </View>
-              <AppText style={styles.stepText}>{step}</AppText>
+              <AppText style={[styles.stepText, isDeposit && styles.stepTextDeposit]}>
+                {item.text}
+              </AppText>
             </View>
           );
-          const imageBlock = <View style={styles.stepImage} />;
+
           return (
-            <View key={`${step}-${index}`} style={styles.stepRow}>
+            <View key={item.key} style={styles.stepRow}>
               {imageFirst ? imageBlock : textBlock}
               {imageFirst ? textBlock : imageBlock}
             </View>
@@ -270,6 +294,16 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.border,
     flexShrink: 0,
+  },
+  stepImageDeposit: {
+    backgroundColor: '#C8CDD1',
+  },
+  stepNumberDeposit: {
+    backgroundColor: '#C8CDD1',
+  },
+  stepTextDeposit: {
+    fontStyle: 'italic',
+    color: theme.colors.textSecondary,
   },
   footer: {
     padding: theme.spacing.lg,

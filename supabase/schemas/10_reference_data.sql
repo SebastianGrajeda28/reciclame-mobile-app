@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS "public"."bin_types" (
     "name" "text" NOT NULL,
     "color" "text",
     "description" "text",
+    "image_url" "text",
+    "deposit_instruction" "text" DEFAULT 'Deposita en el contenedor correcto',
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,29 +8,55 @@ import {
   InstructionPreviewRail,
 } from "../components/InstructionStepsSection";
 import InstructionStepsSection from "../components/InstructionStepsSection";
+import type { InstructionStep } from "../services/InstructionsService";
+import { getBinTypeByWasteTypeId, type BinType } from "../services/BinTypesService";
 import {
   createInstruction,
-  deleteInstruction,
+  resetInstruction,
   getInstructions,
   type Instruction,
 } from "../services/InstructionsService";
 import { getWasteTypes } from "../services/WasteTypesService";
+import { getUniversities } from "../services/UniversitiesService";
 import { useUser } from "@/shared/context/UserContext";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 
 const INSTRUCTIONS_QUERY_KEY = ["admin-instructions"];
 const WASTE_TYPES_QUERY_KEY = ["admin-waste-types"];
+const UNIVERSITIES_QUERY_KEY = ["admin-universities"];
 
 export default function InstructionsPage() {
   const { session } = useUser();
   const queryClient = useQueryClient();
   const [selectedWasteTypeId, setSelectedWasteTypeId] = useState<string>("");
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [selectedUniversityId, setSelectedUniversityId] = useState<string>("");
+  const [confirmResetId, setConfirmResetId] = useState<string | null>(null);
+  const [liveSteps, setLiveSteps] = useState<InstructionStep[] | undefined>(undefined);
+  const [liveBinType, setLiveBinType] = useState<BinType | null | undefined>(undefined);
+  const [liveDeposit, setLiveDeposit] = useState<{ text: string; imageUrl?: string | null } | undefined>(undefined);
+
+  void liveBinType; // used only as reset trigger
 
   const { data: instructions = [], isLoading: isLoadingInstructions, error: instructionsError } = useQuery({
     queryKey: INSTRUCTIONS_QUERY_KEY,
     queryFn: () => getInstructions(),
     enabled: !!session,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: universities = [] } = useQuery({
+    queryKey: UNIVERSITIES_QUERY_KEY,
+    queryFn: getUniversities,
+    enabled: !!session,
+    staleTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: binType = null } = useQuery({
+    queryKey: ["admin-bin-types", selectedWasteTypeId, selectedUniversityId],
+    queryFn: () => getBinTypeByWasteTypeId(selectedWasteTypeId, selectedUniversityId || undefined),
+    enabled: !!session && !!selectedWasteTypeId,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
@@ -49,6 +75,18 @@ export default function InstructionsPage() {
     }
   }, [wasteTypes, selectedWasteTypeId]);
 
+  useEffect(() => {
+    if (universities.length > 0 && !selectedUniversityId) {
+      setSelectedUniversityId(universities[0].id); // eslint-disable-line react-hooks/set-state-in-effect
+    }
+  }, [universities, selectedUniversityId]);
+
+  useEffect(() => {
+    setLiveSteps(undefined);
+    setLiveBinType(undefined);
+    setLiveDeposit(undefined);
+  }, [selectedWasteTypeId, selectedUniversityId]);
+
   const createMutation = useMutation({
     mutationFn: (wasteTypeId: string) =>
       createInstruction({
@@ -61,41 +99,45 @@ export default function InstructionsPage() {
     onError: () => toast.error("Error al crear instrucción"),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteInstruction(id),
+  const resetMutation = useMutation({
+    mutationFn: (id: string) => resetInstruction(id),
     onSuccess: async () => {
-      toast.success("Instrucción eliminada");
-      setConfirmDeleteId(null);
+      toast.success("Instrucción reiniciada");
+      setConfirmResetId(null);
       await queryClient.invalidateQueries({ queryKey: INSTRUCTIONS_QUERY_KEY });
     },
-    onError: () => toast.error("Error al eliminar instrucción"),
+    onError: () => toast.error("Error al reiniciar instrucción"),
   });
 
   const isLoading = isLoadingInstructions || isLoadingWasteTypes;
   const hasError = !!instructionsError || !!wasteTypesError;
-  const isMutating = createMutation.isPending || deleteMutation.isPending;
+  const isMutating = createMutation.isPending || resetMutation.isPending;
 
   const instructionForType = selectedWasteTypeId
     ? instructions.find((i) => i.wasteTypeId === selectedWasteTypeId) ?? null
     : null;
 
-  async function handleEnsureInstruction(): Promise<Instruction | null> {
-    if (instructionForType) return instructionForType;
-    if (!selectedWasteTypeId) return null;
-    try {
-      const created = await createMutation.mutateAsync(selectedWasteTypeId);
-      return created as Instruction;
-    } catch {
-      return null;
+  // Auto-create instruction when waste type is selected and none exists
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !hasError &&
+      selectedWasteTypeId &&
+      instructions.length > 0 && // instructions loaded
+      !instructionForType &&
+      !createMutation.isPending
+    ) {
+      createMutation.mutate(selectedWasteTypeId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWasteTypeId, isLoading, hasError, instructionForType]);
+
+  function handleResetRequest(id: string) {
+    setConfirmResetId(id);
   }
 
-  function handleDeleteRequest(id: string) {
-    setConfirmDeleteId(id);
-  }
-
-  function handleDeleteConfirm() {
-    if (confirmDeleteId) deleteMutation.mutate(confirmDeleteId);
+  function handleResetConfirm() {
+    if (confirmResetId) resetMutation.mutate(confirmResetId);
   }
 
   return (
@@ -109,6 +151,21 @@ export default function InstructionsPage() {
             Configura los pasos guiados que verá cada usuario según el tipo de residuo seleccionado.
           </p>
         </div>
+        {universities.length > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-medium text-slate-500">Universidad:</span>
+            <Select value={selectedUniversityId} onValueChange={setSelectedUniversityId}>
+              <SelectTrigger className="h-9 w-52 border-slate-200 bg-white text-sm">
+                <SelectValue placeholder="Selecciona universidad" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                {universities.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <AppSurface className="mt-8">
@@ -155,16 +212,18 @@ export default function InstructionsPage() {
                       {instructionForType ? (
                         <ActiveEditor
                           instruction={instructionForType}
-                          onDeleteRequest={() => handleDeleteRequest(instructionForType.id)}
+                          binType={binType}
+                          onResetRequest={() => handleResetRequest(instructionForType.id)}
                           isMutating={isMutating}
+                          onStepsChange={setLiveSteps}
+                          onDepositChange={setLiveDeposit}
                         />
-                      ) : (
-                        <EmptyInstructionState
-                          wasteTypeName={wasteTypes.find((wt) => wt.id === selectedWasteTypeId)?.name ?? ""}
-                          isCreating={createMutation.isPending}
-                          onCreate={() => handleEnsureInstruction()}
-                        />
-                      )}
+                      ) : createMutation.isPending ? (
+                        <div className="space-y-3 py-4">
+                          <Skeleton className="h-8 w-48 rounded-lg" />
+                          <Skeleton className="h-40 w-full rounded-xl" />
+                        </div>
+                      ) : null}
                     </div>
                   )}
 
@@ -180,6 +239,8 @@ export default function InstructionsPage() {
               <InstructionPreviewRail
                 instruction={instructionForType}
                 wasteTypeName={wasteTypes.find((wt) => wt.id === selectedWasteTypeId)?.name}
+                liveSteps={liveSteps}
+                binType={liveDeposit && binType ? { ...binType, depositInstruction: liveDeposit.text, imageUrl: liveDeposit.imageUrl ?? binType.imageUrl } : binType}
               />
             ) : (
               <div className="flex h-full items-center justify-center rounded-[28px] border border-slate-200 bg-slate-50/70 p-5 text-center">
@@ -188,7 +249,7 @@ export default function InstructionsPage() {
                     Vista previa
                   </p>
                   <p className="mt-2 text-sm text-slate-500">
-                    Crea una instrucción para ver la simulación móvil.
+                    Selecciona un tipo de residuo para ver la simulación móvil.
                   </p>
                 </div>
               </div>
@@ -197,37 +258,37 @@ export default function InstructionsPage() {
         </div>
       </AppSurface>
 
-      {/* Delete confirmation dialog */}
-      {confirmDeleteId && (
+      {/* Reset confirmation dialog */}
+      {confirmResetId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <div className="mb-4 flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50">
+                <RotateCcw className="h-5 w-5 text-amber-500" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-slate-800">Eliminar instrucción</h2>
+                <h2 className="text-base font-semibold text-slate-800">Reiniciar instrucción</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Esta acción eliminará permanentemente la instrucción y todos sus pasos. No se puede deshacer.
+                  Se eliminarán todos los pasos de esta instrucción. La instrucción seguirá existiendo y podrás volver a agregar pasos.
                 </p>
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                disabled={deleteMutation.isPending}
-                onClick={() => setConfirmDeleteId(null)}
+                disabled={resetMutation.isPending}
+                onClick={() => setConfirmResetId(null)}
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                disabled={deleteMutation.isPending}
-                onClick={handleDeleteConfirm}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+                disabled={resetMutation.isPending}
+                onClick={handleResetConfirm}
+                className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"
               >
-                {deleteMutation.isPending ? "Eliminando…" : "Eliminar"}
+                {resetMutation.isPending ? "Reiniciando…" : "Reiniciar"}
               </button>
             </div>
           </div>
@@ -241,12 +302,18 @@ export default function InstructionsPage() {
 
 function ActiveEditor({
   instruction,
-  onDeleteRequest,
+  binType,
+  onResetRequest,
   isMutating,
+  onStepsChange,
+  onDepositChange,
 }: {
   instruction: Instruction;
-  onDeleteRequest: () => void;
+  binType?: BinType | null;
+  onResetRequest: () => void;
   isMutating: boolean;
+  onStepsChange?: (steps: InstructionStep[]) => void;
+  onDepositChange?: (deposit: { text: string; imageUrl?: string | null }) => void;
 }) {
   return (
     <div>
@@ -257,45 +324,14 @@ function ActiveEditor({
         <button
           type="button"
           disabled={isMutating}
-          onClick={onDeleteRequest}
-          className="inline-flex items-center gap-1 rounded-md border border-red-100 bg-white px-2.5 py-1.5 text-xs font-medium text-red-500 transition hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+          onClick={onResetRequest}
+          className="inline-flex items-center gap-1 rounded-md border border-amber-100 bg-white px-2.5 py-1.5 text-xs font-medium text-amber-600 transition hover:border-amber-200 hover:bg-amber-50 disabled:opacity-50"
         >
-          <Trash2 className="h-3 w-3" />
-          Eliminar
+          <RotateCcw className="h-3 w-3" />
+          Reiniciar
         </button>
       </div>
-      <InstructionStepsSection instruction={instruction} />
-    </div>
-  );
-}
-
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyInstructionState({
-  wasteTypeName,
-  isCreating,
-  onCreate,
-}: {
-  wasteTypeName: string;
-  isCreating: boolean;
-  onCreate: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-12 text-center">
-      <p className="text-sm text-slate-500">
-        No hay instrucción para <span className="font-semibold text-slate-700">{wasteTypeName}</span>.
-      </p>
-      <p className="mt-2 max-w-md text-xs text-slate-400">
-        Crea una para poder agregar pasos.
-      </p>
-      <button
-        type="button"
-        disabled={isCreating}
-        onClick={onCreate}
-        className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-[#18b566] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#129a56] disabled:opacity-50"
-      >
-        {isCreating ? "Creando..." : "Crear instrucción"}
-      </button>
+      <InstructionStepsSection instruction={instruction} binType={binType} onStepsChange={onStepsChange} onDepositChange={onDepositChange} />
     </div>
   );
 }
