@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   closestCenter,
@@ -19,32 +19,20 @@ import { Check, GripVertical, ImagePlus, Pencil, Plus, Save, Trash2, Undo2, X } 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useUser } from "@/shared/context/UserContext";
 import { uploadInstructionStepImage } from "@/features/admin/services/AdminStorageService";
 import {
-  createInstructionStep,
-  deleteInstructionStep,
-  getInstructionSteps,
-  updateInstructionStep,
-  type InstructionStep,
-} from "../services/InstructionStepsService";
-import {
+  encodeSteps,
+  parseSteps,
   updateInstruction,
-  encodeStepOrder,
-  parseStepOrder,
   type Instruction,
+  type InstructionStep,
 } from "../services/InstructionsService";
 
 const MAX_STEPS = 3;
 
 // ─── Local step type ─────────────────────────────────────────────────────────
 
-type LocalStep = {
-  /** "new-<uuid>" for unsaved, real DB id for existing */
-  id: string;
-  text: string;
-  imageUrl: string | null;
+type LocalStep = InstructionStep & {
   pendingImageFile?: File;
   pendingImagePreview?: string;
   isNew: boolean;
@@ -52,24 +40,13 @@ type LocalStep = {
   isDirty: boolean;
 };
 
-function toLocalStep(step: InstructionStep): LocalStep {
-  return {
-    id: step.id,
-    text: step.text,
-    imageUrl: step.imageUrl,
-    isNew: false,
-    isDeleted: false,
-    isDirty: false,
-  };
-}
-
 function makeTempId() {
   return `new-${crypto.randomUUID()}`;
 }
 
-type InstructionStepsSectionProps = {
-  instruction: Instruction;
-};
+function toLocalStep(step: InstructionStep): LocalStep {
+  return { ...step, isNew: false, isDeleted: false, isDirty: false };
+}
 
 // ─── Sortable step row ───────────────────────────────────────────────────────
 
@@ -194,8 +171,8 @@ function SortableStepRow({
 // ─── Mobile preview ──────────────────────────────────────────────────────────
 
 const SCALE = 0.62;
-const IMG_SIZE = Math.round(150 * SCALE); // 93
-const NUM_SIZE = Math.round(32 * SCALE);  // 20
+const IMG_SIZE = Math.round(150 * SCALE);
+const NUM_SIZE = Math.round(32 * SCALE);
 
 export function MobilePreview({
   steps,
@@ -204,7 +181,7 @@ export function MobilePreview({
   steps: (InstructionStep | LocalStep)[];
   wasteTypeName?: string;
 }) {
-  const allSteps = [...steps, null]; // null = locked bin step
+  const allSteps = [...steps, null]; // null = locked final bin step
 
   return (
     <div className="flex flex-col items-center xl:items-end">
@@ -223,7 +200,6 @@ export function MobilePreview({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
-          {/* Tag pill */}
           <div className="shrink-0 px-4 pb-3 pt-1">
             <span
               className="inline-block rounded-full border px-3 py-1 text-[11px] font-medium"
@@ -233,17 +209,14 @@ export function MobilePreview({
             </span>
           </div>
 
-          {/* Step list */}
           <div className="flex-1 overflow-y-auto px-4 py-2">
             <div className="flex flex-col gap-4">
               {allSteps.map((step, i) => {
                 const isLocked = step === null;
                 const imageFirst = i % 2 === 0;
-                const imageUrl = step == null
+                const imageUrl = isLocked
                   ? null
-                  : "pendingImagePreview" in step
-                    ? (step.pendingImagePreview ?? step.imageUrl)
-                    : (step as InstructionStep).imageUrl;
+                  : (step as LocalStep).pendingImagePreview ?? step.imageUrl;
 
                 const imageBlock = isLocked || !imageUrl ? (
                   <div
@@ -280,15 +253,13 @@ export function MobilePreview({
                       <span className="text-[7px] font-bold text-white">{i + 1}</span>
                     </div>
                     <p className="flex-1 text-[12px] leading-snug line-clamp-4" style={{ color: "#0E1114" }}>
-                      {(step as InstructionStep | LocalStep).text || (
-                        <span className="italic text-slate-400">Paso {i + 1}</span>
-                      )}
+                      {step.text || <span className="italic text-slate-400">Paso {i + 1}</span>}
                     </p>
                   </div>
                 );
 
                 return (
-                  <div key={(step as InstructionStep | LocalStep | null)?.id ?? "__bin__"} className="flex flex-row items-center gap-2">
+                  <div key={step?.id ?? "__bin__"} className="flex flex-row items-center gap-2">
                     {imageFirst ? imageBlock : textBlock}
                     {imageFirst ? textBlock : imageBlock}
                   </div>
@@ -316,7 +287,6 @@ export function MobilePreview({
           </div>
         </div>
 
-        {/* Home indicator */}
         <div className="flex justify-center bg-white pb-2 pt-1">
           <div className="h-1 w-16 rounded-full bg-slate-800" />
         </div>
@@ -325,7 +295,7 @@ export function MobilePreview({
   );
 }
 
-// ─── Preview rail (independent fetch) ────────────────────────────────────────
+// ─── Preview rail ─────────────────────────────────────────────────────────────
 
 export function InstructionPreviewRail({
   instruction,
@@ -334,45 +304,16 @@ export function InstructionPreviewRail({
   instruction: Instruction;
   wasteTypeName?: string;
 }) {
-  const { session } = useUser();
-
-  const { data: steps = [], isLoading } = useQuery({
-    queryKey: ["admin-instruction-steps", instruction.id],
-    queryFn: () => getInstructionSteps(instruction.id),
-    enabled: !!session,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const orderedSteps = useMemo(() => {
-    const savedOrder = parseStepOrder(instruction);
-    if (savedOrder.length === 0) {
-      return [...steps].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    }
-    const byId = new Map(steps.map((s) => [s.id, s]));
-    const sorted: InstructionStep[] = [];
-    for (const id of savedOrder) {
-      const s = byId.get(id);
-      if (s) sorted.push(s);
-    }
-    for (const s of steps) {
-      if (!savedOrder.includes(s.id)) sorted.push(s);
-    }
-    return sorted;
-  }, [instruction, steps]);
+  const steps = useMemo(() => parseSteps(instruction), [instruction]);
 
   return (
     <div className="flex h-full flex-col items-center justify-center rounded-[28px] border border-slate-200 bg-linear-to-b from-slate-50 via-white to-white px-5 py-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
       <div className="mb-4 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Vista previa</p>
       </div>
-      {isLoading ? (
-        <Skeleton className="rounded-[36px]" style={{ width: 320, height: 640 }} />
-      ) : (
-        <div className="flex justify-center">
-          <MobilePreview steps={orderedSteps} wasteTypeName={wasteTypeName} />
-        </div>
-      )}
+      <div className="flex justify-center">
+        <MobilePreview steps={steps} wasteTypeName={wasteTypeName} />
+      </div>
     </div>
   );
 }
@@ -381,10 +322,11 @@ export function InstructionPreviewRail({
 
 export default function InstructionStepsSection({
   instruction,
-}: InstructionStepsSectionProps) {
-  const { session } = useUser();
+}: {
+  instruction: Instruction;
+}) {
   const queryClient = useQueryClient();
-  const queryKey = ["admin-instruction-steps", instruction.id];
+  const queryKey = ["admin-instructions"];
 
   const [newStepText, setNewStepText] = useState("");
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
@@ -396,47 +338,10 @@ export default function InstructionStepsSection({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  const { data: serverSteps = [], isLoading, error } = useQuery({
-    queryKey,
-    queryFn: () => getInstructionSteps(instruction.id),
-    enabled: !!session,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  function buildOrderedLocal(steps: InstructionStep[], inst: Instruction): LocalStep[] {
-    const savedOrder = parseStepOrder(inst);
-    let ordered: InstructionStep[];
-    if (savedOrder.length > 0) {
-      const byId = new Map(steps.map((s) => [s.id, s]));
-      ordered = [];
-      for (const id of savedOrder) {
-        const s = byId.get(id);
-        if (s) ordered.push(s);
-      }
-      for (const s of steps) {
-        if (!savedOrder.includes(s.id)) ordered.push(s);
-      }
-    } else {
-      ordered = [...steps].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    }
-    return ordered.map(toLocalStep);
-  }
-
-  // Seed local state once after initial fetch
+  // Seed from instruction.body on mount or when instruction changes
   useEffect(() => {
-    if (seededRef.current || serverSteps.length === 0) return;
     seededRef.current = true;
-    setLocalSteps(buildOrderedLocal(serverSteps, instruction));
-  }, [serverSteps, instruction]);
-
-  // Reset when instruction changes (different waste type selected)
-  const prevInstructionId = useRef(instruction.id);
-  useEffect(() => {
-    if (prevInstructionId.current === instruction.id) return;
-    prevInstructionId.current = instruction.id;
-    seededRef.current = false;
-    setLocalSteps([]);
+    setLocalSteps(parseSteps(instruction).map(toLocalStep));
     setEditingStepId(null);
     setNewStepText("");
   }, [instruction.id]);
@@ -445,17 +350,12 @@ export default function InstructionStepsSection({
 
   const isDirty = useMemo(() => {
     if (localSteps.some((s) => s.isNew || s.isDeleted || s.isDirty || s.pendingImageFile)) return true;
-    // Order changed vs saved order
-    const savedOrder = parseStepOrder(instruction);
-    const referenceIds = savedOrder.length > 0
-      ? savedOrder
-      : serverSteps.map((s) => s.id);
-    const visIds = visibleSteps.map((s) => s.id);
-    if (visIds.length !== referenceIds.length) return true;
-    return visIds.some((id, i) => id !== referenceIds[i]);
-  }, [localSteps, visibleSteps, serverSteps, instruction]);
-
-  // ── Local mutations ─────────────────────────────────────────────────────────
+    // Check order vs saved
+    const saved = parseSteps(instruction).map((s) => s.id);
+    const current = visibleSteps.map((s) => s.id);
+    if (saved.length !== current.length) return true;
+    return current.some((id, i) => id !== saved[i]);
+  }, [localSteps, visibleSteps, instruction]);
 
   function handleAddStep() {
     const text = newStepText.trim();
@@ -509,12 +409,9 @@ export default function InstructionStepsSection({
     });
   }, []);
 
-  // ── Save ────────────────────────────────────────────────────────────────────
-
   const saveMutation = useMutation({
     mutationFn: async () => {
-
-      // 1. Upload pending images (against step id — temp or real)
+      // 1. Upload pending images
       const withImages: LocalStep[] = await Promise.all(
         localSteps.map(async (s) => {
           if (!s.pendingImageFile) return s;
@@ -523,43 +420,12 @@ export default function InstructionStepsSection({
         }),
       );
 
-      // 2. Hard-delete removed existing steps
-      await Promise.all(
-        withImages
-          .filter((s) => s.isDeleted && !s.isNew)
-          .map((s) => deleteInstructionStep(s.id)),
-      );
-
-      // 3. Create new steps; map temp id → real id
-      const createdIds = new Map<string, string>();
-      await Promise.all(
-        withImages
-          .filter((s) => s.isNew && !s.isDeleted)
-          .map(async (s) => {
-            const created: InstructionStep = await createInstructionStep({
-              instructionId: instruction.id,
-              text: s.text,
-            });
-            createdIds.set(s.id, created.id);
-            // Attach image if one was uploaded (url was stored against temp id path)
-            if (s.imageUrl) {
-              await updateInstructionStep(created.id, { imageUrl: s.imageUrl });
-            }
-          }),
-      );
-
-      // 4. Update dirty existing steps
-      await Promise.all(
-        withImages
-          .filter((s) => !s.isNew && !s.isDeleted && s.isDirty)
-          .map((s) => updateInstructionStep(s.id, { text: s.text, imageUrl: s.imageUrl })),
-      );
-
-      // 5. Save order (resolve real ids for new steps)
-      const finalOrder = withImages
+      // 2. Build final steps array (visible only, stripped of local flags)
+      const finalSteps = withImages
         .filter((s) => !s.isDeleted)
-        .map((s) => createdIds.get(s.id) ?? s.id);
-      await updateInstruction(instruction.id, { body: encodeStepOrder(finalOrder) });
+        .map(({ id, text, imageUrl }) => ({ id, text, imageUrl }));
+
+      await updateInstruction(instruction.id, { body: encodeSteps(finalSteps) });
     },
     onSuccess: async () => {
       toast.success("Pasos guardados");
@@ -570,8 +436,7 @@ export default function InstructionStepsSection({
   });
 
   function handleDiscard() {
-    seededRef.current = true;
-    setLocalSteps(buildOrderedLocal(serverSteps, instruction));
+    setLocalSteps(parseSteps(instruction).map(toLocalStep));
     setEditingStepId(null);
     setNewStepText("");
   }
@@ -589,89 +454,75 @@ export default function InstructionStepsSection({
         </div>
       </div>
 
-      {isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+      {visibleSteps.length === 0 ? (
+        <p className="text-sm text-slate-400 italic">Sin pasos aún. Agrega uno abajo.</p>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={visibleSteps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            <ol className="space-y-2">
+              {visibleSteps.map((step, i) => (
+                <SortableStepRow
+                  key={step.id}
+                  step={step}
+                  index={i}
+                  isEditing={editingStepId === step.id}
+                  editText={editText}
+                  onEditStart={() => { setEditingStepId(step.id); setEditText(step.text); }}
+                  onEditChange={setEditText}
+                  onEditSave={handleEditSave}
+                  onEditCancel={() => setEditingStepId(null)}
+                  onDelete={() => handleDelete(step.id)}
+                  onUploadImage={(file) => handleUploadImage(step.id, file)}
+                />
+              ))}
+            </ol>
+          </SortableContext>
+        </DndContext>
+      )}
+
+      {atMax ? (
+        <p className="mt-3 text-xs text-amber-600">Máximo {MAX_STEPS} pasos por instrucción.</p>
+      ) : (
+        <div className="mt-4 flex items-center gap-2">
+          <Input
+            value={newStepText}
+            onChange={(e) => setNewStepText(e.target.value)}
+            placeholder="Texto del nuevo paso…"
+            disabled={saveMutation.isPending}
+            className="h-9 flex-1 border-slate-200 bg-white text-sm"
+            onKeyDown={(e) => { if (e.key === "Enter" && newStepText.trim().length > 0) handleAddStep(); }}
+          />
+          <Button
+            type="button"
+            className="h-9 shrink-0 bg-[#18b566] px-3 text-sm font-semibold text-white hover:bg-[#129a56]"
+            disabled={newStepText.trim().length === 0 || saveMutation.isPending}
+            onClick={handleAddStep}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
       )}
 
-      {!!error && <p className="text-sm text-red-600">No se pudieron cargar los pasos.</p>}
-
-      {!isLoading && !error && (
-        <>
-          {visibleSteps.length === 0 ? (
-            <p className="text-sm text-slate-400 italic">Sin pasos aún. Agrega uno abajo.</p>
-          ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={visibleSteps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                <ol className="space-y-2">
-                  {visibleSteps.map((step, i) => (
-                    <SortableStepRow
-                      key={step.id}
-                      step={step}
-                      index={i}
-                      isEditing={editingStepId === step.id}
-                      editText={editText}
-                      onEditStart={() => { setEditingStepId(step.id); setEditText(step.text); }}
-                      onEditChange={setEditText}
-                      onEditSave={handleEditSave}
-                      onEditCancel={() => setEditingStepId(null)}
-                      onDelete={() => handleDelete(step.id)}
-                      onUploadImage={(file) => handleUploadImage(step.id, file)}
-                    />
-                  ))}
-                </ol>
-              </SortableContext>
-            </DndContext>
-          )}
-
-          {atMax ? (
-            <p className="mt-3 text-xs text-amber-600">Máximo {MAX_STEPS} pasos por instrucción.</p>
-          ) : (
-            <div className="mt-4 flex items-center gap-2">
-              <Input
-                value={newStepText}
-                onChange={(e) => setNewStepText(e.target.value)}
-                placeholder="Texto del nuevo paso…"
-                disabled={saveMutation.isPending}
-                className="h-9 flex-1 border-slate-200 bg-white text-sm"
-                onKeyDown={(e) => { if (e.key === "Enter" && newStepText.trim().length > 0) handleAddStep(); }}
-              />
-              <Button
-                type="button"
-                className="h-9 shrink-0 bg-[#18b566] px-3 text-sm font-semibold text-white hover:bg-[#129a56]"
-                disabled={newStepText.trim().length === 0 || saveMutation.isPending}
-                onClick={handleAddStep}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-
-          {/* Save / Discard */}
-          <div className="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
-            <button
-              type="button"
-              disabled={!isDirty || saveMutation.isPending}
-              onClick={handleDiscard}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
-            >
-              <Undo2 className="h-3 w-3" />
-              Descartar
-            </button>
-            <button
-              type="button"
-              disabled={!isDirty || saveMutation.isPending}
-              onClick={() => saveMutation.mutate()}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#18b566] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#129a56] disabled:opacity-40"
-            >
-              <Save className="h-3 w-3" />
-              {saveMutation.isPending ? "Guardando…" : "Guardar cambios"}
-            </button>
-          </div>
-        </>
-      )}
+      <div className="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+        <button
+          type="button"
+          disabled={!isDirty || saveMutation.isPending}
+          onClick={handleDiscard}
+          className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
+        >
+          <Undo2 className="h-3 w-3" />
+          Descartar
+        </button>
+        <button
+          type="button"
+          disabled={!isDirty || saveMutation.isPending}
+          onClick={() => saveMutation.mutate()}
+          className="inline-flex items-center gap-1.5 rounded-md bg-[#18b566] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#129a56] disabled:opacity-40"
+        >
+          <Save className="h-3 w-3" />
+          {saveMutation.isPending ? "Guardando…" : "Guardar cambios"}
+        </button>
+      </div>
     </div>
   );
 }

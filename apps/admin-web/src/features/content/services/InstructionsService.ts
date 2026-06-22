@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
-import type { Instruction, InstructionPayload, StepOrderBody } from "@reciclame/shared-domain";
+import type { Instruction, InstructionBody, InstructionPayload, InstructionStep } from "@reciclame/shared-domain";
 
-export type { Instruction, InstructionPayload, StepOrderBody };
+export type { Instruction, InstructionBody, InstructionStep, InstructionPayload };
 
 type InstructionRow = {
   id: string;
@@ -26,18 +26,18 @@ function mapInstruction(row: InstructionRow): Instruction {
   };
 }
 
-export function parseStepOrder(instruction: Instruction): string[] {
+export function parseSteps(instruction: Instruction): InstructionStep[] {
   if (!instruction.body) return [];
   try {
-    const parsed = JSON.parse(instruction.body) as StepOrderBody;
-    return Array.isArray(parsed.stepOrder) ? parsed.stepOrder : [];
+    const parsed = JSON.parse(instruction.body) as InstructionBody;
+    return Array.isArray(parsed.steps) ? parsed.steps : [];
   } catch {
     return [];
   }
 }
 
-export function encodeStepOrder(ids: string[]): string {
-  return JSON.stringify({ stepOrder: ids } satisfies StepOrderBody);
+export function encodeSteps(steps: InstructionStep[]): string {
+  return JSON.stringify({ steps } satisfies InstructionBody);
 }
 
 export async function getInstructions(): Promise<Instruction[]> {
@@ -56,7 +56,7 @@ export async function createInstruction(values: InstructionPayload) {
     .insert({
       title: values.title,
       waste_type_id: values.wasteTypeId ?? null,
-      body: values.body ?? null,
+      body: values.body ?? encodeSteps([]),
     })
     .select("id, title, body, image_url, waste_type_id, created_at, updated_at")
     .single();
