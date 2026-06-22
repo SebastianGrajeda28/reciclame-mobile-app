@@ -28,10 +28,20 @@ const singletonModules = {
   'scheduler': path.resolve(workspaceRoot, 'node_modules/scheduler/index.js'),
 };
 
+// In this Bun-workspace monorepo, dependencies are hoisted to the workspace root.
+// The dev-client requests `.expo/.virtual-metro-entry`, whose `main` (expo-router/entry)
+// is resolved relative to `unstable_serverRoot` (projectRoot), so Metro looks for
+// `apps/mobile/node_modules/expo-router/entry` — which doesn't exist. Redirect the
+// entry module to the hoisted copy at the workspace root.
+const expoRouterEntry = path.resolve(workspaceRoot, 'node_modules/expo-router/entry.js');
+
 const existingResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (Object.prototype.hasOwnProperty.call(singletonModules, moduleName)) {
     return { type: 'sourceFile', filePath: singletonModules[moduleName] };
+  }
+  if (moduleName === 'expo-router/entry' || moduleName === './node_modules/expo-router/entry') {
+    return { type: 'sourceFile', filePath: expoRouterEntry };
   }
   if (existingResolveRequest) {
     return existingResolveRequest(context, moduleName, platform);
