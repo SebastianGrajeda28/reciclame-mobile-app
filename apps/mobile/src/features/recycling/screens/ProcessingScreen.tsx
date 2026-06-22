@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useNavigation } from 'expo-router';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
@@ -26,11 +26,14 @@ import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ProcessingScreen() {
   const navigation = useNavigation();
-  const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainerId } = useRecycleFlow();
+  const { state, setPrediction, setUnidentifiedPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainerId } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { fact } = useRotatingFunFact();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
-  const loading = !state.finalWasteTypeId;
+  // `classifying` cubre el tiempo que tarda el modelo. Al terminar puede haber:
+  //  - finalWasteType definido  → confianza ≥ umbral (identificado)
+  //  - finalWasteType ausente   → confianza < umbral o error (no identificado)
+  const [classifying, setClassifying] = useState(!state.finalWasteTypeId);
   const navigatingForward = useRef(false);
   const studentLocation = useStudentLocation();
   const { settings } = useUserSettings();
@@ -50,31 +53,47 @@ export function ProcessingScreen() {
     markStep('processing');
   }, [markStep]);
 
+  const startedRef = useRef(false);
   useEffect(() => {
+    if (startedRef.current) return;
     if (state.finalWasteTypeId) {
+      setClassifying(false);
       return;
     }
+    startedRef.current = true;
     let mounted = true;
-    classifyWaste(state.capturedPhotoUri ?? 'manual-seed').then((result) => {
-      if (!mounted) return;
-      setPrediction(result.wasteTypeId, result.confidence);
+    classifyWaste(state.capturedPhotoUri ?? 'manual-seed')
+      .then((result) => {
+        if (!mounted) return;
+        if (result.confidence >= threshold) {
+          setPrediction(result.wasteTypeId, result.confidence);
 
-      // Auto-select closest recycling point if location verification is enabled
-      if (settings?.locationVerificationEnabled) {
-        const closestContainer = findClosestRecyclingPoint(
-          studentLocation.latitude,
-          studentLocation.longitude,
-          result.wasteTypeId,
-        );
-        if (closestContainer) {
-          setSelectedContainerId(closestContainer.id);
+          // Auto-select closest recycling point if location verification is enabled
+          if (settings?.locationVerificationEnabled) {
+            const closestContainer = findClosestRecyclingPoint(
+              studentLocation.latitude,
+              studentLocation.longitude,
+              result.wasteTypeId,
+            );
+            if (closestContainer) {
+              setSelectedContainerId(closestContainer.id);
+            }
+          }
+        } else {
+          // Confianza insuficiente → estado "No identificado": no comprometemos categoría.
+          setUnidentifiedPrediction(result.wasteTypeId, result.confidence);
         }
-      }
-    });
+      })
+      .catch(() => {
+        // Si el modelo falla, lo tratamos como no identificado (reintentar/corregir).
+      })
+      .finally(() => {
+        if (mounted) setClassifying(false);
+      });
     return () => {
       mounted = false;
     };
-  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainerId]);
+  }, [setPrediction, setUnidentifiedPrediction, threshold, state.capturedPhotoUri, state.finalWasteTypeId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainerId]);
 
   const containerMismatch = useMemo(() => {
     if (!state.selectedContainerId || !resolvedBinType) return false;
@@ -98,7 +117,7 @@ export function ProcessingScreen() {
           ) : (
             <View style={styles.imagePlaceholder} />
           )}
-          {!loading && confidence >= threshold && (
+          {!classifying && confidence >= threshold && (
             <View style={styles.confidenceBadge}>
               <AppText style={styles.confidenceText}>
                 ✓ {Math.round(confidence * 100)}% confianza
@@ -109,16 +128,16 @@ export function ProcessingScreen() {
       </View>
 
       <View style={styles.content}>
-        <AppText style={styles.eyebrow}>
-          {loading ? 'Creemos que esto es...' : 'Creemos que esto es'}
-        </AppText>
-
-        {loading ? (
-          <ProcessingLoadingView slot={fact ? <FunFactCard text={fact.text} /> : null} />
-        ) : (
+        {classifying ? (
           <>
+            <AppText style={styles.eyebrow}>Creemos que esto es...</AppText>
+            <ProcessingLoadingView slot={fact ? <FunFactCard text={fact.text} /> : null} />
+          </>
+        ) : finalWasteType ? (
+          <>
+            <AppText style={styles.eyebrow}>Creemos que esto es</AppText>
             <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
-              {finalWasteType?.label ?? 'No identificado'}
+              {finalWasteType.label}
             </AppText>
 
             {resolvedBinType && binTypeUiConfig && (
@@ -146,12 +165,6 @@ export function ProcessingScreen() {
                   reciclaje.
                 </AppText>
               </View>
-            )}
-
-            {confidence < threshold && !containerMismatch && (
-              <AppText muted style={styles.lowConfidenceNote}>
-                Confianza baja — puedes corregir manualmente.
-              </AppText>
             )}
 
             <View style={styles.actions}>
@@ -186,6 +199,32 @@ export function ProcessingScreen() {
                   style={styles.actionBtn}
                 />
               )}
+            </View>
+          </>
+        ) : (
+          <>
+            <AppText style={styles.eyebrow}>Resultado</AppText>
+            <View style={styles.unidentifiedHeader}>
+              <AppIcon name="alertCircle" size={theme.iconSizes.md} color={theme.colors.textSecondary} />
+              <AppText style={styles.unidentifiedTitle}>No identificado</AppText>
+            </View>
+            <AppText muted style={styles.unidentifiedNote}>
+              No pudimos identificar el residuo con seguridad. Vuelve a tomar la foto con mejor
+              enfoque e iluminación, o indícanos tú de qué se trata.
+            </AppText>
+
+            <View style={styles.actions}>
+              <AppButton
+                variant="outline"
+                label="Corregir"
+                onPress={() => router.push('/recycle/manual')}
+                style={styles.actionBtn}
+              />
+              <AppButton
+                label="Reintentar foto"
+                onPress={() => router.back()}
+                style={styles.actionBtn}
+              />
             </View>
           </>
         )}
@@ -289,8 +328,19 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.danger,
     borderColor: theme.colors.danger,
   },
-  lowConfidenceNote: {
+  unidentifiedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  unidentifiedTitle: {
+    fontSize: theme.fontSizes.xxl,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.textSecondary,
+  },
+  unidentifiedNote: {
     fontSize: theme.fontSizes.sm,
+    marginTop: theme.spacing.xs,
   },
   actions: {
     flexDirection: 'row',

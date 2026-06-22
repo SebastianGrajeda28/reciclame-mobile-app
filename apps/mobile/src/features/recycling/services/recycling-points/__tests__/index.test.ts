@@ -3,7 +3,7 @@ import { getRecyclingPoints } from '@/src/features/recycling/services/recycling-
 jest.mock('@/src/features/recycling/services/config', () => ({
   RECYCLE_POINTS_USE_MOCKS: true,
   RECYCLE_USE_MOCKS: true,
-  RECYCLE_CONFIDENCE_THRESHOLD: 0.8,
+  RECYCLE_CONFIDENCE_THRESHOLD: 0.75,
 }));
 
 describe('getRecyclingPoints', () => {

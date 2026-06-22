@@ -34,6 +34,7 @@ type RecycleFlowContextValue = {
   state: RecycleFlowState;
   setCapturedPhotoUri: (uri?: string) => void;
   setPrediction: (wasteTypeId: string, confidence: number) => void;
+  setUnidentifiedPrediction: (wasteTypeId: string, confidence: number) => void;
   setFinalWasteTypeId: (wasteTypeId: string) => void;
   setSelectedContainerId: (containerId: string) => void;
   clearSelectedContainer: () => void;
@@ -103,6 +104,23 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     }
   }, [updateSession]);
 
+  // Predicción con confianza por debajo del umbral: guardamos la mejor apuesta del
+  // modelo y su confianza para la sesión/analítica, pero NO fijamos finalWasteTypeId
+  // para que la UI muestre el estado "No identificado" y obligue a reintentar o corregir.
+  const setUnidentifiedPrediction = useCallback((wasteTypeId: string, confidence: number) => {
+    setState((prev) => ({
+      ...prev,
+      predictedWasteTypeId: wasteTypeId,
+      predictionConfidence: confidence,
+      finalWasteTypeId: undefined,
+    }));
+    updateSession({
+      predictedWasteTypeId: wasteTypeId,
+      confidenceScore: confidence,
+      detectionType: 'auto',
+    });
+  }, [updateSession]);
+
   const setFinalWasteTypeId = useCallback((wasteTypeId: string) => {
     setState((prev) => {
       const overridden =
@@ -159,6 +177,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       state,
       setCapturedPhotoUri,
       setPrediction,
+      setUnidentifiedPrediction,
       setFinalWasteTypeId,
       setSelectedContainerId,
       clearSelectedContainer,
@@ -177,6 +196,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       setCapturedPhotoUri,
       setFinalWasteTypeId,
       setPrediction,
+      setUnidentifiedPrediction,
       setSelectedContainerId,
       clearSelectedContainer,
       clearFinalWasteType,
