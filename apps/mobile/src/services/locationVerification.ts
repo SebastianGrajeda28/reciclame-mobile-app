@@ -1,5 +1,5 @@
-import { isWithinDistance } from '@/src/utils/location';
 import type { RecyclingContainer } from '@/src/features/recycling/types/recycling.types';
+import { isWithinDistance } from '@/src/utils/location';
 
 /**
  * Maximum distance in meters that a user can be from a recycling point

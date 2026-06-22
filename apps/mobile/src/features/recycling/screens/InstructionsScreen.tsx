@@ -152,13 +152,16 @@ export function InstructionsScreen() {
     }
 
     // Verify location proximity if enabled
+    console.log('[UBICACIÓN] locationVerificationEnabled:', settings?.locationVerificationEnabled);
+    console.log('[UBICACIÓN] studentLocation:', JSON.stringify(studentLocation));
+    console.log('[UBICACIÓN] selectedContainer:', selectedContainer?.name, 'lat=' + selectedContainer?.latitude, 'lon=' + selectedContainer?.longitude);
     if (settings?.locationVerificationEnabled) {
       const isWithinRange = verifyLocationProximity(
         studentLocation.latitude,
         studentLocation.longitude,
         selectedContainer,
       );
-      
+      console.log('[UBICACIÓN] Resultado final isWithinRange:', isWithinRange);
       if (!isWithinRange) {
         Alert.alert(
           'Ubicación muy lejana',
