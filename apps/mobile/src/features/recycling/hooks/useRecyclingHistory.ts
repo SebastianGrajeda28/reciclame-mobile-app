@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getRecyclingHistoryPage } from '../api/recyclingLogs';
 import type { RecyclingLogListItem } from '@/src/types/recycling';
 
@@ -18,6 +18,8 @@ export function useRecyclingHistory(userId: string | null, filters: HistoryFilte
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Descarta respuestas obsoletas (loadMore en vuelo al cambiar filtros) para no mezclar páginas.
+  const requestIdRef = useRef(0);
 
   const categoryKey = filters.wasteTypeIds ? filters.wasteTypeIds.join(',') : '';
   const fromKey = filters.fromDate ?? '';
@@ -27,9 +29,11 @@ export function useRecyclingHistory(userId: string | null, filters: HistoryFilte
       if (!userId) {
         setItems([]);
         setHasMore(false);
+        setError(null);
         setLoading(false);
         return;
       }
+      const requestId = ++requestIdRef.current;
       if (mode === 'initial') setLoading(true);
       else if (mode === 'more') setLoadingMore(true);
       else setRefreshing(true);
@@ -43,15 +47,19 @@ export function useRecyclingHistory(userId: string | null, filters: HistoryFilte
             fromDate: filters.fromDate,
           },
         );
+        if (requestId !== requestIdRef.current) return;
         setItems((prev) => (pageToLoad === 0 ? pageItems : [...prev, ...pageItems]));
         setPage(pageToLoad);
         setHasMore(more);
       } catch (e) {
+        if (requestId !== requestIdRef.current) return;
         setError(e instanceof Error ? e.message : 'Error al cargar el historial.');
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
-        setRefreshing(false);
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+        }
       }
     },
     // deps reales: userId + categoryKey/fromKey
