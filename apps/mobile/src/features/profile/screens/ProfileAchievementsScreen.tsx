@@ -5,10 +5,8 @@ import { StyleSheet, View } from 'react-native';
 import { ProfileAchievementRow } from '@/src/features/profile/components/ProfileAchievementRow';
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
-import type { ProfileBadge } from '@/src/features/profile/data/profileGamification';
 import { useProfileGamification } from '@/src/features/profile/hooks/useProfileGamification';
 import { AppChip, AppIcon, AppIconButton, AppText, theme } from '@/src/ui';
-import { AchievementDetailModal } from '../components/AchievementDetailModal';
 
 type AchievementFilter = 'all' | 'unlocked' | 'locked';
 type AchievementSort = 'default' | 'alphabetical' | 'date-desc' | 'date-asc';
@@ -20,18 +18,6 @@ export function ProfileAchievementsScreen() {
 
   const [filter, setFilter] = useState<AchievementFilter>('all');
   const [sort, setSort] = useState<AchievementSort>('default');
-  const [selectedBadge, setSelectedBadge] = useState<ProfileBadge | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-
-  const handleBadgePress = (badge: ProfileBadge) => {
-    setSelectedBadge(badge);
-    setModalVisible(true);
-  };
-
-  const handleCloseModal = () => {
-    setModalVisible(false);
-    setSelectedBadge(null);
-  };
 
   const filteredBadges = (() => {
     switch (filter) {
@@ -124,18 +110,8 @@ export function ProfileAchievementsScreen() {
       </View>
 
       {sortedBadges.map((badge) => (
-        <ProfileAchievementRow
-          key={badge.id}
-          badge={badge}
-          onPress={() => handleBadgePress(badge)}
-        />
+        <ProfileAchievementRow key={badge.id} badge={badge} />
       ))}
-
-      <AchievementDetailModal
-        visible={modalVisible}
-        badge={selectedBadge}
-        onClose={handleCloseModal}
-      />
     </ProfileScreenContainer>
   );
 }

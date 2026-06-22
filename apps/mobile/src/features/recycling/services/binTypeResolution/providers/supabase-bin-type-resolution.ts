@@ -6,6 +6,8 @@ type BinTypeRow = {
   id: string;
   name: string;
   description: string | null;
+  image_url: string | null;
+  deposit_instruction: string | null;
   is_active: boolean;
 };
 
@@ -18,6 +20,8 @@ function mapBinType(row: BinTypeRow): BinType {
     id: row.id,
     name: row.name,
     description: row.description ?? undefined,
+    imageUrl: row.image_url,
+    depositInstruction: row.deposit_instruction,
   };
 }
 
@@ -32,7 +36,7 @@ async function getBinTypeByWasteTypeId(
 ): Promise<BinType | null> {
   const { data, error } = await supabase
     .from('map_waste_type_bin_types')
-    .select('bin_types(id,name,description,is_active)')
+    .select('bin_types(id,name,description,image_url,deposit_instruction,is_active)')
     .eq('waste_type_id', wasteTypeId)
     .eq('university_id', universityId)
     .eq('is_active', true)
