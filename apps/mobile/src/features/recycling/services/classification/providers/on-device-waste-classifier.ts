@@ -14,7 +14,7 @@ const INPUT_SIZE = 224;
 let modelPromise: Promise<TensorflowModel> | undefined;
 
 /**
- * Carga el modelo TFLite.
+ * Carga el modelo TFLite (una sola vez — singleton).
  *
  * `react-native-fast-tflite` carga el modelo internamente con
  * `new URL(uri).openStream()` (Java), que solo entiende:
@@ -64,15 +64,21 @@ function getModel(): Promise<TensorflowModel> {
  * @throws Si expo-image-manipulator no puede procesar la imagen o no devuelve base64.
  */
 export async function imageUriToRgbBytes(uri: string): Promise<Uint8Array> {
+  let t = Date.now();
+
   const resized = await ImageManipulator.manipulateAsync(
     uri,
     [{ resize: { width: INPUT_SIZE, height: INPUT_SIZE } }],
     {
-      compress: 0.95,
+      // La calidad JPEG es irrelevante para clasificar a 224px: bajar el compress
+      // reduce el tamaño que jpeg.decode tiene que procesar.
+      compress: 0.7,
       format: ImageManipulator.SaveFormat.JPEG,
       base64: true,
     },
   );
+  console.log('🔥 manipulate ms =', Date.now() - t);
+  t = Date.now();
 
   if (!resized.base64) {
     throw new Error('No se pudo obtener base64 de la imagen redimensionada.');
@@ -83,8 +89,12 @@ export async function imageUriToRgbBytes(uri: string): Promise<Uint8Array> {
   for (let i = 0; i < binary.length; i += 1) {
     jpegBytes[i] = binary.charCodeAt(i);
   }
+  console.log('🔥 atob ms =', Date.now() - t);
+  t = Date.now();
 
   const decoded = jpeg.decode(jpegBytes, { useTArray: true });
+  console.log('🔥 jpeg.decode ms =', Date.now() - t);
+
   const rgba = decoded.data;
   const rgb = new Uint8Array(INPUT_SIZE * INPUT_SIZE * 3);
   for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
@@ -97,32 +107,52 @@ export async function imageUriToRgbBytes(uri: string): Promise<Uint8Array> {
 
 /**
  * Clasifica un residuo a partir de su imagen usando el modelo TFLite on-device.
- * Carga el modelo una sola vez (singleton) y lo reutiliza en cada llamada.
- * @param imageUri - URI de la imagen capturada (file://, data: o content://).
+ *
+ * Usa un candado `inFlight` para evitar clasificaciones concurrentes: si llega
+ * una segunda llamada mientras otra está en curso, reutiliza la misma promesa
+ * en lugar de lanzar otra conversión pesada (que podía colgar la app por memoria).
+ *
+ * @param imageUri - URI de la imagen capturada (idealmente `file://`, NO un `data:` gigante).
  * @returns Predicción con wasteTypeId y confianza (0-1).
  * @throws Si el modelo no puede cargarse o la imagen no puede procesarse.
  */
+let inFlight: Promise<ClassificationPrediction> | null = null;
+
 async function classify(imageUri: string): Promise<ClassificationPrediction> {
-  console.log('🔥 TFLITE: classify() iniciado, imageUri =', imageUri);
+  if (inFlight) {
+    console.log('🔥 TFLITE: ya hay una clasificación en curso, reutilizando');
+    return inFlight;
+  }
 
-  console.log('🔥 TFLITE: esperando getModel()...');
-  const model = await getModel();
-  console.log('🔥 TFLITE: getModel() resuelto');
+  inFlight = (async () => {
+    const t0 = Date.now();
+    console.log('🔥 TFLITE: classify() iniciado, uri =', imageUri.slice(0, 40), '...');
 
-  console.log('🔥 TFLITE: convirtiendo imagen a RGB...');
-  const rgb = await imageUriToRgbBytes(imageUri);
-  console.log('🔥 TFLITE: imagen convertida, bytes =', rgb.byteLength);
+    const model = await getModel();
 
-  const inputBuffer = new ArrayBuffer(rgb.byteLength);
-  new Uint8Array(inputBuffer).set(rgb);
+    const rgb = await imageUriToRgbBytes(imageUri);
+    console.log('🔥 TFLITE: imagen convertida, bytes =', rgb.byteLength);
 
-  console.log('🔥 TFLITE: ejecutando model.run()...');
-  const output = await model.run([inputBuffer]);
-  console.log('🔥 TFLITE: model.run() resuelto, output =', JSON.stringify(output?.[0]?.byteLength));
+    const output = await model.run([rgb.buffer as ArrayBuffer]);
 
-  const prediction = buildPredictionFromOutput(new Float32Array(output[0]), labels as string[]);
-  console.log('🔥 TFLITE: predicción final =', JSON.stringify(prediction));
-  return prediction;
+    const prediction = buildPredictionFromOutput(
+      new Float32Array(output[0]),
+      labels as string[],
+    );
+    console.log(
+      '🔥 TFLITE: predicción =',
+      JSON.stringify(prediction),
+      '| total ms =',
+      Date.now() - t0,
+    );
+    return prediction;
+  })();
+
+  try {
+    return await inFlight;
+  } finally {
+    inFlight = null;
+  }
 }
 
 export const onDeviceWasteClassifier: WasteClassifier = {

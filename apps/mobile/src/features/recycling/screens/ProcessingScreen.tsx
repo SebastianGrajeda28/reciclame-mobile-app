@@ -1,20 +1,20 @@
+import { Image } from 'expo-image';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Image } from 'expo-image';
 
 import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
 import { useRotatingFunFact } from '@/src/features/recycling/hooks/useFunFact';
 import {
-    useRecycleFlow,
-    useResolvedRecycleSelection,
+  useRecycleFlow,
+  useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
-    classifyWaste,
-    getConfidenceThreshold,
+  classifyWaste,
+  getConfidenceThreshold,
 } from '@/src/features/recycling/services/classification';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';

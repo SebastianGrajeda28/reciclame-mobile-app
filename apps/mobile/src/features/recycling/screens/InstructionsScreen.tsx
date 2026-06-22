@@ -73,8 +73,9 @@ export function InstructionsScreen() {
       
       // Check if any achievement was unlocked
       const unlockedAchievement = await checkUnlockedAchievements(session?.user?.id ?? '');
+      router.dismissAll();
       if (unlockedAchievement) {
-        router.replace({
+        router.push({
           pathname: '/recycle/reward',
           params: {
             badgeId: unlockedAchievement.slug,
@@ -84,7 +85,7 @@ export function InstructionsScreen() {
           },
         });
       } else {
-        router.replace('/recycle/success');
+        router.push('/recycle/success');
       }
     } catch (err) {
       console.error('[InstructionsScreen] createRecyclingLog failed:', err);
