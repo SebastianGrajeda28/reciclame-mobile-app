@@ -97,15 +97,31 @@ async function waitForOAuthRedirectUrl(oauthUrl: string, redirectTo: string): Pr
   try {
     const browserPromise = WebBrowser.openAuthSessionAsync(oauthUrl, redirectTo, {
       showInRecents: true,
-    }).then((result) => {
-      if (result.type === 'success' && result.url) {
-        return result.url;
-      }
-      if (result.type === 'cancel') {
-        throw new Error('OAuth cancelado por el usuario.');
-      }
-      return deepLinkPromise;
-    });
+    })
+      .then((result) => {
+        if (result.type === 'success' && result.url) {
+          return result.url;
+        }
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+          throw new Error('OAuth cancelado por el usuario.');
+        }
+        // Otros estados ('opened', etc.): esperamos el deep link de retorno.
+        return deepLinkPromise;
+      })
+      .catch((browserErr: unknown) => {
+        const msg = browserErr instanceof Error ? browserErr.message : String(browserErr);
+
+        // Android: openAuthSessionAsync puede fallar con "activity no longer available"
+        // cuando la Activity se destruye al lanzar el Chrome Custom Tab, o si el Custom
+        // Tab no está disponible ("rejected"). En ese caso abrimos la URL en el navegador
+        // externo; el intent-filter del deep link enrutará reciclamemobileapp://auth/callback
+        // de vuelta a la app y el listener (deepLinkPromise) resolverá con la URL de retorno.
+        if (msg.includes('no longer available') || msg.includes('rejected')) {
+          return Linking.openURL(oauthUrl).then(() => deepLinkPromise);
+        }
+
+        throw browserErr;
+      });
 
     return await Promise.race([browserPromise, deepLinkPromise]);
   } finally {

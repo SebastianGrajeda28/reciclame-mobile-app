@@ -10,6 +10,7 @@ export type UserAchievement = {
   unlockDescription: string | null;
   rewardName: string | null;
   earnedAt: string | null;
+  userPercentage: number;
 };
 
 export type ProfileStats = {
@@ -20,41 +21,54 @@ export type ProfileStats = {
 };
 
 export async function getUserAchievements(userId: string): Promise<UserAchievement[]> {
-  const { data: allAchievements, error: achError } = await supabase
-    .from('achievements')
-    .select('id, slug, name, description, unlock_description, reward_id, rewards(name)')
-    .eq('is_active', true)
-    .not('slug', 'is', null);
+  const [achRes, earnedRes, rewardsRes, statsRes] = await Promise.all([
+    supabase
+      .from('achievements')
+      .select('id, slug, name, description, unlock_description')
+      .eq('is_active', true)
+      .not('slug', 'is', null),
+    supabase
+      .from('user_achievements')
+      .select('achievement_id, unlocked_at')
+      .eq('user_id', userId)
+      .eq('is_active', true),
+    supabase
+      .from('rewards')
+      .select('achievement_id, name')
+      .eq('is_active', true)
+      .not('achievement_id', 'is', null),
+    supabase.rpc('get_achievement_unlock_stats'),
+  ]);
 
-  if (achError) throw new Error(achError.message);
-  if (!allAchievements) return [];
-
-  const { data: earned, error: earnedError } = await supabase
-    .from('user_achievements')
-    .select('achievement_id, unlocked_at')
-    .eq('user_id', userId)
-    .eq('is_active', true);
-
-  if (earnedError) throw new Error(earnedError.message);
+  if (achRes.error) throw new Error(achRes.error.message);
+  if (earnedRes.error) throw new Error(earnedRes.error.message);
+  if (statsRes.error) throw new Error(statsRes.error.message);
 
   const earnedMap = new Map<string, string>();
-  for (const row of earned ?? []) {
+  for (const row of earnedRes.data ?? []) {
     earnedMap.set(row.achievement_id, row.unlocked_at);
   }
 
-  return allAchievements.map((a) => {
-    const rewardRaw = a.rewards as unknown;
-    const reward = (Array.isArray(rewardRaw) ? rewardRaw[0] : rewardRaw) as { name: string } | null;
-    return {
-      achievementId: a.id,
-      slug: a.slug as string,
-      name: a.name,
-      description: a.description ?? null,
-      unlockDescription: a.unlock_description ?? null,
-      rewardName: reward?.name ?? null,
-      earnedAt: earnedMap.get(a.id) ?? null,
-    };
-  });
+  const rewardNameMap = new Map<string, string>();
+  for (const row of rewardsRes.data ?? []) {
+    if (row.achievement_id) rewardNameMap.set(row.achievement_id, row.name);
+  }
+
+  const userPercentageMap = new Map<string, number>();
+  for (const row of statsRes.data ?? []) {
+    userPercentageMap.set(row.achievement_id, Number(row.user_percentage ?? 0));
+  }
+
+  return (achRes.data ?? []).map((a) => ({
+    achievementId: a.id,
+    slug: a.slug as string,
+    name: a.name,
+    description: a.description ?? null,
+    unlockDescription: a.unlock_description ?? null,
+    rewardName: rewardNameMap.get(a.id) ?? null,
+    earnedAt: earnedMap.get(a.id) ?? null,
+    userPercentage: userPercentageMap.get(a.id) ?? 0,
+  }));
 }
 
 export async function getProfileStats(userId: string): Promise<ProfileStats> {

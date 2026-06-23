@@ -22,6 +22,8 @@ export type BinType = {
   id: string;
   name: string;
   description?: string;
+  imageUrl: string | null;
+  depositInstruction: string | null;
 };
 
 export type WasteTypeBinTypeMapping = {

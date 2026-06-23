@@ -6,11 +6,11 @@ import {
     getUserAchievements,
 } from '@/src/features/profile/api/achievements';
 import {
-    BADGE_STATIC_DATA,
-    FEATURED_BADGE_SLUG_FALLBACK,
-    type ProfileBadge,
-    type ProfileStat,
+  FEATURED_BADGE_SLUG_FALLBACK,
+  type ProfileBadge,
+  type ProfileStat,
 } from '@/src/features/profile/data/profileGamification';
+import { BADGE_STATIC_DATA } from '@/src/ui';
 import { useAuth } from '@/src/hooks/useAuth';
 
 type ProfileGamification = {
@@ -70,7 +70,7 @@ export function useProfileGamification(): ProfileGamification {
           image: staticData?.image ?? require('@/assets/images/achievements/ach_Icons_19.png'),
           description: a.description,
           unlockDescription: a.unlockDescription,
-          userPercentage: staticData?.userPercentage ?? 0,
+          userPercentage: a.userPercentage,
           earnedAt: a.earnedAt,
           reward: a.rewardName,
         };

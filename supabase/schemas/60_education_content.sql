@@ -1,5 +1,6 @@
 -- Educational content consumed by mobile and admin clients.
--- Includes content, instructions, steps, fun facts, indexes, RPCs, and policies.
+-- Includes content, instructions, fun facts, indexes, RPCs, and policies.
+-- Note: instruction_steps table was dropped; steps are stored as JSON in instructions.body.
 
 CREATE TABLE IF NOT EXISTS "public"."educational_content" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
@@ -25,16 +26,6 @@ CREATE TABLE IF NOT EXISTS "public"."fun_facts" (
     "updated_at" timestamp with time zone
 );
 
-CREATE TABLE IF NOT EXISTS "public"."instruction_steps" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "instruction_id" "uuid" NOT NULL,
-    "text" "text" NOT NULL,
-    "is_active" boolean DEFAULT true NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone,
-    "image_url" "text"
-);
-
 CREATE TABLE IF NOT EXISTS "public"."instructions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "title" "text" NOT NULL,
@@ -50,8 +41,6 @@ ALTER TABLE "public"."educational_content" OWNER TO "postgres";
 
 ALTER TABLE "public"."fun_facts" OWNER TO "postgres";
 
-ALTER TABLE "public"."instruction_steps" OWNER TO "postgres";
-
 ALTER TABLE "public"."instructions" OWNER TO "postgres";
 
 ALTER TABLE ONLY "public"."educational_content"
@@ -59,9 +48,6 @@ ALTER TABLE ONLY "public"."educational_content"
 
 ALTER TABLE ONLY "public"."fun_facts"
     ADD CONSTRAINT "fun_facts_pkey" PRIMARY KEY ("id");
-
-ALTER TABLE ONLY "public"."instruction_steps"
-    ADD CONSTRAINT "instruction_steps_pkey" PRIMARY KEY ("id");
 
 ALTER TABLE ONLY "public"."instructions"
     ADD CONSTRAINT "instructions_pkey" PRIMARY KEY ("id");
@@ -71,9 +57,6 @@ ALTER TABLE ONLY "public"."educational_content"
 
 ALTER TABLE ONLY "public"."fun_facts"
     ADD CONSTRAINT "fun_facts_waste_type_id_fkey" FOREIGN KEY ("waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE SET NULL;
-
-ALTER TABLE ONLY "public"."instruction_steps"
-    ADD CONSTRAINT "instruction_steps_instruction_id_fkey" FOREIGN KEY ("instruction_id") REFERENCES "public"."instructions"("id") ON DELETE CASCADE;
 
 ALTER TABLE ONLY "public"."instructions"
     ADD CONSTRAINT "instructions_waste_type_id_fkey" FOREIGN KEY ("waste_type_id") REFERENCES "public"."waste_types"("id") ON DELETE SET NULL;
@@ -162,17 +145,11 @@ $$;
 
 ALTER TABLE "public"."fun_facts" ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE "public"."instruction_steps" ENABLE ROW LEVEL SECURITY;
-
 ALTER TABLE "public"."instructions" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "fun_facts_admin_all" ON "public"."fun_facts" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
 
 CREATE POLICY "fun_facts_select_active_authenticated" ON "public"."fun_facts" FOR SELECT TO "authenticated" USING (("is_active" = true));
-
-CREATE POLICY "instruction_steps_admin_all" ON "public"."instruction_steps" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
-
-CREATE POLICY "instruction_steps_select_active_authenticated" ON "public"."instruction_steps" FOR SELECT TO "authenticated" USING (("is_active" = true));
 
 CREATE POLICY "instructions_admin_all" ON "public"."instructions" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
 
@@ -221,12 +198,6 @@ GRANT ALL ON TABLE "public"."fun_facts" TO "anon";
 GRANT ALL ON TABLE "public"."fun_facts" TO "authenticated";
 
 GRANT ALL ON TABLE "public"."fun_facts" TO "service_role";
-
-GRANT ALL ON TABLE "public"."instruction_steps" TO "anon";
-
-GRANT ALL ON TABLE "public"."instruction_steps" TO "authenticated";
-
-GRANT ALL ON TABLE "public"."instruction_steps" TO "service_role";
 
 GRANT ALL ON TABLE "public"."instructions" TO "anon";
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { useStreakInvalidation } from '@/src/contexts/StreakInvalidationContext';
 import { getStreakProgress, type StreakProgress } from '@/src/services/streakProgress';
 import { useAuth } from '@/src/hooks/useAuth';
 
@@ -12,6 +13,7 @@ type State = {
 export function useStreakProgress() {
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const { version } = useStreakInvalidation();
   const [state, setState] = useState<State>({ data: null, loading: true, error: null });
 
   const load = useCallback(async () => {
@@ -31,7 +33,7 @@ export function useStreakProgress() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, version]);
 
   return { ...state, refetch: load };
 }

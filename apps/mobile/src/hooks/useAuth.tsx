@@ -80,7 +80,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Handle deep link OAuth callback when the external browser fallback is used.
+    // Supabase redirects to reciclamemobileapp://oauth?code=... after Google auth.
+    const handleDeepLink = async (url: string) => {
+      if (!url.startsWith('reciclamemobileapp://oauth')) return;
+      const parsed = new URL(url);
+      const code = parsed.searchParams.get('code');
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+    };
+
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+
+    const linkingSub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+
+    return () => {
+      subscription.unsubscribe();
+      linkingSub.remove();
+    };
   }, []);
 
   function persistCachedUser(s: Session): void {

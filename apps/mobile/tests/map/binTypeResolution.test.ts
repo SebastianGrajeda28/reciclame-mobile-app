@@ -1,4 +1,9 @@
-import { jest, describe, it, expect, afterEach } from 'bun:test';
+import { afterEach, describe, expect, it, jest } from 'bun:test';
+import {
+  NON_RECOVERABLE_BIN_TYPE_ID,
+  PLASTICS_BIN_TYPE_ID,
+  RAEE_BIN_TYPE_ID,
+} from '../../src/features/recycling/services/bin-types.mock';
 import { mockBinTypeResolution } from '../../src/features/recycling/services/binTypeResolution/mocks/mock-bin-type-resolution';
 import { supabaseBinTypeResolution } from '../../src/features/recycling/services/binTypeResolution/providers/supabase-bin-type-resolution';
 import {
@@ -9,11 +14,6 @@ import {
   PLASTICS_PET_WASTE_TYPE_ID,
   PUCP_UNIVERSITY_ID,
 } from '../../src/features/recycling/services/waste-type-bin-types.mock';
-import {
-  NON_RECOVERABLE_BIN_TYPE_ID,
-  PLASTICS_BIN_TYPE_ID,
-  RAEE_BIN_TYPE_ID,
-} from '../../src/features/recycling/services/bin-types.mock';
 import { supabase } from '../../src/services/supabase/client';
 
 // Both this file ('../../src/services/supabase/client') and
@@ -124,6 +124,8 @@ describe('supabaseBinTypeResolution', () => {
       id: PLASTICS_BIN_TYPE_ID,
       name: 'Contenedor de plasticos',
       description: 'Para plasticos PET y otros plasticos reciclables.',
+      imageUrl: null,
+      depositInstruction: null,
     });
   });
 
