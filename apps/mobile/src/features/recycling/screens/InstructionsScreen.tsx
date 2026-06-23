@@ -215,10 +215,6 @@ export function InstructionsScreen() {
   const depositText = resolvedBinType?.depositInstruction ?? 'Deposita en el contenedor correcto';
   const depositImageUrl = resolvedBinType?.imageUrl ?? null;
 
-<<<<<<< HEAD
-  // All steps shown: editable steps from cache + fixed deposit step at the end
-=======
->>>>>>> origin/develop
   type StepItem =
     | { kind: 'step'; text: string; imageUrl: string | null; key: string }
     | { kind: 'deposit'; text: string; imageUrl: string | null; key: string };
