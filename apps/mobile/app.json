@@ -2,12 +2,11 @@
   "expo": {
     "name": "Recíclame",
     "slug": "reciclame-mobile-app",
-    "version": "1.12.0",
+    "version": "1.13.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "reciclamemobileapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.wolgank.reciclame",
@@ -40,7 +39,6 @@
         "backgroundImage": "./assets/images/ic_launcher_background.png",
         "monochromeImage": "./assets/images/ic_launcher_monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "config": {
         "googleMaps": {
