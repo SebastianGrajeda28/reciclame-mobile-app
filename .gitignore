@@ -1,3 +1,6 @@
+.yarnrc.yml
+yarn.lock
+
 # Created by https://www.toptal.com/developers/gitignore/api/reactnative
 # Edit at https://www.toptal.com/developers/gitignore?templates=reactnative
 
@@ -5,8 +8,8 @@
 # React Native Stack Base
 
 # Expo CNG — generated native folders (pure managed workflow)
-/android/
-/ios/
+apps/mobile/android/
+apps/mobile/ios/
 
 .expo
 __generated__
