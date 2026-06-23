@@ -74,25 +74,11 @@ function pickRandom<T>(items: T[]): T | null {
 export async function fetchInstructionWithStepsByWasteTypeId(
   wasteTypeId: string,
 ): Promise<Instruction | null> {
-  const { data, error } = await supabase
-    .from('instructions')
-    .select('id,title,body,image_url,waste_type_id,is_active,created_at,updated_at')
-    .eq('is_active', true)
-    .eq('waste_type_id', wasteTypeId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
   console.log(`[CONTENT] Instruccion para waste=${wasteTypeId} — consultando Supabase...`);
   try {
     const { data, error } = await supabase
       .from('instructions')
-      .select(
-        'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at,' +
-          'instruction_steps(id,instruction_id,text,image_url,is_active,created_at,updated_at)',
-      )
+      .select('id,title,body,image_url,waste_type_id,is_active,created_at,updated_at')
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
@@ -189,10 +175,7 @@ export async function refreshInstructionsCache(): Promise<void> {
 
   const { data, error } = await supabase
     .from('instructions')
-    .select(
-      'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at,' +
-        'instruction_steps(id,instruction_id,text,image_url,is_active,created_at,updated_at)',
-    )
+    .select('id,title,body,image_url,waste_type_id,is_active,created_at,updated_at')
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
