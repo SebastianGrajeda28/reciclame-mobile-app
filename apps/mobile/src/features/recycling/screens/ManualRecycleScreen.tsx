@@ -4,12 +4,13 @@ import { router, useNavigation } from 'expo-router';
 
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
+import type { WasteType } from '@/src/features/recycling/types/recycling.types';
 import { AppButton, AppCard, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ManualRecycleScreen() {
   const navigation = useNavigation();
-  const [selectedWasteTypeId, setSelectedWasteTypeId] = useState<string | undefined>();
-  const { setFinalWasteTypeId, clearFinalWasteType, markStep } = useRecycleFlow();
+  const [selectedWasteType, setSelectedWasteType] = useState<WasteType | undefined>();
+  const { setFinalWasteType, clearFinalWasteType, markStep } = useRecycleFlow();
 
   useEffect(() => {
     markStep('manual');
@@ -32,8 +33,8 @@ export function ManualRecycleScreen() {
   }, []);
 
   const confirm = () => {
-    if (!selectedWasteTypeId) return;
-    setFinalWasteTypeId(selectedWasteTypeId);
+    if (!selectedWasteType) return;
+    setFinalWasteType(selectedWasteType);
     router.push('/recycle/map');
   };
 
@@ -46,12 +47,12 @@ export function ManualRecycleScreen() {
             <View key={categoryLabel} style={styles.group}>
               <AppText variant="subtitle">{categoryLabel}</AppText>
               {items.map((item) => {
-                const selected = selectedWasteTypeId === item.id;
+                const selected = selectedWasteType?.id === item.id;
                 return (
                   <AppText
                     key={item.id}
                     style={[styles.item, selected ? styles.selectedItem : null]}
-                    onPress={() => setSelectedWasteTypeId(item.id)}
+                    onPress={() => setSelectedWasteType(item)}
                   >
                     {selected ? '●' : '○'} {item.label}
                   </AppText>
@@ -60,7 +61,7 @@ export function ManualRecycleScreen() {
             </View>
           ))}
         </ScrollView>
-        <AppButton label="Confirmar" disabled={!selectedWasteTypeId} onPress={confirm} />
+        <AppButton label="Confirmar" disabled={!selectedWasteType} onPress={confirm} />
       </AppCard>
     </AppScreen>
   );
