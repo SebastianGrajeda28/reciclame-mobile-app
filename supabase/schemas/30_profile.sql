@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS "public"."user_settings" (
     "skip_recycling_instructions" boolean DEFAULT false NOT NULL,
     "profile_visibility" "text",
     "language" "text",
+    "location_verification_enabled" boolean DEFAULT false NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone,
     "is_active" boolean DEFAULT true NOT NULL

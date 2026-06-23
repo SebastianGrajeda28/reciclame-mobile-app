@@ -1,3 +1,4 @@
+import type { AppIconName } from '@/src/ui/components/AppIcon';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
 
 // Categorías del historial (RF-040): agrupan uno o más tipos de residuo.
@@ -54,4 +55,37 @@ const DEFAULT_STYLE = { bg: '#A6F4C5', fg: '#027A48' };
 export function categoryStyleForWasteTypeId(wasteTypeId?: string): { bg: string; fg: string } {
   const categoryId = wasteTypeId ? CATEGORY_BY_WASTE_TYPE[wasteTypeId] : undefined;
   return (categoryId && CATEGORY_STYLE[categoryId]) || DEFAULT_STYLE;
+}
+
+/** Color por id de categoría (para el punto del filtro). */
+export function categoryStyleForCategoryId(categoryId?: string): { bg: string; fg: string } {
+  return (categoryId && CATEGORY_STYLE[categoryId]) || DEFAULT_STYLE;
+}
+
+/** Une (sin duplicados) los wasteTypeIds de varias categorías, para el filtro multi-categoría. */
+export function wasteTypeIdsForCategories(categoryIds: string[]): string[] {
+  const ids = new Set<string>();
+  for (const categoryId of categoryIds) {
+    const category = HISTORY_CATEGORIES.find((c) => c.id === categoryId);
+    category?.wasteTypeIds.forEach((id) => ids.add(id));
+  }
+  return [...ids];
+}
+
+// Ícono propio por categoría.
+const CATEGORY_ICON: Record<string, AppIconName> = {
+  plastic_pet: 'bottle',
+  paper_cardboard: 'fileDocument',
+  glass: 'flask',
+  non_recoverable: 'trash',
+  battery: 'battery',
+  electronic_waste: 'laptop',
+};
+
+const DEFAULT_ICON: AppIconName = 'recycle';
+
+/** Ícono según la categoría del tipo de residuo (para la fila del historial). */
+export function categoryIconForWasteTypeId(wasteTypeId?: string): AppIconName {
+  const categoryId = wasteTypeId ? CATEGORY_BY_WASTE_TYPE[wasteTypeId] : undefined;
+  return (categoryId && CATEGORY_ICON[categoryId]) || DEFAULT_ICON;
 }

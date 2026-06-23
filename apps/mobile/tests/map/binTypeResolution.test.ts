@@ -1,3 +1,4 @@
+import { jest, describe, it, expect, afterEach } from 'bun:test';
 import { mockBinTypeResolution } from '../../src/features/recycling/services/binTypeResolution/mocks/mock-bin-type-resolution';
 import { supabaseBinTypeResolution } from '../../src/features/recycling/services/binTypeResolution/providers/supabase-bin-type-resolution';
 import {
@@ -15,15 +16,13 @@ import {
 } from '../../src/features/recycling/services/bin-types.mock';
 import { supabase } from '../../src/services/supabase/client';
 
-jest.mock('../../src/services/supabase/client', () => {
-  return {
-    supabase: {
-      from: jest.fn(),
-    },
-  };
-});
-
-const mockedFrom = supabase.from as jest.Mock;
+// Both this file ('../../src/services/supabase/client') and
+// supabase-bin-type-resolution.ts ('@/src/services/supabase/client') resolve to
+// the same absolute path, so they share the same module-cache singleton.
+// Spying here intercepts supabase.from() calls inside the provider as well.
+// The bun-setup.ts preload (bunfig.toml) polyfills window/localStorage so the
+// Supabase client's async initialization doesn't crash in Bun's Node environment.
+const mockedFrom = jest.spyOn(supabase, 'from') as unknown as jest.Mock;
 
 describe('mockBinTypeResolution', () => {
   it('resolves PET plastics to plastics bin type', async () => {

@@ -591,10 +591,20 @@ export function ProfileAvatarScreen() {
         <AppButton
           label={saving ? 'Guardando...' : 'Guardar cambios'}
           onPress={async () => {
+            console.log('[AVATAR SCREEN] Intentando guardar config:', JSON.stringify(config));
+            console.log('[AVATAR SCREEN] clothes:', config.clothes, '| hat:', config.hat);
+            console.log('[AVATAR SCREEN] restricted.clothes:', [...restricted.clothes]);
+            console.log('[AVATAR SCREEN] earned.clothes:', [...earned.clothes]);
+            const clothesStyle = config.clothes ? config.clothes.split('_').pop() : null;
+            const isClothesLocked = clothesStyle
+              ? restricted.clothes.has(clothesStyle) && !earned.clothes.has(clothesStyle)
+              : false;
+            console.log('[AVATAR SCREEN] clothesStyle extraído:', clothesStyle, '| isLocked (cliente):', isClothesLocked);
             try {
               await save(config);
               router.back();
             } catch (e) {
+              console.error('[AVATAR SCREEN] Error al guardar:', e);
               Alert.alert('Error al guardar', e instanceof Error ? e.message : 'Error desconocido');
             }
           }}

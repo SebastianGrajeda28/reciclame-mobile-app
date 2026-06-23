@@ -37,11 +37,26 @@ export function useUnlockedCosmetics(): UnlockedCosmeticsState {
           getRestrictedCosmetics(),
           getEarnedRestrictedCosmetics(userId),
         ]);
+        console.log('[COSMETICS] Cosméticos RESTRINGIDOS cargados:', {
+          hat: [...restrictedData.hat],
+          clothes: [...restrictedData.clothes],
+          hair: [...restrictedData.hair],
+          beard: [...restrictedData.beard],
+          moustache: [...restrictedData.moustache],
+        });
+        console.log('[COSMETICS] Cosméticos DESBLOQUEADOS por el usuario:', {
+          hat: [...earnedData.hat],
+          clothes: [...earnedData.clothes],
+          hair: [...earnedData.hair],
+          beard: [...earnedData.beard],
+          moustache: [...earnedData.moustache],
+        });
         if (!cancelled) {
           setRestricted(restrictedData);
           setEarned(earnedData);
         }
-      } catch {
+      } catch (e) {
+        console.error('[COSMETICS] Error al cargar cosméticos desbloqueados:', e);
       } finally {
         if (!cancelled) setLoading(false);
       }

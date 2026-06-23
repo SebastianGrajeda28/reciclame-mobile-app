@@ -8,21 +8,24 @@ import {
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useStudentLocation } from '@/src/hooks/useStudentLocation';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
 import { checkUnlockedAchievements } from '@/src/services/achievements';
+import { findClosestContainerWithBinType } from '@/src/services/closestRecyclingPoint';
+import { verifyLocationProximity } from '@/src/services/locationVerification';
 import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 import { createRecyclingLog } from '../api/recyclingLogs';
-import { confirmSegregation } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
-  const { state, clearSelectedContainer, markStep, markConfirmed } = useRecycleFlow();
+  const { state, clearSelectedContainer, markStep, markConfirmed, setSelectedContainerId } = useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType } = useResolvedBinType(
     state.finalWasteTypeId,
   );
   const { session } = useAuth();
   const { settings, updateSetting } = useUserSettings();
+  const studentLocation = useStudentLocation();
   const [submitting, setSubmitting] = useState(false);
   const [showAgain, setShowAgain] = useState(() => !(settings?.skipRecyclingInstructions ?? false));
   const autoSubmitted = useRef(false);
@@ -52,6 +55,49 @@ export function InstructionsScreen() {
     }
   }, []);
 
+  const proceedWithRegistration = useCallback(async () => {
+    try {
+      const usedManual =
+        state.predictedWasteTypeId !== undefined &&
+        state.predictedWasteTypeId !== state.finalWasteTypeId;
+      const log = await createRecyclingLog({
+        userId: session?.user?.id ?? '',
+        wasteTypeId: finalWasteType?.id ?? '',
+        binTypeId: '33333333-3333-3333-3333-000000000001',//esto es un parche, se deberia ver que datos se pone realmente en este log.
+        recyclingPointId: selectedContainer?.id ?? '',
+        detectionType: usedManual ? 'manual' : 'auto',
+        confidenceScore: state.predictionConfidence,
+      });
+
+      markConfirmed(log.id);
+      
+      // Check if any achievement was unlocked
+      const unlockedAchievement = await checkUnlockedAchievements(session?.user?.id ?? '');
+      router.dismissAll();
+      if (unlockedAchievement) {
+        router.push({
+          pathname: '/recycle/reward',
+          params: {
+            badgeId: unlockedAchievement.slug,
+            badgeName: unlockedAchievement.name,
+            badgeReward: unlockedAchievement.rewardName ?? undefined,
+            badgeDescription: unlockedAchievement.unlockDescription ?? undefined,
+          },
+        });
+      } else {
+        router.push('/recycle/success');
+      }
+    } catch (err) {
+      console.error('[InstructionsScreen] createRecyclingLog failed:', err);
+      notify(
+        'No se pudo registrar',
+        err instanceof Error ? err.message : 'Intenta nuevamente.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }, [session, finalWasteType, selectedContainer, state, notify, markConfirmed]);
+
   const handleConfirm = useCallback(async () => {
     if (!finalWasteType || !selectedContainer) {
       notify('Datos incompletos', 'Falta categoría o contenedor seleccionado.');
@@ -63,47 +109,98 @@ export function InstructionsScreen() {
       return;
     }
 
-    setSubmitting(true);
-    try {
-      const usedManual =
-        state.predictedWasteTypeId !== undefined &&
-        state.predictedWasteTypeId !== state.finalWasteTypeId;
-      const log = await createRecyclingLog({
-        userId: session.user.id,
-        wasteTypeId: finalWasteType.id,
-        binTypeId: '33333333-3333-3333-3333-000000000001',//esto es un parche, se deberia ver que datos se pone realmente en este log.
-        recyclingPointId: selectedContainer.id,
-        detectionType: usedManual ? 'manual' : 'auto',
-        confidenceScore: state.predictionConfidence,
-      });
-
-      markConfirmed(log.id);
-      
-      // Check if any achievement was unlocked
-      const unlockedAchievement = await checkUnlockedAchievements(session.user.id);
-      if (unlockedAchievement) {
-        router.replace({
-          pathname: '/recycle/reward',
-          params: {
-            badgeId: unlockedAchievement.slug,
-            badgeName: unlockedAchievement.name,
-            badgeReward: unlockedAchievement.rewardName ?? undefined,
-            badgeDescription: unlockedAchievement.unlockDescription ?? undefined,
-          },
-        });
-      } else {
-        router.replace('/recycle/success');
-      }
-    } catch (err) {
-      console.error('[InstructionsScreen] createRecyclingLog failed:', err);
-      notify(
-        'No se pudo registrar',
-        err instanceof Error ? err.message : 'Intenta nuevamente.',
+    // Check if selected container has the required bin type
+    if (resolvedBinType && !selectedContainer.availableBinTypeIds.includes(resolvedBinType.id)) {
+      const nearestContainer = findClosestContainerWithBinType(
+        studentLocation.latitude,
+        studentLocation.longitude,
+        resolvedBinType.id,
+        selectedContainer.id,
       );
-    } finally {
-      setSubmitting(false);
+
+      const buttons = [
+        nearestContainer ? {
+          text: 'Seleccionar punto cercano',
+          onPress: () => {
+            setSelectedContainerId(nearestContainer!.id);
+          },
+          style: 'default' as const,
+        } : null,
+        {
+          text: 'Continuar sin punto',
+          onPress: () => {
+            clearSelectedContainer();
+            setSubmitting(true);
+            proceedWithRegistration();
+          },
+          style: 'destructive' as const,
+        },
+        {
+          text: 'Cancelar',
+          onPress: () => {
+            // Cancel the action
+          },
+          style: 'cancel' as const,
+        },
+      ].filter((button): button is NonNullable<typeof button> => button !== null);
+
+      Alert.alert(
+        'Contenedor no disponible',
+        `El punto de reciclaje seleccionado no tiene el contenedor requerido para este tipo de residuo. ${nearestContainer ? `El punto más cercano con el contenedor adecuado es "${nearestContainer.name}".` : ''}`,
+        buttons,
+      );
+      return;
     }
-  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType]);
+
+    // Verify location proximity if enabled
+    console.log('[UBICACIÓN] locationVerificationEnabled:', settings?.locationVerificationEnabled);
+    console.log('[UBICACIÓN] studentLocation:', JSON.stringify(studentLocation));
+    console.log('[UBICACIÓN] selectedContainer:', selectedContainer?.name, 'lat=' + selectedContainer?.latitude, 'lon=' + selectedContainer?.longitude);
+    if (settings?.locationVerificationEnabled) {
+      const isWithinRange = verifyLocationProximity(
+        studentLocation.latitude,
+        studentLocation.longitude,
+        selectedContainer,
+      );
+      console.log('[UBICACIÓN] Resultado final isWithinRange:', isWithinRange);
+      if (!isWithinRange) {
+        Alert.alert(
+          'Ubicación muy lejana',
+          'No estás cerca del punto de reciclaje seleccionado. ¿Deseas verificar tu ubicación nuevamente o registrar sin verificación de ubicación?',
+          [
+            {
+              text: 'Verificar ubicación',
+              onPress: () => {
+                // Allow user to recheck location - they can try again
+                // The hook will automatically update location
+              },
+              style: 'default',
+            },
+            {
+              text: 'Registrar sin verificación',
+              onPress: () => {
+                // Proceed with registration without location verification
+                setSubmitting(true);
+                proceedWithRegistration();
+              },
+              style: 'destructive',
+            },
+            {
+              text: 'Cancelar',
+              onPress: () => {
+                // Cancel the action
+              },
+              style: 'cancel',
+            },
+          ],
+        );
+        return;
+      }
+    }
+
+    setSubmitting(true);
+    proceedWithRegistration();
+  }, [finalWasteType, selectedContainer, session, settings, studentLocation, proceedWithRegistration, notify, resolvedBinType, setSelectedContainerId, clearSelectedContainer]);
 
   useEffect(() => {
     if (

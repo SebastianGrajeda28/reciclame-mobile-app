@@ -26,7 +26,10 @@ export function useCameraCapture() {
   async function capture(): Promise<CaptureResult> {
     if (!cameraRef.current) return { status: 'cancelled' };
 
-    const picture = await cameraRef.current.takePictureAsync({ quality: 0.6 });
+    const picture = await cameraRef.current.takePictureAsync({
+      quality: 0.6,
+      base64: true,
+    });
     if (!picture?.uri) return { status: 'cancelled' };
 
     const validation = validateImage({
@@ -39,7 +42,8 @@ export function useCameraCapture() {
       return { status: 'invalid', error: validation.message };
     }
 
-    return { status: 'ok', uri: picture.uri };
+    const uri = picture.base64 ? `data:image/jpeg;base64,${picture.base64}` : picture.uri;
+    return { status: 'ok', uri };
   }
 
   return { permission, requestPermission, cameraRef, flash, toggleFlash, capture };

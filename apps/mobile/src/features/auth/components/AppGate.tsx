@@ -15,6 +15,7 @@ import {
 } from '@/src/ui';
 import { LoginScreen } from '@/src/features/auth/screens/LoginScreen';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useNetworkSync } from '@/src/hooks/useNetworkSync';
 
 function AuthGate({ children }: PropsWithChildren) {
   const { session, loading, offlineMode, setOfflineMode } = useAuth();
@@ -126,6 +127,7 @@ function PermissionGate({ children }: PropsWithChildren) {
 }
 
 export function AppGate({ children }: PropsWithChildren) {
+  useNetworkSync();
   return (
     <AuthGate>
       <PermissionGate>{children}</PermissionGate>
