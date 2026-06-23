@@ -9,7 +9,14 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.wolgank.reciclame",
+      "config": {
+        "googleMapsApiKey": "AIzaSyCsWNjZBe4Tmvkx9AN3ZTQ74HhaP-J9pZw"
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.wolgank.reciclame",
@@ -48,6 +55,24 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Recíclame necesita acceso a la cámara para escanear residuos reciclables."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Recíclame necesita tu ubicación para mostrarte contenedores cercanos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Recíclame necesita acceso a tu galería para seleccionar fotos de residuos reciclables."
+        }
+      ],
       [
         "expo-splash-screen",
         {
