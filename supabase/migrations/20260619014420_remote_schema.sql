@@ -1415,6 +1415,7 @@ grant select on table "public"."waste_types" to "service_role";
 grant update on table "public"."waste_types" to "service_role";
 
 
+  drop policy if exists "lectura bins usuarios logueados" on "public"."recycling_point_bins";
   create policy "lectura bins usuarios logueados"
   on "public"."recycling_point_bins"
   as permissive
@@ -1424,6 +1425,7 @@ using (true);
 
 
 
+  drop policy if exists "lectura puntos usuarios logueados" on "public"."recycling_points";
   create policy "lectura puntos usuarios logueados"
   on "public"."recycling_points"
   as permissive
@@ -1433,6 +1435,7 @@ using (true);
 
 
 
+  drop policy if exists "insertar registros propios" on "public"."recycling_records";
   create policy "insertar registros propios"
   on "public"."recycling_records"
   as permissive
@@ -1442,6 +1445,7 @@ with check ((auth.uid() = user_id));
 
 
 
+  drop policy if exists "leer registros propios" on "public"."recycling_records";
   create policy "leer registros propios"
   on "public"."recycling_records"
   as permissive
@@ -1451,6 +1455,7 @@ using ((auth.uid() = user_id));
 
 
 
-CREATE TRIGGER update_objects_updated_at BEFORE UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.update_updated_at_column();
+-- Trigger gestionado por el servicio Storage de Supabase; se omite en migraciones de usuario.
+-- CREATE TRIGGER update_objects_updated_at BEFORE UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.update_updated_at_column();
 
 
