@@ -42,6 +42,7 @@ export default function RootLayout() {
                           options={{ title: 'Reciclaje registrado', headerLeft: () => null }}
                         />
                         <Stack.Screen name="recycle/history" options={{ title: 'Historial' }} />
+                        <Stack.Screen name="oauth" options={{ headerShown: false }} />
                       </Stack>
                     </AppGate>
                   </RecycleFlowProvider>
