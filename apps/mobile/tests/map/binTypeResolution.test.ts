@@ -97,6 +97,8 @@ describe('supabaseBinTypeResolution', () => {
           id: PLASTICS_BIN_TYPE_ID,
           name: 'Contenedor de plasticos',
           description: 'Para plasticos PET y otros plasticos reciclables.',
+          image_url: null,
+          deposit_instruction: null,
           is_active: true,
         },
       },
@@ -115,7 +117,7 @@ describe('supabaseBinTypeResolution', () => {
     );
 
     expect(mockedFrom).toHaveBeenCalledWith('map_waste_type_bin_types');
-    expect(select).toHaveBeenCalledWith('bin_types(id,name,description,is_active)');
+    expect(select).toHaveBeenCalledWith('bin_types(id,name,description,image_url,deposit_instruction,is_active)');
     expect(eqWasteType).toHaveBeenCalledWith('waste_type_id', PLASTICS_PET_WASTE_TYPE_ID);
     expect(eqUniversity).toHaveBeenCalledWith('university_id', PUCP_UNIVERSITY_ID);
     expect(eqIsActive).toHaveBeenCalledWith('is_active', true);

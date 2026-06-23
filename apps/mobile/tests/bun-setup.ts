@@ -1,4 +1,21 @@
-// Polyfill browser globals required by @react-native-async-storage and @supabase/auth-js
+import { mock } from 'bun:test';
+
+// Stub react-native and AsyncStorage before any test file imports them.
+// react-native/index.js uses Flow's `import typeof` syntax which Bun can't parse.
+mock.module('react-native', () => ({
+  Platform: { OS: 'ios' },
+}));
+
+mock.module('@react-native-async-storage/async-storage', () => ({
+  default: {
+    getItem: () => Promise.resolve(null),
+    setItem: () => Promise.resolve(),
+    removeItem: () => Promise.resolve(),
+    clear: () => Promise.resolve(),
+  },
+}));
+
+// Polyfill browser globals required by @supabase/auth-js
 // when running under Bun's Node-like test environment.
 if (typeof localStorage === 'undefined') {
   const store: Record<string, string> = {};
