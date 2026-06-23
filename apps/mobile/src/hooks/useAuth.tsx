@@ -83,6 +83,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  function persistCachedUser(s: Session): void {
+    const user: CachedUser = {
+      id: s.user.id,
+      email: s.user.email ?? '',
+      displayName:
+        (s.user.user_metadata?.full_name as string | undefined) ??
+        (s.user.user_metadata?.name as string | undefined),
+      avatarUrl: s.user.user_metadata?.avatar_url as string | undefined,
+    };
+    setCachedUser(user);
+    AsyncStorage.setItem(CACHED_USER_KEY, JSON.stringify(user))
+      .then(() => console.log(`[AUTH] Usuario guardado en AsyncStorage: ${user.email}`))
+      .catch(() => {});
+  }
+
   // Handle OAuth deep links when Android cold-starts the app after Google sign-in.
   useEffect(() => {
     const handleDeepLink = async (url: string) => {
