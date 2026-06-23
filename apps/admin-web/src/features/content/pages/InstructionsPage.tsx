@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RotateCcw, Trash2 } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,38 +8,55 @@ import {
   InstructionPreviewRail,
 } from "../components/InstructionStepsSection";
 import InstructionStepsSection from "../components/InstructionStepsSection";
+import type { InstructionStep } from "../services/InstructionsService";
+import { getBinTypeByWasteTypeId, type BinType } from "../services/BinTypesService";
 import {
   createInstruction,
+  resetInstruction,
   getInstructions,
-  restoreInstruction,
-  deactivateInstruction,
   type Instruction,
 } from "../services/InstructionsService";
 import { getWasteTypes } from "../services/WasteTypesService";
+import { getUniversities } from "../services/UniversitiesService";
 import { useUser } from "@/shared/context/UserContext";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 
-type InstructionsTab = "active" | "inactive";
-
 const INSTRUCTIONS_QUERY_KEY = ["admin-instructions"];
 const WASTE_TYPES_QUERY_KEY = ["admin-waste-types"];
-
-function tabClasses(selected: boolean) {
-  return `flex-1 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none ${
-    selected ? "bg-[#18b566] text-white" : "text-slate-600 hover:bg-slate-100"
-  }`;
-}
+const UNIVERSITIES_QUERY_KEY = ["admin-universities"];
 
 export default function InstructionsPage() {
   const { session } = useUser();
   const queryClient = useQueryClient();
-  const [selectedTab, setSelectedTab] = useState<InstructionsTab>("active");
   const [selectedWasteTypeId, setSelectedWasteTypeId] = useState<string>("");
+  const [selectedUniversityId, setSelectedUniversityId] = useState<string>("");
+  const [confirmResetId, setConfirmResetId] = useState<string | null>(null);
+  const [liveSteps, setLiveSteps] = useState<InstructionStep[] | undefined>(undefined);
+  const [liveBinType, setLiveBinType] = useState<BinType | null | undefined>(undefined);
+  const [liveDeposit, setLiveDeposit] = useState<{ text: string; imageUrl?: string | null } | undefined>(undefined);
+
+  void liveBinType; // used only as reset trigger
 
   const { data: instructions = [], isLoading: isLoadingInstructions, error: instructionsError } = useQuery({
     queryKey: INSTRUCTIONS_QUERY_KEY,
     queryFn: () => getInstructions(),
     enabled: !!session,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: universities = [] } = useQuery({
+    queryKey: UNIVERSITIES_QUERY_KEY,
+    queryFn: getUniversities,
+    enabled: !!session,
+    staleTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: binType = null } = useQuery({
+    queryKey: ["admin-bin-types", selectedWasteTypeId, selectedUniversityId],
+    queryFn: () => getBinTypeByWasteTypeId(selectedWasteTypeId, selectedUniversityId || undefined),
+    enabled: !!session && !!selectedWasteTypeId,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
@@ -58,6 +75,20 @@ export default function InstructionsPage() {
     }
   }, [wasteTypes, selectedWasteTypeId]);
 
+  useEffect(() => {
+    if (universities.length > 0 && !selectedUniversityId) {
+      setSelectedUniversityId(universities[0].id); // eslint-disable-line react-hooks/set-state-in-effect
+    }
+  }, [universities, selectedUniversityId]);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    setLiveSteps(undefined);
+    setLiveBinType(undefined);
+    setLiveDeposit(undefined);
+  }, [selectedWasteTypeId, selectedUniversityId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   const createMutation = useMutation({
     mutationFn: (wasteTypeId: string) =>
       createInstruction({
@@ -70,44 +101,45 @@ export default function InstructionsPage() {
     onError: () => toast.error("Error al crear instrucción"),
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      isActive
-        ? restoreInstruction(id)
-        : deactivateInstruction(id),
-    onSuccess: async (_, variables) => {
-      toast.success(variables.isActive ? "Instrucción restaurada" : "Instrucción desactivada");
+  const resetMutation = useMutation({
+    mutationFn: (id: string) => resetInstruction(id),
+    onSuccess: async () => {
+      toast.success("Instrucción reiniciada");
+      setConfirmResetId(null);
       await queryClient.invalidateQueries({ queryKey: INSTRUCTIONS_QUERY_KEY });
     },
-    onError: () => toast.error("Error al cambiar el estado"),
+    onError: () => toast.error("Error al reiniciar instrucción"),
   });
 
-  const activeInstructions = instructions.filter((i) => i.isActive);
-  const inactiveInstructions = instructions.filter((i) => !i.isActive);
   const isLoading = isLoadingInstructions || isLoadingWasteTypes;
   const hasError = !!instructionsError || !!wasteTypesError;
-  const isMutating = createMutation.isPending || statusMutation.isPending;
+  const isMutating = createMutation.isPending || resetMutation.isPending;
 
-  // Active tab: find instruction for selected waste type (or null if none exists yet)
-  const activeInstructionForType = selectedWasteTypeId
-    ? activeInstructions.find((i) => i.wasteTypeId === selectedWasteTypeId) ?? null
+  const instructionForType = selectedWasteTypeId
+    ? instructions.find((i) => i.wasteTypeId === selectedWasteTypeId) ?? null
     : null;
 
-  // For the inactive tab, enrich with waste type name for display
-  const enrichedInactive = inactiveInstructions.map((i) => ({
-    ...i,
-    wasteTypeName: wasteTypes.find((wt) => wt.id === i.wasteTypeId)?.name ?? "Sin tipo",
-  }));
-
-  async function handleEnsureInstruction(): Promise<Instruction | null> {
-    if (activeInstructionForType) return activeInstructionForType;
-    if (!selectedWasteTypeId) return null;
-    try {
-      const created = await createMutation.mutateAsync(selectedWasteTypeId);
-      return created as Instruction;
-    } catch {
-      return null;
+  // Auto-create instruction when waste type is selected and none exists
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !hasError &&
+      selectedWasteTypeId &&
+      instructions.length > 0 && // instructions loaded
+      !instructionForType &&
+      !createMutation.isPending
+    ) {
+      createMutation.mutate(selectedWasteTypeId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWasteTypeId, isLoading, hasError, instructionForType]);
+
+  function handleResetRequest(id: string) {
+    setConfirmResetId(id);
+  }
+
+  function handleResetConfirm() {
+    if (confirmResetId) resetMutation.mutate(confirmResetId);
   }
 
   return (
@@ -121,20 +153,34 @@ export default function InstructionsPage() {
             Configura los pasos guiados que verá cada usuario según el tipo de residuo seleccionado.
           </p>
         </div>
+        {universities.length > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-medium text-slate-500">Universidad:</span>
+            <Select value={selectedUniversityId} onValueChange={setSelectedUniversityId}>
+              <SelectTrigger className="h-9 w-52 border-slate-200 bg-white text-sm">
+                <SelectValue placeholder="Selecciona universidad" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                {universities.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <AppSurface className="mt-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,34vw)] xl:items-stretch">
           <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
             <div className="space-y-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-slate-600">Tipo de residuo:</span>
-                  <Select
-                    value={selectedWasteTypeId}
-                    onValueChange={setSelectedWasteTypeId}
-                    disabled={isMutating || selectedTab === "inactive"}
-                  >
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-slate-600">Tipo de residuo:</span>
+                <Select
+                  value={selectedWasteTypeId}
+                  onValueChange={setSelectedWasteTypeId}
+                  disabled={isMutating}
+                >
                   <SelectTrigger className="h-9 w-52 border-slate-200 bg-white text-sm">
                     <SelectValue placeholder="Selecciona un tipo" />
                   </SelectTrigger>
@@ -146,26 +192,6 @@ export default function InstructionsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                </div>
-
-                <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-                  <button
-                    type="button"
-                    disabled={isMutating}
-                    onClick={() => setSelectedTab("active")}
-                    className={tabClasses(selectedTab === "active")}
-                  >
-                    Activas ({activeInstructions.length})
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isMutating}
-                    onClick={() => setSelectedTab("inactive")}
-                    className={tabClasses(selectedTab === "inactive")}
-                  >
-                    Inactivas ({inactiveInstructions.length})
-                  </button>
-                </div>
               </div>
 
               {isLoading && (
@@ -181,25 +207,25 @@ export default function InstructionsPage() {
                 </p>
               )}
 
-              {!isLoading && !hasError && selectedTab === "active" && (
+              {!isLoading && !hasError && (
                 <div>
                   {selectedWasteTypeId && (
                     <div className="rounded-[26px] border border-slate-200 bg-linear-to-br from-white via-white to-slate-50 p-6 shadow-[0_16px_48px_rgba(15,23,42,0.05)]">
-                      {activeInstructionForType ? (
+                      {instructionForType ? (
                         <ActiveEditor
-                          instruction={activeInstructionForType}
-                          onDeactivate={() =>
-                            statusMutation.mutate({ id: activeInstructionForType.id, isActive: false })
-                          }
+                          instruction={instructionForType}
+                          binType={binType}
+                          onResetRequest={() => handleResetRequest(instructionForType.id)}
                           isMutating={isMutating}
+                          onStepsChange={setLiveSteps}
+                          onDepositChange={setLiveDeposit}
                         />
-                      ) : (
-                        <EmptyInstructionState
-                          wasteTypeName={wasteTypes.find((wt) => wt.id === selectedWasteTypeId)?.name ?? ""}
-                          isCreating={createMutation.isPending}
-                          onCreate={() => handleEnsureInstruction()}
-                        />
-                      )}
+                      ) : createMutation.isPending ? (
+                        <div className="space-y-3 py-4">
+                          <Skeleton className="h-8 w-48 rounded-lg" />
+                          <Skeleton className="h-40 w-full rounded-xl" />
+                        </div>
+                      ) : null}
                     </div>
                   )}
 
@@ -208,53 +234,15 @@ export default function InstructionsPage() {
                   )}
                 </div>
               )}
-              {!isLoading && !hasError && selectedTab === "inactive" && (
-                <div>
-                  <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-[#0b2f4e]">Archivo de instrucciones</h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Restaura cualquier flujo inactivo para volver a editar sus pasos.
-                    </p>
-                  </div>
-                  {enrichedInactive.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-[#b7c7d6] bg-[#eef3f8] px-8 py-12 text-center">
-                      <p className="text-sm text-slate-600">No hay instrucciones inactivas.</p>
-                    </div>
-                  ) : (
-                    <ul className="space-y-3">
-                      {enrichedInactive.map((inst) => (
-                        <li
-                          key={inst.id}
-                          className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-5 py-4"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-700">{inst.title}</p>
-                            <span className="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs text-slate-500">
-                              {inst.wasteTypeName}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            disabled={isMutating}
-                            onClick={() => statusMutation.mutate({ id: inst.id, isActive: true })}
-                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            <RotateCcw className="h-3 w-3" />
-                            Restaurar
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
             </div>
           </div>
           <aside className="flex h-full flex-col">
-            {selectedTab === "active" && activeInstructionForType ? (
+            {instructionForType ? (
               <InstructionPreviewRail
-                instruction={activeInstructionForType}
+                instruction={instructionForType}
                 wasteTypeName={wasteTypes.find((wt) => wt.id === selectedWasteTypeId)?.name}
+                liveSteps={liveSteps}
+                binType={liveDeposit && binType ? { ...binType, depositInstruction: liveDeposit.text, imageUrl: liveDeposit.imageUrl ?? binType.imageUrl } : binType}
               />
             ) : (
               <div className="flex h-full items-center justify-center rounded-[28px] border border-slate-200 bg-slate-50/70 p-5 text-center">
@@ -263,9 +251,7 @@ export default function InstructionsPage() {
                     Vista previa
                   </p>
                   <p className="mt-2 text-sm text-slate-500">
-                    {selectedTab === "inactive"
-                      ? "Restaura una instrucción para ver la vista previa."
-                      : "Crea una instrucción activa para ver la simulación móvil."}
+                    Selecciona un tipo de residuo para ver la simulación móvil.
                   </p>
                 </div>
               </div>
@@ -273,6 +259,43 @@ export default function InstructionsPage() {
           </aside>
         </div>
       </AppSurface>
+
+      {/* Reset confirmation dialog */}
+      {confirmResetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50">
+                <RotateCcw className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-slate-800">Reiniciar instrucción</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Se eliminarán todos los pasos de esta instrucción. La instrucción seguirá existiendo y podrás volver a agregar pasos.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={resetMutation.isPending}
+                onClick={() => setConfirmResetId(null)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={resetMutation.isPending}
+                onClick={handleResetConfirm}
+                className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"
+              >
+                {resetMutation.isPending ? "Reiniciando…" : "Reiniciar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppPage>
   );
 }
@@ -281,12 +304,18 @@ export default function InstructionsPage() {
 
 function ActiveEditor({
   instruction,
-  onDeactivate,
+  binType,
+  onResetRequest,
   isMutating,
+  onStepsChange,
+  onDepositChange,
 }: {
   instruction: Instruction;
-  onDeactivate: () => void;
+  binType?: BinType | null;
+  onResetRequest: () => void;
   isMutating: boolean;
+  onStepsChange?: (steps: InstructionStep[]) => void;
+  onDepositChange?: (deposit: { text: string; imageUrl?: string | null }) => void;
 }) {
   return (
     <div>
@@ -297,45 +326,14 @@ function ActiveEditor({
         <button
           type="button"
           disabled={isMutating}
-          onClick={onDeactivate}
-          className="inline-flex items-center gap-1 rounded-md border border-red-100 bg-white px-2.5 py-1.5 text-xs font-medium text-red-500 transition hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+          onClick={onResetRequest}
+          className="inline-flex items-center gap-1 rounded-md border border-amber-100 bg-white px-2.5 py-1.5 text-xs font-medium text-amber-600 transition hover:border-amber-200 hover:bg-amber-50 disabled:opacity-50"
         >
-          <Trash2 className="h-3 w-3" />
-          Desactivar
+          <RotateCcw className="h-3 w-3" />
+          Reiniciar
         </button>
       </div>
-      <InstructionStepsSection instruction={instruction} />
-    </div>
-  );
-}
-
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyInstructionState({
-  wasteTypeName,
-  isCreating,
-  onCreate,
-}: {
-  wasteTypeName: string;
-  isCreating: boolean;
-  onCreate: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-12 text-center">
-      <p className="text-sm text-slate-500">
-        No hay instrucción activa para <span className="font-semibold text-slate-700">{wasteTypeName}</span>.
-      </p>
-      <p className="mt-2 max-w-md text-xs text-slate-400">
-        Crea una para poder agregar pasos.
-      </p>
-      <button
-        type="button"
-        disabled={isCreating}
-        onClick={onCreate}
-        className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-[#18b566] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#129a56] disabled:opacity-50"
-      >
-        {isCreating ? "Creando..." : "Crear instrucción"}
-      </button>
+      <InstructionStepsSection instruction={instruction} binType={binType} onStepsChange={onStepsChange} onDepositChange={onDepositChange} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { supabase } from '@/src/services/supabase/client';
 import type { FunFact } from '@/src/types/funFact';
-import type { Instruction, InstructionStep } from '@/src/types/instruction';
+import type { InstructionBody, InstructionStep } from '@reciclame/shared-domain';
+import type { Instruction } from '@/src/types/instruction';
 
 type FunFactRow = {
   id: string;
@@ -8,16 +9,6 @@ type FunFactRow = {
   waste_type_id: string | null;
   is_active: boolean;
   created_at: string;
-};
-
-type InstructionStepRow = {
-  id: string;
-  instruction_id: string;
-  text: string;
-  image_url: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string | null;
 };
 
 type InstructionRow = {
@@ -29,24 +20,19 @@ type InstructionRow = {
   is_active: boolean;
   created_at: string;
   updated_at: string | null;
-  instruction_steps?: InstructionStepRow[] | null;
 };
 
-function mapInstructionStep(row: InstructionStepRow): InstructionStep {
-  return {
-    id: row.id,
-    instructionId: row.instruction_id,
-    text: row.text,
-    imageUrl: row.image_url,
-    isActive: row.is_active,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+function parseStepsFromBody(body: string | null): InstructionStep[] {
+  if (!body) return [];
+  try {
+    const parsed = JSON.parse(body) as InstructionBody;
+    return Array.isArray(parsed.steps) ? parsed.steps : [];
+  } catch {
+    return [];
+  }
 }
 
 function mapInstruction(row: InstructionRow): Instruction {
-  const steps = (row.instruction_steps ?? []).filter(Boolean).map(mapInstructionStep);
-
   return {
     id: row.id,
     title: row.title,
@@ -56,7 +42,7 @@ function mapInstruction(row: InstructionRow): Instruction {
     isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    steps,
+    steps: parseStepsFromBody(row.body),
   };
 }
 
@@ -80,9 +66,7 @@ export async function fetchInstructionWithStepsByWasteTypeId(
 ): Promise<Instruction | null> {
   const { data, error } = await supabase
     .from('instructions')
-    .select(
-      'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at,instruction_steps(id,instruction_id,text,image_url,is_active,created_at,updated_at)',
-    )
+    .select('id,title,body,image_url,waste_type_id,is_active,created_at,updated_at')
     .eq('is_active', true)
     .eq('waste_type_id', wasteTypeId)
     .order('created_at', { ascending: false });

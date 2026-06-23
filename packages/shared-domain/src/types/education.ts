@@ -7,6 +7,16 @@ export type FunFact = {
 
 export type FunFactPayload = Pick<FunFact, "text" | "wasteTypeId">;
 
+export type InstructionStep = {
+  id: string;
+  text: string;
+  imageUrl: string | null;
+};
+
+export type InstructionBody = {
+  steps: InstructionStep[];
+};
+
 export type Instruction = {
   id: string;
   title: string;
@@ -24,14 +34,5 @@ export type InstructionPayload = {
   body?: string | null;
 };
 
+/** @deprecated Use InstructionBody instead */
 export type StepOrderBody = { stepOrder: string[] };
-
-export type InstructionStep = {
-  id: string;
-  instructionId: string;
-  text: string;
-  imageUrl: string | null;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string | null;
-};

@@ -42,6 +42,10 @@ ALTER TABLE ONLY "public"."user_roles"
 ALTER TABLE ONLY "public"."user_roles"
     ADD CONSTRAINT "user_roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
+CREATE INDEX IF NOT EXISTS "idx_user_roles_active_user_id"
+    ON "public"."user_roles" USING "btree" ("user_id")
+    WHERE ("is_active" = true);
+
 CREATE OR REPLACE FUNCTION "app_admin"."is_current_user_admin"() RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
