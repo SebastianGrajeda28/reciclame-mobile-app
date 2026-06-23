@@ -371,13 +371,6 @@ const styles = StyleSheet.create({
   stepImageDeposit: {
     backgroundColor: '#C8CDD1',
   },
-  stepNumberDeposit: {
-    backgroundColor: '#C8CDD1',
-  },
-  stepTextDeposit: {
-    fontStyle: 'italic',
-    color: theme.colors.textSecondary,
-  },
   footer: {
     padding: theme.spacing.lg,
     gap: theme.spacing.md,
