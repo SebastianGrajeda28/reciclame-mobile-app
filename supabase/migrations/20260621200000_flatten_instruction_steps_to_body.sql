@@ -32,7 +32,7 @@ begin
       select s.id, s.text, s.image_url
       from public.instruction_steps s
       where s.instruction_id = r.id
-        and s.id = any(old_order)
+        and s.id::text = any(old_order)
       order by array_position(old_order, s.id::text)
     loop
       step_row := jsonb_build_object(
