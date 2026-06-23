@@ -57,4 +57,8 @@ export function validateImage(input: ImageValidationInput): ImageValidationResul
   return { valid: true };
 }
 
+// Nota: analyzeImageQuality NO se re-exporta aquí a propósito. Vive en ./quality, que
+// importa expo-image-manipulator (nativo) y rompería los tests en bun de quien solo
+// necesita validateImage. Impórtalo directo desde './quality'. Los tipos sí son seguros.
 export type { ImageValidationInput, ImageValidationResult };
+export type { ImageQualityResult, ImageQualityReason, ImageQualityMetrics } from './types';

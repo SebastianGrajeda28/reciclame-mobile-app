@@ -1,15 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView } from 'expo-camera';
 import Feather from '@expo/vector-icons/Feather';
 import { router, useNavigation } from 'expo-router';
 
+import { routes } from '@/src/constants/routes';
+import { BadCaptureModal } from '@/src/features/recycling/components/BadCaptureModal';
 import { CameraFlashToggle } from '@/src/features/recycling/components/CameraFlashToggle';
 import { CameraShutterButton } from '@/src/features/recycling/components/CameraShutterButton';
 import { useCameraCapture } from '@/src/features/recycling/hooks/useCameraCapture';
 import { useCancelCapture } from '@/src/features/recycling/hooks/useCancelCapture';
 import { useGalleryPicker } from '@/src/features/recycling/hooks/useGalleryPicker';
 import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
+import type { ImageQualityReason } from '@/src/features/recycling/services/image-validation';
+import { MAX_BAD_CAPTURE_RETRIES } from '@/src/features/recycling/services/image-validation/config';
+import { analyzeImageQuality } from '@/src/features/recycling/services/image-validation/quality';
 import { useAuth } from '@/src/hooks/useAuth';
 import { AppText, theme } from '@/src/ui';
 
@@ -32,21 +37,53 @@ export function CameraScreen() {
   const { confirmCancel } = useCancelCapture();
   const { pickImage } = useGalleryPicker();
 
+  // Reintentos de #265: cuenta capturas/galería mal tomadas. A la 3ra sale al menú.
+  const badAttemptsRef = useRef(0);
+  const [badReason, setBadReason] = useState<ImageQualityReason | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  function exitToMenu() {
+    setBadReason(null);
+    router.replace(routes.home);
+  }
+
+  // Chequeo de calidad (#215) compartido por cámara y galería.
+  async function processAcceptedImage(uri: string) {
+    setAnalyzing(true);
+    try {
+      const quality = await analyzeImageQuality(uri);
+      if (quality.ok) {
+        badAttemptsRef.current = 0;
+        setCapturedPhotoUri(uri);
+        router.push('/recycle/processing');
+        return;
+      }
+      badAttemptsRef.current += 1;
+      if (badAttemptsRef.current >= MAX_BAD_CAPTURE_RETRIES) {
+        exitToMenu();
+      } else {
+        setBadReason(quality.reason);
+      }
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   async function handleCapture() {
+    if (analyzing) return;
     const result = await capture();
     if (result.status === 'ok') {
-      setCapturedPhotoUri(result.uri);
-      router.push('/recycle/processing');
+      await processAcceptedImage(result.uri);
     } else if (result.status === 'invalid') {
       Alert.alert('Imagen no válida', result.error, [{ text: 'Entendido' }]);
     }
   }
 
   async function handleGallery() {
+    if (analyzing) return;
     const result = await pickImage();
     if (result.status === 'ok') {
-      setCapturedPhotoUri(result.uri);
-      router.push('/recycle/processing');
+      await processAcceptedImage(result.uri);
     } else if (result.status === 'invalid') {
       Alert.alert('Imagen no válida', result.error, [{ text: 'Entendido' }]);
     }
@@ -92,6 +129,12 @@ export function CameraScreen() {
           <AppText style={styles.modeTabLabel}>Manual</AppText>
         </Pressable>
       </View>
+
+      <BadCaptureModal
+        reason={badReason}
+        onRetry={() => setBadReason(null)}
+        onExit={exitToMenu}
+      />
     </View>
   );
 }
