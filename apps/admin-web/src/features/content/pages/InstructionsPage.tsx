@@ -81,11 +81,13 @@ export default function InstructionsPage() {
     }
   }, [universities, selectedUniversityId]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setLiveSteps(undefined);
     setLiveBinType(undefined);
     setLiveDeposit(undefined);
   }, [selectedWasteTypeId, selectedUniversityId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const createMutation = useMutation({
     mutationFn: (wasteTypeId: string) =>

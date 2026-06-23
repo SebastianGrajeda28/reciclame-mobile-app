@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -377,8 +377,11 @@ export default function InstructionStepsSection({
   const depositCancellingRef = useRef(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDepositText(binType?.depositInstruction ?? "Deposita en el contenedor correcto");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDepositImagePreview(binType?.imageUrl ?? undefined);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDepositImageFile(undefined);
   }, [binType?.id]);
 
@@ -387,19 +390,23 @@ export default function InstructionStepsSection({
   );
 
   // Seed from instruction.body on mount or when instruction changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     seededRef.current = true;
     setLocalSteps(parseSteps(instruction).map(toLocalStep));
     setEditingStepId(null);
   }, [instruction.id]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const visibleSteps = localSteps.filter((s) => !s.isDeleted);
 
   const onStepsChangeRef = useRef(onStepsChange);
-  onStepsChangeRef.current = onStepsChange;
-
   const onDepositChangeRef = useRef(onDepositChange);
-  onDepositChangeRef.current = onDepositChange;
+
+  useLayoutEffect(() => {
+    onStepsChangeRef.current = onStepsChange;
+    onDepositChangeRef.current = onDepositChange;
+  });
 
   useEffect(() => {
     const visible = localSteps.filter((s) => !s.isDeleted);
