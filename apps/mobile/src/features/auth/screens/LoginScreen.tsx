@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { signInWithGoogle } from '@/src/features/auth/services/googleAuth';
 import { AppButton, AppIcon, AppText, theme } from '@/src/ui';
 
 type LoginState = 'welcome' | 'loading' | 'error';
@@ -283,11 +284,12 @@ const loadingStyles = StyleSheet.create({
 // ─── Error state ──────────────────────────────────────────────────────────────
 
 type ErrorViewProps = {
+  message: string;
   onDismiss: () => void;
   onContinueOffline: () => void;
 };
 
-function ErrorView({ onDismiss, onContinueOffline }: ErrorViewProps) {
+function ErrorView({ message, onDismiss, onContinueOffline }: ErrorViewProps) {
   return (
     <SafeAreaView style={errorStyles.safe}>
       <Pressable style={errorStyles.closeBtn} onPress={onDismiss} hitSlop={12}>
@@ -301,11 +303,10 @@ function ErrorView({ onDismiss, onContinueOffline }: ErrorViewProps) {
           </View>
 
           <AppText variant="h2" style={errorStyles.title}>
-            Sin conexión a internet
+            No se pudo iniciar sesión
           </AppText>
           <AppText variant="body" muted style={errorStyles.description}>
-            Verifica que tu dispositivo esté conectado a una red Wi-Fi o datos móviles e intenta de
-            nuevo.
+            {message}
           </AppText>
 
           <AppButton
@@ -367,11 +368,14 @@ const errorStyles = StyleSheet.create({
 
 export function LoginScreen({ onContinueOffline }: LoginScreenProps) {
   const [state, setState] = useState<LoginState>('welcome');
+  const [errorMessage, setErrorMessage] = useState(
+    'Ocurrió un problema durante el inicio de sesión con Google.',
+  );
 
   const handleGooglePress = async () => {
     setState('loading');
+    setErrorMessage('Ocurrió un problema durante el inicio de sesión con Google.');
     try {
-      const { signInWithGoogle } = await import('@/src/features/auth/services/googleAuth');
       await signInWithGoogle();
       // AppGate re-renders automatically via onAuthStateChange
     } catch (err) {
@@ -380,6 +384,9 @@ export function LoginScreen({ onContinueOffline }: LoginScreenProps) {
         return;
       }
 
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      }
       setState('error');
     }
   };
@@ -390,7 +397,11 @@ export function LoginScreen({ onContinueOffline }: LoginScreenProps) {
 
   if (state === 'error') {
     return (
-      <ErrorView onDismiss={() => setState('welcome')} onContinueOffline={onContinueOffline} />
+      <ErrorView
+        message={errorMessage}
+        onDismiss={() => setState('welcome')}
+        onContinueOffline={onContinueOffline}
+      />
     );
   }
 

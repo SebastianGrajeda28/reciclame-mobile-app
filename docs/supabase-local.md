@@ -16,6 +16,14 @@ EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<se llena en el Paso 5>
 ```
 
+En **Android Emulator**, usa este host en lugar de `127.0.0.1`:
+
+**`apps/mobile/.env`**
+```
+EXPO_PUBLIC_SUPABASE_URL=http://10.0.2.2:54321
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<se llena en el Paso 5>
+```
+
 **`apps/admin-web/.env`**
 ```
 VITE_SUPABASE_URL=http://127.0.0.1:54321
@@ -26,6 +34,8 @@ Además, `supabase/config.toml` lee estas variables desde el entorno local para 
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+
+El archivo ya incluye `reciclamemobileapp://oauth` en `additional_redirect_urls`, que es el callback nativo que usa la app móvil para volver desde Google OAuth.
 
 ---
 
