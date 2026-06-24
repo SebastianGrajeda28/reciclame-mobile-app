@@ -140,7 +140,6 @@ CREATE OR REPLACE FUNCTION "public"."apply_daily_heat_decay"() RETURNS "void"
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-  -- Aplica decay solo a usuarios que no reciclaron hoy
   UPDATE public.user_progress
   SET
     heat        = CASE
@@ -151,15 +150,12 @@ BEGIN
                     WHEN heat - 30 <= 0 THEN public.streak_level_checkpoint(level)
                     ELSE streak_days
                   END,
-    -- Al morir la racha (heat-30<=0) con escudos disponibles, sella la marca de muerte
-    -- que abre la ventana de 48h. Guard de idempotencia: solo si aún no estaba sellada,
-    -- para que cron y lectura (get_progress_with_decay) no se pisen ni reabran la ventana (#259/RF-054).
+    -- Al morir con escudo, sella la muerte (abre ventana 48h) solo si no estaba sellada (idempotente).
     streak_expired_at = CASE
                           WHEN heat - 30 <= 0 AND recoveries > 0 AND streak_expired_at IS NULL THEN now()
                           ELSE streak_expired_at
                         END,
-    -- Guarda los días reales pre-muerte para restaurarlos al recuperar (#258/RF-053),
-    -- bajo el mismo guard de idempotencia y antes de aplicar el checkpoint del nivel.
+    -- Guarda los días reales pre-muerte para restaurarlos al recuperar.
     streak_days_at_death = CASE
                              WHEN heat - 30 <= 0 AND recoveries > 0 AND streak_expired_at IS NULL THEN streak_days
                              ELSE streak_days_at_death
@@ -219,7 +215,6 @@ BEGIN
   effective_heat   := COALESCE(rec.heat, 50)::int;
   effective_streak := COALESCE(rec.streak_days, 0);
 
-  -- Solo aplicar decay si hay racha activa Y no se aplicó ya hoy
   IF effective_streak > 0 AND days_missed > 0 AND rec.updated_at::date < CURRENT_DATE THEN
     effective_heat := effective_heat - (30 * days_missed);
 
@@ -228,8 +223,7 @@ BEGIN
       just_died        := true;
       effective_heat   := 50;
       effective_streak := public.streak_level_checkpoint(COALESCE(rec.level, 1));
-      -- Sella la marca de muerte (abre la ventana de 48h) solo si hay escudos y aún no
-      -- estaba sellada. Mismo guard de idempotencia que el cron para que no se pisen (#259/RF-054).
+      -- Sella la muerte (abre ventana 48h) solo con escudo y si no estaba sellada (idempotente, como el cron).
       IF COALESCE(rec.recoveries, 0) > 0 AND rec.streak_expired_at IS NULL THEN
         out_expired_at := now();
       END IF;
@@ -250,8 +244,7 @@ BEGIN
     WHERE user_id = p_user_id;
   END IF;
 
-  -- recoverable_until = streak_expired_at + 48h, solo si hay escudos y la ventana sigue abierta;
-  -- NULL en cualquier otro caso para que el cliente nunca ofrezca recuperar fuera de ventana (#259/RF-054).
+  -- recoverable_until = muerte + 48h solo con escudo y dentro de ventana; NULL si no.
   IF out_expired_at IS NOT NULL
      AND COALESCE(rec.recoveries, 0) > 0
      AND now() < out_expired_at + interval '48 hours' THEN
@@ -303,16 +296,13 @@ BEGIN
       new_streak := COALESCE(progress_record.streak_days, 0) + 1;
 
       heat_gain := public.heat_gain_for_level(COALESCE(progress_record.level, 1));
-      -- Calor crudo (antes del clamp): si excede el tope, el exceso del día se convierte
-      -- en 1 escudo (#256/RF-051). Es por DÍA (la rama is_first_action_today corre 1x/día),
-      -- no por magnitud del exceso. 100% silencioso: sin notificación ni evento.
+      -- Calor crudo (sin clamp): el exceso sobre el tope da +1 escudo por DÍA, silencioso.
       raw_heat  := COALESCE(progress_record.heat, 50) + heat_gain;
       new_heat  := LEAST(100, raw_heat);
 
       new_level := public.compute_streak_level(new_streak);
 
-      -- Gana +1 escudo si el calor del día excede el tope, respetando el tope nivel-1
-      -- (#257/RF-052). El exceso adicional se descarta sin error.
+      -- +1 escudo si el calor del día excede el tope, cap nivel-1; el resto se descarta.
       IF raw_heat > 100 THEN
         new_recoveries := LEAST(GREATEST(0, new_level - 1), new_recoveries + 1);
       END IF;
@@ -378,9 +368,7 @@ DECLARE
   rec               public.user_progress%ROWTYPE;
   restored_streak   int;
 BEGIN
-  -- SEGURIDAD P0 (anti-IDOR): SECURITY DEFINER BYPASA RLS en su cuerpo. La autorización la
-  -- da este CHECK EXPLÍCITO, no RLS. Sin él, cualquier usuario autenticado podría recuperar
-  -- la racha de OTRO pasando su p_user_id (mismo patrón vulnerable que save_avatar_config, #174).
+  -- P0 anti-IDOR: SECURITY DEFINER bypasa RLS; la autorización la da este check, no RLS (cf. #174).
   IF p_user_id IS DISTINCT FROM auth.uid() THEN
     RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
   END IF;
@@ -390,8 +378,7 @@ BEGIN
   WHERE user_id = p_user_id AND is_active = true
   FOR UPDATE;
 
-  -- Validaciones server-side (no confiar en el cliente): debe haber escudo, racha muerta
-  -- sellada y dentro de la ventana de 48h (#259/RF-054). Si falla, no muta y devuelve success=false.
+  -- Validación server-side: escudo, racha muerta sellada y dentro de la ventana 48h. Si no, success=false.
   IF NOT FOUND
      OR COALESCE(rec.recoveries, 0) <= 0
      OR rec.streak_expired_at IS NULL
