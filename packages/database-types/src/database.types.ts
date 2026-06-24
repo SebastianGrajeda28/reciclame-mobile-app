@@ -140,8 +140,10 @@ export type Database = {
         Row: {
           color: string | null;
           created_at: string;
+          deposit_instruction: string | null;
           description: string | null;
           id: string;
+          image_url: string | null;
           is_active: boolean;
           name: string;
           university_id: string | null;
@@ -150,8 +152,10 @@ export type Database = {
         Insert: {
           color?: string | null;
           created_at?: string;
+          deposit_instruction?: string | null;
           description?: string | null;
           id?: string;
+          image_url?: string | null;
           is_active?: boolean;
           name: string;
           university_id?: string | null;
@@ -160,8 +164,10 @@ export type Database = {
         Update: {
           color?: string | null;
           created_at?: string;
+          deposit_instruction?: string | null;
           description?: string | null;
           id?: string;
+          image_url?: string | null;
           is_active?: boolean;
           name?: string;
           university_id?: string | null;

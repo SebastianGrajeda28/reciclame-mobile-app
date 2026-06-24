@@ -1,86 +1,63 @@
 import { supabase } from '@/src/services/supabase/client';
-import type { ProfileBadge } from '@/src/features/profile/data/profileGamification';
-import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 
-/**
- * Checks for newly unlocked achievements after a recycling action.
- * Queries the backend database to check if any achievement requirements were met.
- * 
- * @param userId - The user ID to check achievements for
- * @returns The newly unlocked achievement or null if none were unlocked
- */
-export async function checkUnlockedAchievements(userId: string): Promise<ProfileBadge | null> {
+export type UnlockedAchievementResult = {
+  slug: string;
+  name: string;
+  rewardName: string | null;
+  unlockDescription: string | null;
+};
+
+export async function checkUnlockedAchievements(
+  userId: string
+): Promise<UnlockedAchievementResult[]> {
   try {
-    // Call the database function to check for newly unlocked achievements
     const { data, error } = await supabase.rpc('check_and_unlock_achievements', {
       p_user_id: userId,
     });
 
     if (error) {
       console.error('[checkUnlockedAchievements] Database error:', error);
-      return null;
+      return [];
     }
 
-    if (!data || data.length === 0) {
-      return null;
+    if (!data || data.length === 0) return [];
+
+    const rows = (data as {
+      out_achievement_id: string;
+      out_achievement_name: string;
+      out_achievement_slug: string | null;
+    }[]).filter((r) => r.out_achievement_slug);
+
+    if (rows.length === 0) return [];
+
+    const [rewardsRes, achsRes] = await Promise.all([
+      supabase
+        .from('rewards')
+        .select('achievement_id, name')
+        .in('achievement_id', rows.map((r) => r.out_achievement_id))
+        .eq('is_active', true),
+      supabase
+        .from('achievements')
+        .select('id, unlock_description')
+        .in('id', rows.map((r) => r.out_achievement_id)),
+    ]);
+
+    const rewardMap = new Map<string, string>();
+    for (const r of rewardsRes.data ?? []) rewardMap.set(r.achievement_id, r.name);
+
+    const unlockDescMap = new Map<string, string>();
+    for (const a of achsRes.data ?? []) {
+      if (a.unlock_description) unlockDescMap.set(a.id, a.unlock_description);
     }
 
-    // Get the first newly unlocked achievement
-    const unlockedAchievement = data[0];
-    
-    // Map the database achievement to the ProfileBadge type
-    // In a real implementation, you would query the achievements table to get full details
-    // For now, we'll use the mock data to find the matching badge
-    const allBadges = profileGamificationSnapshot.allBadges;
-    
-    // Try to find a matching badge by name (this is a simplified approach)
-    // In production, you would have a proper mapping between database IDs and badge IDs
-    const matchingBadge = allBadges.find(b => 
-      b.name.toLowerCase().includes(unlockedAchievement.achievement_name.toLowerCase()) ||
-      b.description.toLowerCase().includes(unlockedAchievement.achievement_name.toLowerCase())
-    );
-
-    return matchingBadge ?? null;
+    return rows.map((row) => ({
+      slug: row.out_achievement_slug!,
+      name: row.out_achievement_name,
+      rewardName: rewardMap.get(row.out_achievement_id) ?? null,
+      unlockDescription: unlockDescMap.get(row.out_achievement_id) ?? null,
+    }));
   } catch (err) {
     console.error('[checkUnlockedAchievements] Error:', err);
-    return null;
+    return [];
   }
-}
-
-/**
- * Gets all achievements for a user from the database.
- * 
- * @param userId - The user ID to get achievements for
- * @returns Array of user achievements
- */
-export async function getUserAchievements(userId: string) {
-  const { data, error } = await supabase
-    .from('user_achievements')
-    .select(`
-      *,
-      achievements (
-        id,
-        name,
-        description,
-        condition_type,
-        condition_value,
-        reward_id,
-        rewards (
-          id,
-          name,
-          description,
-          reward_type,
-          asset_url
-        )
-      )
-    `)
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .order('unlocked_at', { ascending: false });
-
-  if (error) {
-    throw new Error(`Failed to get user achievements: ${error.message}`);
-  }
-
-  return data;
 }

@@ -1,5 +1,6 @@
 export const STORAGE_BUCKETS = {
   instructionStepImages: "instruction-step-images",
+  binTypeImages: "bin-type-images",
 } as const;
 
 export const ADMIN_EDGE_FUNCTIONS = {

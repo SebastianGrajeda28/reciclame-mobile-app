@@ -1,6 +1,6 @@
-import type { InstructionStep as BaseInstructionStep } from "@reciclame/shared-domain";
+import type { InstructionStep } from '@reciclame/shared-domain';
 
-export type { BaseInstructionStep as InstructionStep };
+export type { InstructionStep };
 
 export type Instruction = {
   id: string;
@@ -11,5 +11,5 @@ export type Instruction = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
-  steps?: BaseInstructionStep[];
+  steps?: InstructionStep[];
 };

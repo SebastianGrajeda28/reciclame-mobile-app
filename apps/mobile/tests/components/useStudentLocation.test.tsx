@@ -1,7 +1,7 @@
-import { renderHook, act } from '@testing-library/react-native';
+import { act, renderHook } from '@testing-library/react-native';
 import * as Location from 'expo-location';
 
-import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
+import { useStudentLocation } from '@/src/hooks/useStudentLocation';
 
 const PUCP = { latitude: -12.0695, longitude: -77.0793 };
 

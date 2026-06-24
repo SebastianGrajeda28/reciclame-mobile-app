@@ -28,23 +28,16 @@ describe('content api', () => {
     const dbRow = {
       id: 'inst-1',
       title: 'Lava el envase',
-      body: 'Pasos para limpiar',
+      body: JSON.stringify({
+        steps: [
+          { id: 'step-1', text: 'Enjuaga con agua', imageUrl: null },
+        ],
+      }),
       image_url: null,
       waste_type_id: wasteTypeId,
       is_active: true,
       created_at: '2026-05-30T01:00:00Z',
       updated_at: '2026-05-30T02:00:00Z',
-      instruction_steps: [
-        {
-          id: 'step-1',
-          instruction_id: 'inst-1',
-          text: 'Enjuaga con agua',
-          image_url: null,
-          is_active: true,
-          created_at: '2026-05-30T01:05:00Z',
-          updated_at: '2026-05-30T01:06:00Z',
-        },
-      ],
     };
 
     const order = jest.fn().mockResolvedValue({ data: [dbRow], error: null });
@@ -59,7 +52,7 @@ describe('content api', () => {
 
     expect(mockedFrom).toHaveBeenCalledWith('instructions');
     expect(select).toHaveBeenCalledWith(
-      'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at,instruction_steps(id,instruction_id,text,image_url,is_active,created_at,updated_at)',
+      'id,title,body,image_url,waste_type_id,is_active,created_at,updated_at',
     );
     expect(eqFirst).toHaveBeenCalledWith('is_active', true);
     expect(eqSecond).toHaveBeenCalledWith('waste_type_id', wasteTypeId);
@@ -68,8 +61,8 @@ describe('content api', () => {
     expect(result).not.toBeNull();
     expect(result?.id).toBe('inst-1');
     expect(result?.steps?.length).toBe(1);
+    expect(result?.steps?.[0].text).toBe('Enjuaga con agua');
     expect(result?.updatedAt).toBe('2026-05-30T02:00:00Z');
-    expect(result?.steps?.[0].updatedAt).toBe('2026-05-30T01:06:00Z');
   });
 
   test('Debería devolver null cuando no hay instrucciones', async () => {
