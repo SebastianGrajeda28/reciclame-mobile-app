@@ -13,6 +13,8 @@ function resolveStatIcon(icon: ProfileStat['icon']) {
       return <AppIcon name="weight" size={theme.iconSizes.lg} color={theme.colors.primary} />;
     case 'recycle':
       return <AppIcon name="recycle" size={theme.iconSizes.lg} color={theme.colors.primary} />;
+    case 'package':
+      return <AppIcon name="package" size={theme.iconSizes.lg} color={theme.colors.primary} />;
     case 'calendar':
       return <AppIcon name="calendar" size={theme.iconSizes.lg} color={theme.colors.primary} />;
     case 'award':
