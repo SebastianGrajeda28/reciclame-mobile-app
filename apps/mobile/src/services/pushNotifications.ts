@@ -18,15 +18,17 @@ Notifications.setNotificationHandler({
 export async function registerPushToken(userId: string): Promise<void> {
   if (!Device.isDevice) return;
 
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  let finalStatus = existing;
+  // expo-notifications type mismatch: NotificationPermissionsStatus extends PermissionResponse
+  // from 'expo', but expo doesn't export that type — so TS can't resolve the fields.
+  // Cast to any to access the runtime .granted value.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let perms: any = await Notifications.getPermissionsAsync();
 
-  if (existing !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
+  if (!perms.granted) {
+    perms = await Notifications.requestPermissionsAsync();
   }
 
-  if (finalStatus !== 'granted') return;
+  if (!perms.granted) return;
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
