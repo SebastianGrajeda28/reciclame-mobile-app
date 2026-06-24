@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
@@ -38,9 +39,10 @@ export async function registerPushToken(userId: string): Promise<void> {
     });
   }
 
-  const tokenData = await Notifications.getExpoPushTokenAsync();
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  const tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
   const token = tokenData.data;
-  const platform = (Platform.OS as 'ios' | 'android' | 'web') ?? 'android';
+  const platform = Platform.OS as 'ios' | 'android' | 'web';
 
   await supabase.from('push_tokens').upsert(
     { user_id: userId, token, platform, updated_at: new Date().toISOString() },
