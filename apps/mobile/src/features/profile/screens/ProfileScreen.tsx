@@ -1,5 +1,6 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { routes } from '@/src/constants/routes';
@@ -19,10 +20,21 @@ export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
-  const { lastUnlockedBadges, stats } = useProfileGamification();
+  const { featuredBadges, stats, refetch } = useProfileGamification();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
   const [lostDismissed, setLostDismissed] = useState(false);
   const showStreakLost = Boolean(streakData?.justExpired) && !lostDismissed;
+
+  const hasMounted = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (hasMounted.current) {
+        refetch();
+      } else {
+        hasMounted.current = true;
+      }
+    }, [refetch]),
+  );
 
   return (
     <ProfileScreenContainer>
@@ -68,7 +80,7 @@ export function ProfileScreen() {
         <AppIcon name="chevronRight" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
       </Pressable>
       <ProfileAchievementsPreviewCard
-        featuredBadges={lastUnlockedBadges}
+        featuredBadges={featuredBadges}
         onSeeAllPress={() => router.push(routes.profileAchievements)}
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />
