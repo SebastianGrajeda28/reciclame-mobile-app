@@ -2,11 +2,12 @@ import { Link, useLocation } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import ProfilePopover from "./ProfilePopover";
 
-const NAV_ITEMS = [
-  { label: "Métricas", path: "/metricas" },
-  { label: "Datos curiosos", path: "/fun-facts" },
-  { label: "Instrucciones", path: "/instrucciones" },
-];
+type RoleNavbarProps = {
+  items: {
+    path: string;
+    label: string;
+  }[];
+};
 
 function linkClasses(active: boolean) {
   return active
