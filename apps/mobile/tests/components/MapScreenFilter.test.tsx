@@ -68,7 +68,7 @@ describe('MapScreen filter chips', () => {
   it('renders all 7 filter chips', () => {
     (useRecycleFlow as jest.Mock).mockReturnValue({
       state: { selectedContainerId: undefined },
-      setSelectedContainerId: jest.fn(),
+      setSelectedContainer: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
     const { getByText } = render(<MapScreen />);
@@ -80,7 +80,7 @@ describe('MapScreen filter chips', () => {
   it('clears selected container when active filter excludes it', async () => {
     (useRecycleFlow as jest.Mock).mockReturnValue({
       state: { selectedContainerId: libraryContainerId },
-      setSelectedContainerId: jest.fn(),
+      setSelectedContainer: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
 
@@ -97,7 +97,7 @@ describe('MapScreen filter chips', () => {
   it('does not clear container when filter still includes it', async () => {
     (useRecycleFlow as jest.Mock).mockReturnValue({
       state: { selectedContainerId: libraryContainerId },
-      setSelectedContainerId: jest.fn(),
+      setSelectedContainer: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
 
@@ -114,7 +114,7 @@ describe('MapScreen filter chips', () => {
   it('does not clear container when filter is all', async () => {
     (useRecycleFlow as jest.Mock).mockReturnValue({
       state: { selectedContainerId: libraryContainerId },
-      setSelectedContainerId: jest.fn(),
+      setSelectedContainer: jest.fn(),
       clearSelectedContainer: mockClearSelectedContainer,
     });
 
