@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { exportToXlsx } from "@/lib/exportUtils";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 import { useUser } from "@/shared/context/UserContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,7 +39,7 @@ import {
   type PaginationState,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Download, Plus, Upload } from "lucide-react";
+import { ArrowUpDown, Plus, Upload } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import FunFactForm, { type FunFactFormValues } from "../components/FunFactForm";
@@ -68,26 +69,6 @@ function tabClasses(selected: boolean) {
   return `flex-1 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none ${
     selected ? "bg-[#18b566] text-white" : "text-slate-600 hover:bg-slate-100"
   }`;
-}
-
-function exportToCsv(rows: { text: string; wasteTypeName: string; isActive: boolean }[]) {
-  const header = "Tipo de residuo,Texto,Estado";
-  const lines = rows.map((row) =>
-    [
-      `"${row.wasteTypeName.replace(/"/g, '""')}"`,
-      `"${row.text.replace(/"/g, '""')}"`,
-      row.isActive ? "activo" : "inactivo",
-    ].join(",")
-  );
-
-  const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "fun-facts.csv";
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function FunFactsPage() {
@@ -295,13 +276,13 @@ export default function FunFactsPage() {
   }
 
   function handleExport() {
-    const rows = table.getSortedRowModel().rows.map((row) => ({
-      text: row.original.text,
-      wasteTypeName: row.original.wasteTypeName,
-      isActive: row.original.isActive,
-    }));
-    exportToCsv(rows);
-  }
+  const rows = table.getSortedRowModel().rows.map((row) => ({
+    "Tipo de residuo": row.original.wasteTypeName,
+    "Texto": row.original.text,
+    "Estado": row.original.isActive ? "Activo" : "Inactivo",
+  }));
+  exportToXlsx(rows, "DatosCuriosos");
+}
 
   const filteredRowCount = enrichedFacts.length;
   const pageRows = table.getRowModel().rows;
@@ -372,22 +353,11 @@ export default function FunFactsPage() {
               type="button"
               onClick={handleExport}
               disabled={isLoading || filteredRowCount === 0}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-input bg-white px-4 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
             >
               <Upload className="h-3.5 w-3.5" />
               Exportar
             </button>
-
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50">
-              <Download className="h-3.5 w-3.5" />
-              Importar
-              <input
-                type="file"
-                accept=".csv"
-                className="sr-only"
-                onChange={() => toast.info("Importación próximamente")}
-              />
-            </label>
           </div>
 
           <div className="inline-flex rounded-lg border border-[#d9dee2] bg-white p-1">

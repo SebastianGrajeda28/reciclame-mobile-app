@@ -3,10 +3,11 @@ import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { exportToXlsxMultiSheet } from "@/lib/exportUtils";
 import { cn } from "@/lib/utils";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 import { useUser } from "@/shared/context/UserContext";
-import { CalendarIcon, CheckCircle2, Scale, ScanSearch, Users } from "lucide-react";
+import { CalendarIcon, CheckCircle2, Scale, ScanSearch, Upload, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
 import { ResidueComparisonGrid } from "../components/ResidueComparisonGrid";
@@ -296,6 +297,73 @@ export default function MetricsDashboard() {
     setDateTo(mockToday);
   };
 
+  function handleExport() {
+    if (!dashboardData) return;
+
+    const formatExportDate = (date: Date) =>
+      new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+
+    const filename =
+      datePreset === "historical"
+        ? `Metricas - Historico (${formatExportDate(new Date())})`
+        : `Metricas - ${formatExportDate(dateFrom)} al ${formatExportDate(dateTo)}`;
+
+    exportToXlsxMultiSheet(
+      [
+        {
+          name: "KPIs",
+          rows: [
+            { "Métrica": "Reciclajes totales", "Valor": dashboardData.kpis.totalRecyclings },
+            { "Métrica": "Kg reciclados", "Valor": dashboardData.kpis.totalKg },
+            { "Métrica": "Usuarios activos", "Valor": dashboardData.kpis.activeUsersInPeriod },
+            { "Métrica": "Usuarios nuevos", "Valor": dashboardData.kpis.newUsersInPeriod },
+            { "Métrica": "Tasa de confirmación (%)", "Valor": dashboardData.kpis.confirmationRate },
+          ],
+        },
+        {
+          name: "Embudo del flujo",
+          rows: renderedFunnel.map((step) => ({
+            "Etapa": step.label,
+            "Sesiones": step.value,
+          })),
+        },
+        {
+          name: "Calidad reconocimiento IA",
+          rows: renderedRecognitionQuality.map((entry) => ({
+            "Categoría": entry.name,
+            "Cantidad": entry.count,
+            "Porcentaje (%)": entry.value,
+          })),
+        },
+        {
+          name: "Residuos más reciclados",
+          rows: renderedTopResidues.map((row) => ({
+            "Residuo": row.name,
+            "Confirmados": row.confirmed,
+          })),
+        },
+        {
+          name: "Tendencia temporal",
+          rows: renderedTrend.map((point) => ({
+            "Periodo": point.label,
+            "Confirmados": point.value,
+          })),
+        },
+        {
+          name: "Residuos por detalle",
+          rows: filteredDetailRows.map((row) => ({
+            "Residuo": row.residue,
+            "Escaneos": row.scans,
+            "Confirmados": row.confirmed,
+            "Tasa (%)": row.rate,
+            "Kg reciclados": row.kilograms,
+          })),
+        },
+      ],
+      filename
+    );
+  }
+
   // Hasta tener datos reales se muestra carga, no valores de relleno.
   if (!dashboardData) {
     return (
@@ -360,7 +428,6 @@ export default function MetricsDashboard() {
               </button>
             );
           })}
-
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -426,6 +493,15 @@ export default function MetricsDashboard() {
               </div>
             </PopoverContent>
           </Popover>
+          <button
+              type="button"
+              onClick={handleExport}
+              disabled={!dashboardData}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-input bg-white px-4 text-xs font-medium text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-90"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Exportar
+          </button>
         </div>
       </div>
 

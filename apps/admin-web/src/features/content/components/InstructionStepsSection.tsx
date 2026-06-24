@@ -1,24 +1,25 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { uploadBinTypeImage, uploadInstructionStepImage } from "@/features/admin/services/AdminStorageService";
 import {
-  DndContext,
   closestCenter,
+  DndContext,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
+  arrayMove,
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
-  arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eraser, GripVertical, ImagePlus, Plus, Save, Trash2, Undo2 } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { uploadBinTypeImage, uploadInstructionStepImage } from "@/features/admin/services/AdminStorageService";
+import { updateBinType, type BinType } from "../services/BinTypesService";
 import {
   encodeSteps,
   parseSteps,
@@ -26,7 +27,6 @@ import {
   type Instruction,
   type InstructionStep,
 } from "../services/InstructionsService";
-import { updateBinType, type BinType } from "../services/BinTypesService";
 
 const MAX_STEPS = 3;
 
