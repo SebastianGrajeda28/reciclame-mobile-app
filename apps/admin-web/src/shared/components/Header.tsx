@@ -1,5 +1,25 @@
 import { Link, useLocation } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 import RoleNavbar from "./RoleNavbar";
+
+type NavItem = {
+  label: string;
+  path: string;
+};
+
+
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  { label: "Métricas", path: "/metricas" },
+  { label: "Datos curiosos", path: "/fun-facts" },
+  { label: "Instrucciones", path: "/instrucciones" },
+  { label: "Cuentas", path: "/cuentas" },
+];
+
+const MANAGER_NAV_ITEMS: NavItem[] = [
+  { label: "Métricas", path: "/metricas" },
+  { label: "Datos curiosos", path: "/fun-facts" },
+  { label: "Instrucciones", path: "/instrucciones" },
+];
 
 export default function Header() {
   const location = useLocation();

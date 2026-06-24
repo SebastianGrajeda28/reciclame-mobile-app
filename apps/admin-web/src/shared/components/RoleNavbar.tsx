@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import ProfilePopover from "./ProfilePopover";
 
+
 type RoleNavbarProps = {
   items: {
     path: string;
