@@ -1,5 +1,6 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { routes } from '@/src/constants/routes';
@@ -25,9 +26,9 @@ const DEV_SIMULATE_RECOVERY = __DEV__ && false;
 
 export function ProfileScreen() {
   const currentUser = useCurrentUser();
-  const { data: streakData, refetch } = useStreakProgress();
+  const { data: streakData, refetch: refetchStreak } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
-  const { lastUnlockedBadges, stats } = useProfileGamification();
+  const { featuredBadges, stats, refetch: refetchGamification } = useProfileGamification();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
 
   const [recoverVisible, setRecoverVisible] = useState(false);
@@ -70,7 +71,7 @@ export function ProfileScreen() {
         const result = await recoverStreak(userId);
         setRecoveredDays(result.streakDays);
         setRecoveredHeat(result.heat);
-        refetch(); // el escudo ya se consumió en el backend
+        refetchStreak(); // el escudo ya se consumió en el backend
       }
       setJustRecovered(true);
       setRecoverMode('recovered');
@@ -88,6 +89,18 @@ export function ProfileScreen() {
     setRecoverVisible(false);
     setRecoverMode('ask');
   }
+
+  const hasMounted = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (hasMounted.current) {
+        refetchGamification();
+        refetchStreak();
+      } else {
+        hasMounted.current = true;
+      }
+    }, [refetchGamification, refetchStreak]),
+  );
 
   return (
     <ProfileScreenContainer>
@@ -163,7 +176,7 @@ export function ProfileScreen() {
         <AppIcon name="chevronRight" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
       </Pressable>
       <ProfileAchievementsPreviewCard
-        featuredBadges={lastUnlockedBadges}
+        featuredBadges={featuredBadges}
         onSeeAllPress={() => router.push(routes.profileAchievements)}
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />

@@ -60,6 +60,7 @@ export type AppIconName =
   | 'laptop'
   | 'fileDocument'
   | 'locate'
+  | 'package'
   | 'eyeOff'
   | 'shield'
   | 'shieldOutline';
@@ -211,6 +212,15 @@ export function AppIcon({ name, size, color, style }: AppIconProps) {
     case 'shieldOutline':
       return (
         <MaterialCommunityIcons name="shield-outline" size={size} color={color} style={style} />
+      );
+    case 'package':
+      return (
+        <MaterialCommunityIcons
+          name="package-variant-closed"
+          size={size}
+          color={color}
+          style={style}
+        />
       );
     default:
       return null;

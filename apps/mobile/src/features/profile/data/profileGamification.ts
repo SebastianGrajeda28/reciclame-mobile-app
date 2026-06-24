@@ -13,7 +13,7 @@ export type ProfileStat = {
   id: string;
   value: string;
   label: string;
-  icon: 'scale' | 'recycle' | 'calendar' | 'award';
+  icon: 'scale' | 'recycle' | 'calendar' | 'award' | 'package';
 };
 
 

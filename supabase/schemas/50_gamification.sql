@@ -86,12 +86,12 @@ begin
     return;
   end if;
 
-  select array_agg(id)
+  select array_agg(t.aid)
   into invalid_ids
-  from unnest(p_achievement_ids) as id
+  from unnest(p_achievement_ids) as t(aid)
   where not exists (
-    select 1 from public.user_achievements
-    where user_id = p_user_id and achievement_id = id
+    select 1 from public.user_achievements ua
+    where ua.user_id = p_user_id and ua.achievement_id = t.aid
   );
 
   if invalid_ids is not null then
