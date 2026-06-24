@@ -78,7 +78,7 @@ const ROTATION_INTERVAL_MS = 4000;
  * @returns loading - true durante la carga inicial.
  * @returns error - Error si la consulta falla.
  */
-export function useRotatingFunFact(): { fact: FunFact | null; loading: boolean; error: Error | null } {
+export function useRotatingFunFact(enabled = true): { fact: FunFact | null; loading: boolean; error: Error | null } {
   const [facts, setFacts] = useState<FunFact[]>([]);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -105,13 +105,13 @@ export function useRotatingFunFact(): { fact: FunFact | null; loading: boolean; 
   }, []);
 
   useEffect(() => {
-    if (facts.length === 0) return;
+    if (!enabled || facts.length === 0) return;
     const timer = setInterval(() => {
       indexRef.current = (indexRef.current + 1) % facts.length;
       setIndex(indexRef.current);
     }, ROTATION_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [facts]);
+  }, [facts, enabled]);
 
   return { fact: facts[index] ?? null, loading, error };
 }

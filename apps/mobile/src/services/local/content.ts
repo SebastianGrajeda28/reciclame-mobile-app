@@ -1,8 +1,12 @@
+import { db } from '@/src/services/db';
 import type { FunFact } from '@/src/types/funFact';
 import type { Instruction, InstructionStep } from '@/src/types/instruction';
-import { db } from '@/src/services/db';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function toText(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
 
 // ---------------------------------------------------------------------------
 // Fun facts
@@ -58,12 +62,12 @@ export function getLocalFunFacts(wasteTypeId?: string): FunFact[] | null {
 export function saveFunFactsCache(facts: FunFact[]): void {
   const cachedAt = new Date().toISOString();
   db.withTransactionSync(() => {
-    db.runSync(`DELETE FROM fun_facts`);
+    db.runSync(`DELETE FROM fun_facts`, []);
     for (const fact of facts) {
       db.runSync(
         `INSERT INTO fun_facts (id, text, waste_type_id, is_active, cached_at)
          VALUES (?, ?, ?, ?, ?)`,
-        [fact.id, fact.text, fact.wasteTypeId ?? null, fact.isActive ? 1 : 0, cachedAt],
+        [String(fact.id), String(fact.text), toText(fact.wasteTypeId), fact.isActive ? 1 : 0, cachedAt],
       );
     }
   });
@@ -114,7 +118,7 @@ export function getLocalInstruction(wasteTypeId: string): Instruction | null {
 export function saveInstructionsCache(instructions: Instruction[]): void {
   const cachedAt = new Date().toISOString();
   db.withTransactionSync(() => {
-    db.runSync(`DELETE FROM instructions`);
+    db.runSync(`DELETE FROM instructions`, []);
     for (const inst of instructions) {
       db.runSync(
         `INSERT INTO instructions
@@ -122,14 +126,14 @@ export function saveInstructionsCache(instructions: Instruction[]): void {
             created_at, updated_at, steps_json, cached_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          inst.id,
-          inst.title,
-          inst.body ?? null,
-          inst.imageUrl ?? null,
-          inst.wasteTypeId ?? null,
+          String(inst.id),
+          String(inst.title),
+          toText(inst.body),
+          toText(inst.imageUrl),
+          toText(inst.wasteTypeId),
           inst.isActive ? 1 : 0,
-          inst.createdAt,
-          inst.updatedAt ?? null,
+          String(inst.createdAt),
+          toText(inst.updatedAt),
           JSON.stringify(inst.steps ?? []),
           cachedAt,
         ],

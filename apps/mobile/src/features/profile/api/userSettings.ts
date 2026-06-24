@@ -1,10 +1,10 @@
-import { supabase } from '@/src/services/supabase/client';
-import type { UserSetting } from '@/src/types/user';
 import {
   getLocalUserSettings,
   isUserSettingsCacheStale,
   saveUserSettings,
 } from '@/src/services/local/userSettings';
+import { supabase } from '@/src/services/supabase/client';
+import type { UserSetting } from '@/src/types/user';
 
 export type UserSettingPatch = {
   notificationsEnabled?: boolean;
@@ -48,12 +48,16 @@ export async function getUserSettings(userId: string): Promise<UserSetting | nul
     skipRecyclingInstructions: data.skip_recycling_instructions,
     profileVisibility: data.profile_visibility ?? null,
     language: data.language ?? null,
-    locationVerificationEnabled: data.location_verification_enabled ?? false,
+    locationVerificationEnabled: data.location_verification_enabled ?? true,
     updatedAt: data.updated_at ?? null,
   };
 
   console.log('[SETTINGS] getUserSettings: settings obtenidos de Supabase y guardados en cache');
+  
+  settings.locationVerificationEnabled = true; // Forzar a true para que la app no bloquee la verificación de ubicación
+  console.log('[SETTINGS] getUserSettings: settings guardados en cache:', settings);
   saveUserSettings(settings);
+  console.log('[SETTINGS] getUserSettings: settings guardados en cache:', settings);
   return settings;
 }
 

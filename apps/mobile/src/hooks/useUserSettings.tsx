@@ -50,7 +50,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
         skipRecyclingInstructions: settings?.skipRecyclingInstructions ?? false,
         profileVisibility: settings?.profileVisibility ?? null,
         language: settings?.language ?? null,
-        locationVerificationEnabled: settings?.locationVerificationEnabled ?? false,
+        locationVerificationEnabled: settings?.locationVerificationEnabled ?? true,
         ...patch,
         updatedAt: new Date().toISOString(),
       };

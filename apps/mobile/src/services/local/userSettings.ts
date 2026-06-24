@@ -1,7 +1,11 @@
-import type { UserSetting } from '@/src/types/user';
 import { db } from '@/src/services/db';
+import type { UserSetting } from '@/src/types/user';
 
 const USER_SETTINGS_TTL_MS = 30 * 60 * 1000; // 30 min — se recarga al abrir si venció
+
+function toText(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
 
 type UserSettingRow = {
   user_id: string;
@@ -60,22 +64,24 @@ export function getLocalUserSettings(userId: string): UserSetting | null {
 
 export function saveUserSettings(settings: UserSetting): void {
   const cachedAt = new Date().toISOString();
+  const params = [
+    String(settings.userId),
+    settings.notificationsEnabled ? 1 : 0,
+    settings.skipRecyclingInstructions ? 1 : 0,
+    toText(settings.profileVisibility),
+    toText(settings.language),
+    settings.locationVerificationEnabled ? 1 : 0,
+    toText(settings.updatedAt),
+    cachedAt,
+  ];
+  console.log('[LOCAL][DBG] saveUserSettings params:', params.map((v, i) => `[${i}]${typeof v}=${JSON.stringify(v)}`).join(', '));
   db.runSync(
     `INSERT OR REPLACE INTO user_settings
        (user_id, notifications_enabled, skip_recycling_instructions,
         profile_visibility, language, location_verification_enabled,
         updated_at, cached_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      settings.userId,
-      settings.notificationsEnabled ? 1 : 0,
-      settings.skipRecyclingInstructions ? 1 : 0,
-      settings.profileVisibility,
-      settings.language,
-      settings.locationVerificationEnabled ? 1 : 0,
-      settings.updatedAt,
-      cachedAt,
-    ],
+    params,
   );
   console.log(`[LOCAL] user_settings(${settings.userId}): guardado en SQLite`);
 }

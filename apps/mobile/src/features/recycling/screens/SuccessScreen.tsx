@@ -29,6 +29,11 @@ export function SuccessScreen() {
     router.replace('/recycle/camera');
   }
 
+  function handleViewHistory() {
+    resetFlow();
+    router.replace(routes.recycleHistory);
+  }
+
   return (
     <AppScreen padded centered style={styles.root}>
       <View style={styles.iconCircle}>
@@ -76,7 +81,7 @@ export function SuccessScreen() {
         <AppButton
           variant="outline"
           label="Ver mi historial"
-          onPress={() => router.replace(routes.recycleHistory)}
+          onPress={handleViewHistory}
         />
       </View>
 

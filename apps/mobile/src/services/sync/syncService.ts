@@ -130,18 +130,20 @@ export async function refreshStaleContentCaches(): Promise<void> {
 
   console.log(`[SYNC] Caches vencidas: ${staleNames.join(', ')} - refrescando...`);
 
-  await Promise.allSettled(
-    tasks
-      .filter((t) => t.stale)
-      .map(async (t) => {
-        try {
-          await t.refresh();
-        } catch (e) {
-          console.warn(`[SYNC] Error al refrescar cache de ${t.name}:`, e);
-        }
-      }),
-  );
-
-  isRefreshing = false;
-  console.log('[SYNC] Refresco de caches completado');
+  try {
+    await Promise.allSettled(
+      tasks
+        .filter((t) => t.stale)
+        .map(async (t) => {
+          try {
+            await t.refresh();
+          } catch (e) {
+            console.warn(`[SYNC] Error al refrescar cache de ${t.name}:`, e);
+          }
+        }),
+    );
+  } finally {
+    isRefreshing = false;
+    console.log('[SYNC] Refresco de caches completado');
+  }
 }

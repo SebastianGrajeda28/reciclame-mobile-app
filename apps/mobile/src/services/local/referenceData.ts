@@ -1,7 +1,14 @@
-import type { BinType, WasteType, WasteCategoryId } from '@/src/features/recycling/types/recycling.types';
+import type { BinType, WasteCategoryId, WasteType } from '@/src/features/recycling/types/recycling.types';
 import { db } from '@/src/services/db';
 
 const REF_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 días — datos de referencia cambian poco
+
+// Supabase may return unexpected types for text columns when the client has no
+// generated schema. Passing a non-primitive to expo-sqlite's runSync throws
+// "Cannot convert '[object Object]' to a Kotlin type." on Android.
+function toText(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
 
 function isFreshCache(cachedAt: string): boolean {
   return Date.now() - new Date(cachedAt).getTime() < REF_CACHE_TTL_MS;
@@ -12,16 +19,16 @@ function isFreshCache(cachedAt: string): boolean {
 // ---------------------------------------------------------------------------
 
 const WASTE_TYPE_CATEGORY: Record<string, { categoryId: WasteCategoryId; categoryLabel: string }> = {
-  '11111111-1111-1111-1111-000000000001': { categoryId: 'cardboard',        categoryLabel: 'Cartón' },
-  '11111111-1111-1111-1111-000000000002': { categoryId: 'plastic_bottle',   categoryLabel: 'Botella plástica' },
-  '11111111-1111-1111-1111-000000000003': { categoryId: 'non_recoverable',  categoryLabel: 'No aprovechables' },
-  '11111111-1111-1111-1111-000000000004': { categoryId: 'glass',            categoryLabel: 'Vidrio' },
-  '11111111-1111-1111-1111-000000000005': { categoryId: 'battery',          categoryLabel: 'Pilas' },
+  '11111111-1111-1111-1111-000000000001': { categoryId: 'cardboard', categoryLabel: 'Cartón' },
+  '11111111-1111-1111-1111-000000000002': { categoryId: 'plastic_bottle', categoryLabel: 'Botella plástica' },
+  '11111111-1111-1111-1111-000000000003': { categoryId: 'non_recoverable', categoryLabel: 'No aprovechables' },
+  '11111111-1111-1111-1111-000000000004': { categoryId: 'glass', categoryLabel: 'Vidrio' },
+  '11111111-1111-1111-1111-000000000005': { categoryId: 'battery', categoryLabel: 'Pilas' },
   '11111111-1111-1111-1111-000000000006': { categoryId: 'electronic_waste', categoryLabel: 'RAEE' },
-  '11111111-1111-1111-1111-000000000007': { categoryId: 'plastic',          categoryLabel: 'Plástico' },
-  '11111111-1111-1111-1111-000000000008': { categoryId: 'metal',            categoryLabel: 'Metal' },
-  '11111111-1111-1111-1111-000000000009': { categoryId: 'paper',            categoryLabel: 'Papel' },
-  '11111111-1111-1111-1111-000000000010': { categoryId: 'organic',          categoryLabel: 'Orgánico' },
+  '11111111-1111-1111-1111-000000000007': { categoryId: 'plastic', categoryLabel: 'Plástico' },
+  '11111111-1111-1111-1111-000000000008': { categoryId: 'metal', categoryLabel: 'Metal' },
+  '11111111-1111-1111-1111-000000000009': { categoryId: 'paper', categoryLabel: 'Papel' },
+  '11111111-1111-1111-1111-000000000010': { categoryId: 'organic', categoryLabel: 'Orgánico' },
 };
 
 // ---------------------------------------------------------------------------
@@ -69,12 +76,16 @@ export function getLocalWasteTypes(): WasteType[] | null {
 export function saveWasteTypesCache(types: WasteType[]): void {
   const cachedAt = new Date().toISOString();
   db.withTransactionSync(() => {
-    db.runSync(`DELETE FROM waste_types`);
+    db.runSync(`DELETE FROM waste_types`, []);
     for (const t of types) {
+      const p0 = String(t.id);
+      const p1 = String(t.label);
+      const p2 = toText(t.description);
+      console.log(`[LOCAL][DBG] waste_type params: ${typeof p0}="${p0}", ${typeof p1}="${p1}", ${typeof p2}="${p2}", number=50`);
       db.runSync(
         `INSERT INTO waste_types (id, name, description, estimated_weight_g, cached_at)
          VALUES (?, ?, ?, ?, ?)`,
-        [t.id, t.label, t.description ?? null, 50, cachedAt],
+        [p0, p1, p2, 50, cachedAt],
       );
     }
   });
@@ -124,12 +135,12 @@ export function getLocalBinTypes(): BinType[] | null {
 export function saveBinTypesCache(types: BinType[]): void {
   const cachedAt = new Date().toISOString();
   db.withTransactionSync(() => {
-    db.runSync(`DELETE FROM bin_types`);
+    db.runSync(`DELETE FROM bin_types`, []);
     for (const t of types) {
       db.runSync(
         `INSERT INTO bin_types (id, name, description, image_url, deposit_instruction, cached_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [t.id, t.name, t.description ?? null, t.imageUrl, t.depositInstruction, cachedAt],
+        [String(t.id), String(t.name), toText(t.description), toText(t.imageUrl), toText(t.depositInstruction), cachedAt],
       );
     }
   });
@@ -179,12 +190,11 @@ type MappingInput = { wasteTypeId: string; universityId: string; binTypeId: stri
 export function saveMappingsCache(mappings: MappingInput[]): void {
   const cachedAt = new Date().toISOString();
   db.withTransactionSync(() => {
-    db.runSync(`DELETE FROM waste_type_bin_type_mappings`);
+    db.runSync(`DELETE FROM waste_type_bin_type_mappings`, []);
     for (const m of mappings) {
       db.runSync(
-        `INSERT INTO waste_type_bin_type_mappings (waste_type_id, university_id, bin_type_id, cached_at)
-         VALUES (?, ?, ?, ?)`,
-        [m.wasteTypeId, m.universityId, m.binTypeId, cachedAt],
+        `INSERT INTO waste_type_bin_type_mappings (waste_type_id, university_id, bin_type_id, cached_at) VALUES (?, ?, ?, ?)`,
+        [String(m.wasteTypeId), String(m.universityId), String(m.binTypeId), cachedAt],
       );
     }
   });

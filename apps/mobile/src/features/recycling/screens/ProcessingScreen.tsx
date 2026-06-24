@@ -28,14 +28,23 @@ export function ProcessingScreen() {
   const navigation = useNavigation();
   const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainer } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
-  const { fact } = useRotatingFunFact();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
   const [classifying, setClassifying] = useState(!state.finalWasteTypeId);
+  const { fact } = useRotatingFunFact(classifying);
   const navigatingForward = useRef(false);
   const studentLocation = useStudentLocation();
   const { settings } = useUserSettings();
 
   const confidence = state.predictionConfidence ?? 0;
+
+  // Refs for values used inside the classification effect but that should not
+  // cause it to restart (GPS updates would reset `mounted = false`, silently
+  // discarding the in-flight TFLite result).
+  const locationVerifRef = useRef(settings?.locationVerificationEnabled);
+  locationVerifRef.current = settings?.locationVerificationEnabled;
+  console.log('[ProcessingScreen] locationVerifRef:', settings?.locationVerificationEnabled);
+  const studentLocationRef = useRef(studentLocation);
+  studentLocationRef.current = studentLocation;
 
   console.log('[ProcessingScreen] Estado actual:', {
     finalWasteTypeId: state.finalWasteTypeId,
@@ -79,12 +88,14 @@ export function ProcessingScreen() {
           console.log('[ProcessingScreen] Confianza suficiente, predicción válida:', result.wasteTypeId, result.confidence);
           setPrediction(result.wasteTypeId, result.confidence);
 
-          // Auto-select closest recycling point if location verification is enabled
-          if (settings?.locationVerificationEnabled) {
+          // Read location/settings from refs so GPS updates never re-trigger
+          // this effect and accidentally set mounted=false mid-classification.
+          console.log('[ProcessingScreen] locationVerificationEnabled:', locationVerifRef.current, 'studentLocation:', studentLocationRef.current);
+          if (locationVerifRef.current) {
             console.log('[ProcessingScreen] Buscando contenedor más cercano para:', result.wasteTypeId);
             const closestContainer = findClosestRecyclingPoint(
-              studentLocation.latitude,
-              studentLocation.longitude,
+              studentLocationRef.current.latitude,
+              studentLocationRef.current.longitude,
               result.wasteTypeId,
             );
             if (closestContainer) {
@@ -109,7 +120,10 @@ export function ProcessingScreen() {
     return () => {
       mounted = false;
     };
-  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainer]);
+  // locationVerifRef and studentLocationRef are refs — intentionally omitted.
+  // state.selectedContainerId is not used in this effect body.
+   
+  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, setSelectedContainer]);
 
   const containerMismatch = useMemo(() => {
     if (!state.selectedContainerId || !resolvedBinType) {
@@ -218,6 +232,7 @@ export function ProcessingScreen() {
                 <AppButton
                   label="Aceptar"
                   onPress={() => {
+                    navigatingForward.current = true;
                     const hasCompatibleContainer =
                       !!state.selectedContainerId && !containerMismatch;
                     if (hasCompatibleContainer) {
