@@ -169,6 +169,56 @@ $$;
 GRANT EXECUTE ON FUNCTION public.save_avatar_config(uuid, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_avatar_config(uuid, jsonb) TO service_role;
 
+CREATE OR REPLACE FUNCTION "app_profile"."get_profile_summary"("p_user_id" "uuid") RETURNS TABLE("total_weight_kg" numeric, "total_items" bigint, "member_since" timestamp with time zone, "achievements_count" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_weight numeric;
+  v_items bigint;
+  v_member_since timestamp with time zone;
+  v_achievements bigint;
+begin
+  -- 1. Peso total en kg (la columna estimated_weight en recycling_records está en gramos)
+  select coalesce(sum(estimated_weight), 0) / 1000.0
+  into v_weight
+  from public.recycling_records
+  where user_id = p_user_id
+    and status = 'confirmed'
+    and is_active = true;
+
+  -- 2. Cantidad de artículos reciclados
+  select count(*)
+  into v_items
+  from public.recycling_records
+  where user_id = p_user_id
+    and status = 'confirmed'
+    and is_active = true;
+
+  -- 3. Fecha del primer login / registro
+  select created_at
+  into v_member_since
+  from public.users
+  where id = p_user_id;
+
+  -- 4. Número de logros completados
+  select count(*)
+  into v_achievements
+  from public.user_achievements
+  where user_id = p_user_id
+    and is_active = true;
+
+  return query select v_weight, v_items, v_member_since, v_achievements;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION "public"."get_profile_summary"("p_user_id" "uuid") RETURNS TABLE("total_weight_kg" numeric, "total_items" bigint, "member_since" timestamp with time zone, "achievements_count" bigint)
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'app_profile'
+    AS $$
+  select * from app_profile.get_profile_summary(p_user_id);
+$$;
+
 ALTER TABLE "public"."avatars" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."user_profiles" ENABLE ROW LEVEL SECURITY;
@@ -202,6 +252,16 @@ GRANT ALL ON FUNCTION "public"."update_user_avatar"("p_user_id" "uuid", "p_rewar
 GRANT ALL ON FUNCTION "public"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."update_user_avatar"("p_user_id" "uuid", "p_reward_id" "uuid") TO "service_role";
+
+REVOKE ALL ON FUNCTION "app_profile"."get_profile_summary"("p_user_id" "uuid") FROM PUBLIC;
+
+GRANT ALL ON FUNCTION "app_profile"."get_profile_summary"("p_user_id" "uuid") TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."get_profile_summary"("p_user_id" "uuid") TO "anon";
+
+GRANT ALL ON FUNCTION "public"."get_profile_summary"("p_user_id" "uuid") TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."get_profile_summary"("p_user_id" "uuid") TO "service_role";
 
 GRANT ALL ON TABLE "public"."avatars" TO "anon";
 
