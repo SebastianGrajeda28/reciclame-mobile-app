@@ -1,17 +1,3 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  type ColumnDef,
-  type PaginationState,
-  type SortingState,
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import { ArrowUpDown, Download, Plus, Upload } from "lucide-react";
-import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +25,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AppPage, AppSurface } from "@/shared/components/AppPage";
+import { useUser } from "@/shared/context/UserContext";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+} from "@tanstack/react-table";
+import { ArrowUpDown, Download, Plus, Upload } from "lucide-react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import FunFactForm, { type FunFactFormValues } from "../components/FunFactForm";
 import FunFactRow from "../components/FunFactRow";
 import {
@@ -51,8 +53,6 @@ import {
   type FunFactPayload,
 } from "../services/FunFactsService";
 import { getWasteTypes } from "../services/WasteTypesService";
-import { useUser } from "@/shared/context/UserContext";
-import { AppPage, AppSurface } from "@/shared/components/AppPage";
 
 type FunFactsTab = "active" | "inactive";
 type FilterValue = "all" | string;
@@ -325,7 +325,7 @@ export default function FunFactsPage() {
       <div className="flex flex-col gap-3 md:min-h-[72px] md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">
-            Gestionar fun facts
+            Gestionar Datos Curiosos
           </h1>
           <p className="mt-2 text-sm text-slate-500">
             Vista general del rendimiento de reciclaje y participacion dentro de la plataforma.
@@ -337,7 +337,7 @@ export default function FunFactsPage() {
           onClick={() => setShowAddDialog(true)}
         >
           <Plus className="mr-2 h-4 w-4" />
-          Nuevo fun fact
+          Nuevo dato curioso
         </Button>
       </div>
 
@@ -375,12 +375,12 @@ export default function FunFactsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
             >
               <Upload className="h-3.5 w-3.5" />
-              Exportar CSV
+              Exportar
             </button>
 
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50">
               <Download className="h-3.5 w-3.5" />
-              Importar CSV
+              Importar
               <input
                 type="file"
                 accept=".csv"

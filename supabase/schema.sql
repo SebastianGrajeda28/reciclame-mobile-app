@@ -165,12 +165,11 @@ begin
     where ur.user_id = v_uid
       and ur.is_active = true
       and r.is_active = true
-      and r.name = 'ADMIN'
   )
   into v_is_admin;
 
   if not coalesce(v_is_admin, false) then
-    raise exception 'admin role required';
+    raise exception 'role required';
   end if;
 
   with session_scope as (
@@ -388,13 +387,14 @@ declare
   v_email text;
   v_name text;
   v_role text;
+  v_is_active boolean;
 begin
   if v_uid is null then
     raise exception 'unauthenticated';
   end if;
 
-  select u.email
-  into v_email
+  select u.email, u.is_active
+  into v_email, v_is_active
   from public.users u
   where u.id = v_uid;
 
@@ -417,7 +417,8 @@ begin
     'id', v_uid,
     'email', coalesce(v_email, ''),
     'name', coalesce(v_name, v_email, ''),
-    'role', v_role
+    'role', v_role,
+    'isActive', v_is_active
   );
 end;
 $$;

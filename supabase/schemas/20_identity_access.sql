@@ -70,13 +70,14 @@ declare
   v_email text;
   v_name text;
   v_role text;
+  v_is_active boolean;
 begin
   if v_uid is null then
     raise exception 'unauthenticated';
   end if;
 
-  select u.email
-  into v_email
+  select u.email, u.is_active
+  into v_email, v_is_active
   from public.users u
   where u.id = v_uid;
 
@@ -99,7 +100,8 @@ begin
     'id', v_uid,
     'email', coalesce(v_email, ''),
     'name', coalesce(v_name, v_email, ''),
-    'role', v_role
+    'role', v_role,
+    'isActive', v_is_active
   );
 end;
 $$;
