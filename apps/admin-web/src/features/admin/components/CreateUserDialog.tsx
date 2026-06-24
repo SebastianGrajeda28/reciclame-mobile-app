@@ -1,14 +1,14 @@
-import { useState } from "react";
 import { X } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { AccountForm } from "./AccountForm";
 import { provisionAdminUser } from "../services/AdminProvisioningService";
+import { AccountForm } from "./AccountForm";
 
 interface AccountFormData {
   name: string;
   email: string;
   password?: string;
-  role: "ADMIN" | "MANAGER" | "VIEWER";
+  role: "ADMIN" | "MANAGER";
 }
 
 interface Props {
@@ -45,7 +45,7 @@ export default function CreateUserDialog({ onClose, onCreated }: Props) {
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
           <X className="h-5 w-5" />
         </button>
-        <h2 className="mb-5 text-lg font-bold">Crear nuevo empleado</h2>
+        <h2 className="mb-5 text-lg font-bold">Crear Nuevo Empleado</h2>
         <AccountForm mode="register" onSubmit={handleSubmit} disabled={saving} />
       </div>
     </div>

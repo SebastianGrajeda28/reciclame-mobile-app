@@ -3,12 +3,16 @@ import RoleNavbar from "./RoleNavbar";
 
 export default function Header() {
   const location = useLocation();
+  const { account } = useUser();
   const isAuthRoute = [
     "/login",
     "/forgot-password",
     "/reset-password",
     "/auth/callback",
   ].includes(location.pathname);
+
+  const role = (account?.role ?? "").toUpperCase();
+  const navItems = role === "ADMIN" ? ADMIN_NAV_ITEMS : MANAGER_NAV_ITEMS;
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-[#0a2740] bg-[#0b2f4e] shadow-sm">
@@ -20,7 +24,7 @@ export default function Header() {
           Recíclame
         </Link>
 
-        {isAuthRoute ? null : <RoleNavbar />}
+        {isAuthRoute ? null : <RoleNavbar items={navItems} />}
       </div>
     </header>
   );

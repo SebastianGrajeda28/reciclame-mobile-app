@@ -14,7 +14,7 @@ function linkClasses(active: boolean) {
     : "relative block min-w-[132px] px-2 py-5 text-center text-[1rem] font-medium text-white/88 transition hover:text-white";
 }
 
-export default function RoleNavbar() {
+export default function RoleNavbar({ items }: RoleNavbarProps) {
   const location = useLocation();
   const { account, loading } = useUser();
 
@@ -32,7 +32,7 @@ export default function RoleNavbar() {
         <div className="pointer-events-auto">
           <nav aria-label="Navegación principal">
             <ul className="flex items-center gap-10">
-              {NAV_ITEMS.map((item) => (
+              {items.map((item) => (
                 <li key={item.path}>
                   <Link
                     to={item.path}

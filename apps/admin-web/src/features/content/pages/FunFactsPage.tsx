@@ -416,12 +416,12 @@ export default function FunFactsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
             >
               <Upload className="h-3.5 w-3.5" />
-              Exportar CSV
+              Exportar
             </button>
 
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50">
               <Download className="h-3.5 w-3.5" />
-              Importar CSV
+              Importar
               <input
                 type="file"
                 accept=".csv"

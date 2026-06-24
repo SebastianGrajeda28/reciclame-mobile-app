@@ -274,10 +274,12 @@ function formatRangeLabel(dateFrom: Date, dateTo: Date) {
   return `${formatDate(dateFrom)} - ${formatDate(dateTo)}`;
 }
 
+const mockToday = new Date(2026, 5, 11);
+
 export default function MetricsDashboard() {
   const { session } = useUser();
-  const [dateFrom, setDateFrom] = useState<Date>(new Date(2026, 5, 1));
-  const [dateTo, setDateTo] = useState<Date>(new Date(2026, 5, 11));
+  const [dateFrom, setDateFrom] = useState<Date>(addDays(mockToday, -6));
+  const [dateTo, setDateTo] = useState<Date>(mockToday);
   const [datePreset, setDatePreset] = useState<DatePreset>("last7");
   const [activeTab, setActiveTab] = useState<DashboardTab>("flow");
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(
@@ -385,15 +387,14 @@ export default function MetricsDashboard() {
     })) ?? recognitionQuality.map((row) => ({ ...row, count: row.value }));
 
   const renderedTrend = dashboardData?.trend ?? weeklyTrend;
+  const allResidues = useMemo(
+    () => dashboardData?.detailRows.map((row) => row.residue) ?? [],
+    [dashboardData]
+  );
 
-  const renderedDetailRows =
-    dashboardData?.detailRows.map((row) => ({
-      residue: row.residue,
-      scans: row.scans,
-      confirmed: row.confirmed,
-      rate: `${row.rate}%`,
-      kilograms: `${row.kilograms.toFixed(1)} kg`,
-    })) ?? detailRows;
+  const activeResidues = selectedResidues.length > 0 ? selectedResidues : allResidues;
+
+  const filteredDetailRows = dashboardData?.detailRows.filter((row) => activeResidues.includes(row.residue)) ?? [];
 
   const funnelMaxValue = Math.max(
     ...renderedFunnel.map((step) => step.value),
@@ -407,22 +408,20 @@ export default function MetricsDashboard() {
       return;
     }
 
-    const base = new Date(2026, 5, 11);
-
     if (preset === "last7") {
-      setDateFrom(addDays(base, -6));
-      setDateTo(base);
+      setDateFrom(addDays(mockToday, -6));
+      setDateTo(mockToday);
       return;
     }
 
     if (preset === "last30") {
-      setDateFrom(addDays(base, -29));
-      setDateTo(base);
+      setDateFrom(addDays(mockToday, -29));
+      setDateTo(mockToday);
       return;
     }
 
     setDateFrom(new Date(2025, 0, 1));
-    setDateTo(base);
+    setDateTo(mockToday);
   };
 
   // Hasta tener datos reales se muestra carga, no valores de relleno.

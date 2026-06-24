@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Info, Lock, Mail, Recycle } from "lucide-react";
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { signInWithEmail } from "../services/authService";
 
@@ -13,6 +13,17 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const expiredErrorHandledRef = useRef(false);
+
+  useEffect(() => {
+    const state = location.state as { authError?: string } | null;
+    if (state?.authError === "expired_link" && !expiredErrorHandledRef.current) {
+      expiredErrorHandledRef.current = true;
+      toast.error("El enlace ya expiró o no es válido. Solicita uno nuevo.");
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +39,6 @@ const Login: React.FC = () => {
       setLoading(false);
     }
   };
-
   return (
     <main className="relative min-h-[calc(100dvh-5rem)] overflow-hidden bg-[#f7f8f6] px-6 py-6 text-slate-900 md:py-8">
       <span
