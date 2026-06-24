@@ -38,7 +38,8 @@ function tabClasses(selected: boolean) {
 function translateRoleName(roleName: string | null): string {
   if (roleName?.toUpperCase() === "ADMIN") return "Administrador";
   if (roleName?.toUpperCase() === "MANAGER") return "Manager";
-  return roleName ?? "—";
+  if (!roleName) return "Sin rol";
+  return roleName;
 }
 
 export default function UsersPage() {

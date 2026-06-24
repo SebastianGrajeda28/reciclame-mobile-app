@@ -82,29 +82,47 @@ Deno.serve(async (req) => {
     return Response.json({ error: "email, password y roleName son requeridos" }, { status: 400, headers: corsHeaders });
   }
 
-  const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
-    email,
-    password,
-    user_metadata: { full_name: name ?? "" },
-    email_confirm: true,
-  });
+  // Check if a user with this email already exists (e.g. a mobile app user).
+  const { data: existingList } = await serviceClient.auth.admin.listUsers();
+  const existingAuthUser = existingList?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
 
-  if (authError || !authData.user) {
-    return Response.json(
-      { error: authError?.message ?? "Error al crear usuario en Auth" },
-      { status: 400, headers: corsHeaders }
-    );
-  }
+  let targetUserId: string;
 
-  const newUserId = authData.user.id;
+  if (existingAuthUser) {
+    // User exists — update their password so they can log in on the web.
+    const { error: updateError } = await serviceClient.auth.admin.updateUserById(existingAuthUser.id, {
+      password,
+    });
+    if (updateError) {
+      return Response.json({ error: updateError.message }, { status: 400, headers: corsHeaders });
+    }
+    targetUserId = existingAuthUser.id;
+  } else {
+    // New user — create auth account and public.users row.
+    const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: { full_name: name ?? "" },
+      email_confirm: true,
+    });
 
-  const { error: userInsertError } = await serviceClient
-    .from("users")
-    .upsert({ id: newUserId, email }, { onConflict: "id", ignoreDuplicates: false });
+    if (authError || !authData.user) {
+      return Response.json(
+        { error: authError?.message ?? "Error al crear usuario en Auth" },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
-  if (userInsertError) {
-    await serviceClient.auth.admin.deleteUser(newUserId);
-    return Response.json({ error: userInsertError.message }, { status: 500, headers: corsHeaders });
+    targetUserId = authData.user.id;
+
+    const { error: userInsertError } = await serviceClient
+      .from("users")
+      .upsert({ id: targetUserId, email }, { onConflict: "id", ignoreDuplicates: false });
+
+    if (userInsertError) {
+      await serviceClient.auth.admin.deleteUser(targetUserId);
+      return Response.json({ error: userInsertError.message }, { status: 500, headers: corsHeaders });
+    }
   }
 
   const { data: role, error: roleLookupError } = await serviceClient
@@ -115,22 +133,26 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (roleLookupError || !role) {
-    await serviceClient.auth.admin.deleteUser(newUserId);
     return Response.json(
       { error: roleLookupError?.message ?? `Rol '${roleName}' no encontrado` },
       { status: 400, headers: corsHeaders }
     );
   }
 
-  const { error: userRoleError } = await serviceClient.from("user_roles").insert({
-    user_id: newUserId,
-    role_id: role.id,
-  });
+  // Upsert role assignment — handles both new and existing users.
+  const { error: userRoleError } = await serviceClient
+    .from("user_roles")
+    .upsert(
+      { user_id: targetUserId, role_id: role.id, is_active: true },
+      { onConflict: "user_id,role_id" }
+    );
 
   if (userRoleError) {
-    await serviceClient.auth.admin.deleteUser(newUserId);
     return Response.json({ error: userRoleError.message }, { status: 500, headers: corsHeaders });
   }
 
-  return Response.json({ message: "Usuario creado", userId: newUserId }, { status: 201, headers: corsHeaders });
+  return Response.json(
+    { message: existingAuthUser ? "Rol asignado y contraseña actualizada" : "Usuario creado", userId: targetUserId },
+    { status: 201, headers: corsHeaders }
+  );
 });
