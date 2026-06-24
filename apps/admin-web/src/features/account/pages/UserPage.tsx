@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useUser } from "@/shared/context/UserContext";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
+import { useUser } from "@/shared/context/UserContext";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function UserPage() {
   const { account } = useUser();
@@ -24,7 +24,7 @@ export default function UserPage() {
       return;
     }
 
-    toast.success("Cambio de credenciales pendiente de implementacion.");
+    toast.success("Cambio de credenciales pendiente de implementación.");
     setPassword("");
     setConfirmPassword("");
   };
@@ -39,8 +39,12 @@ export default function UserPage() {
         width="form"
         className="mt-10 rounded-2xl bg-[#eef3f8] px-6 py-6 shadow-[0_3px_0_rgba(15,23,42,0.08),0_12px_24px_rgba(15,23,42,0.06)]"
       >
-        <p className="text-sm font-medium uppercase tracking-[0.08em] text-slate-500">Nombre</p>
-        <p className="mt-2 text-2xl font-semibold text-[#0b2f4e]">{account?.name || "Sin nombre"}</p>
+        <p className="text-sm font-medium uppercase tracking-[0.08em] text-slate-500">
+          Nombre
+        </p>
+        <p className="mt-2 text-2xl font-semibold text-[#0b2f4e]">
+          {account?.name || "Sin nombre"}
+        </p>
 
         <form onSubmit={handleMockSubmit} className="mt-8 space-y-4">
           <div className="space-y-2">
@@ -67,7 +71,10 @@ export default function UserPage() {
             />
           </div>
 
-          <Button type="submit" className="h-11 rounded-md bg-[#18b566] px-6 text-sm font-semibold text-white hover:bg-[#129a56]">
+          <Button
+            type="submit"
+            className="h-11 rounded-md bg-[#18b566] px-6 text-sm font-semibold text-white hover:bg-[#129a56]"
+          >
             Guardar cambios
           </Button>
         </form>

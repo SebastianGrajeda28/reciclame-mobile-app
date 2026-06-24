@@ -1,15 +1,9 @@
 //import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  ClipboardList,
-  Home,
-  Users,
-  Info,
-} from "lucide-react";
+import { ClipboardList, Home, Info, Users } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
-
 
 export default function EmployeeNavbar() {
   const navigate = useNavigate();
@@ -26,7 +20,6 @@ export default function EmployeeNavbar() {
   if (loading || !account) return null; // aún cargando o no hay cuenta
 
   const userRole = account.role;
-
 
   const isEmployeeDashboard = path === "/employee-event/espacios";
   const isAdminHome = path === "/admin";
@@ -52,8 +45,6 @@ export default function EmployeeNavbar() {
               <ClipboardList className="w-5 h-5" />
               <span className="text-lg font-medium">Dashboard</span>
             </Button>
-
-
           </>
         )}
 
@@ -66,7 +57,7 @@ export default function EmployeeNavbar() {
               className={`${baseBtn} ${isAdminHome ? activeBtn : inactiveBtn}`}
             >
               <Home className="w-5 h-5" />
-              <span className="text-lg font-medium">Home</span>
+              <span className="text-lg font-medium">Inicio</span>
             </Button>
 
             <Button
@@ -84,7 +75,9 @@ export default function EmployeeNavbar() {
               className={`${baseBtn} ${isAdminConfig ? activeBtn : inactiveBtn}`}
             >
               <Info className="w-5 h-5" />
-              <span className="text-lg font-medium">Configuración del Club</span>
+              <span className="text-lg font-medium">
+                Configuración del Club
+              </span>
             </Button>
           </>
         )}
