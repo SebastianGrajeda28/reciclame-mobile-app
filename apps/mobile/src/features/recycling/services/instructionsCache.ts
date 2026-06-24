@@ -41,9 +41,10 @@ async function fetchRemoteUpdatedAt(): Promise<string | null> {
   const { data, error } = await supabase
     .from('instructions')
     .select('updated_at')
+    .not('updated_at', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error || !data) return null;
   return data.updated_at as string;
@@ -89,19 +90,19 @@ export async function syncInstructionsCache(): Promise<InstructionsCache['byWast
   const remoteUpdatedAt = await fetchRemoteUpdatedAt();
 
   // If remote check failed (offline), return whatever we have cached
-  if (!remoteUpdatedAt) {
-    return cached?.byWasteTypeId ?? {};
+  if (!remoteUpdatedAt && cached) {
+    return cached.byWasteTypeId;
   }
 
   // Cache is still fresh — no download needed
-  if (cached && cached.remoteUpdatedAt >= remoteUpdatedAt) {
+  if (cached && remoteUpdatedAt && cached.remoteUpdatedAt >= remoteUpdatedAt) {
     return cached.byWasteTypeId;
   }
 
   // Cache is stale or missing — fetch full data
   const byWasteTypeId = await fetchAllInstructions();
   await saveCache({
-    remoteUpdatedAt,
+    remoteUpdatedAt: remoteUpdatedAt ?? new Date().toISOString(),
     fetchedAt: new Date().toISOString(),
     byWasteTypeId,
   });

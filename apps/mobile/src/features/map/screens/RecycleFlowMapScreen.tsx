@@ -40,7 +40,7 @@ export function RecycleFlowMapScreen() {
   const navigation = useNavigation();
   const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
-  const { state, setSelectedContainerId, clearSelectedContainer, markStep } = useRecycleFlow();
+  const { state, setSelectedContainer, clearSelectedContainer, markStep } = useRecycleFlow();
   const { finalWasteType } = useResolvedRecycleSelection();
   const autoSelected = useRef(false);
   const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
@@ -82,10 +82,12 @@ export function RecycleFlowMapScreen() {
 
   useEffect(() => {
     if (!autoSelected.current && markers.length > 0 && !state.selectedContainerId) {
+      const firstContainer = nearby[0];
+      if (!firstContainer) return;
       autoSelected.current = true;
-      setSelectedContainerId(markers[0].id);
+      setSelectedContainer(firstContainer);
     }
-  }, [markers, state.selectedContainerId, setSelectedContainerId]);
+  }, [markers, nearby, state.selectedContainerId, setSelectedContainer]);
 
   useEffect(() => {
     if (
@@ -123,7 +125,10 @@ export function RecycleFlowMapScreen() {
           region={pUCPRegion}
           centerCoordinate={location}
           selectedMarkerId={state.selectedContainerId}
-          onMarkerPress={setSelectedContainerId}
+          onMarkerPress={(id) => {
+            const container = nearby.find((item) => item.id === id);
+            if (container) setSelectedContainer(container);
+          }}
           onMapReady={(fn) => {
             setRecenter(() => fn);
             fn();

@@ -26,7 +26,7 @@ import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ProcessingScreen() {
   const navigation = useNavigation();
-  const { state, setPrediction, setUnidentifiedPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainerId } = useRecycleFlow();
+  const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainer } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { fact } = useRotatingFunFact();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
@@ -68,32 +68,22 @@ export function ProcessingScreen() {
         if (result.confidence >= threshold) {
           setPrediction(result.wasteTypeId, result.confidence);
 
-          // Auto-select closest recycling point if location verification is enabled
-          if (settings?.locationVerificationEnabled) {
-            const closestContainer = findClosestRecyclingPoint(
-              studentLocation.latitude,
-              studentLocation.longitude,
-              result.wasteTypeId,
-            );
-            if (closestContainer) {
-              setSelectedContainerId(closestContainer.id);
-            }
-          }
-        } else {
-          // Confianza insuficiente → estado "No identificado": no comprometemos categoría.
-          setUnidentifiedPrediction(result.wasteTypeId, result.confidence);
+      // Auto-select closest recycling point if location verification is enabled
+      if (settings?.locationVerificationEnabled) {
+        const closestContainer = findClosestRecyclingPoint(
+          studentLocation.latitude,
+          studentLocation.longitude,
+          result.wasteTypeId,
+        );
+        if (closestContainer) {
+          setSelectedContainer(closestContainer);
         }
-      })
-      .catch(() => {
-        // Si el modelo falla, lo tratamos como no identificado (reintentar/corregir).
-      })
-      .finally(() => {
-        if (mounted) setClassifying(false);
-      });
+      }
+    });
     return () => {
       mounted = false;
     };
-  }, [setPrediction, setUnidentifiedPrediction, threshold, state.capturedPhotoUri, state.finalWasteTypeId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainerId]);
+  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainer]);
 
   const containerMismatch = useMemo(() => {
     if (!state.selectedContainerId || !resolvedBinType) return false;

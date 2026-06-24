@@ -21,7 +21,8 @@ import { confirmSegregation } from '../api/recyclingLogs';
 
 export function InstructionsScreen() {
   const navigation = useNavigation();
-  const { state, clearSelectedContainer, markStep, markConfirmed, setSelectedContainerId } = useRecycleFlow();
+  const { state, clearSelectedContainer, markStep, markConfirmed, setSelectedContainer } =
+    useRecycleFlow();
   const { selectedContainer, finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
   const { session } = useAuth();
@@ -106,14 +107,21 @@ export function InstructionsScreen() {
       }
     } catch (err) {
       console.error('[InstructionsScreen] confirmSegregation failed:', err);
-      notify(
-        'No se pudo registrar',
-        err instanceof Error ? err.message : 'Intenta nuevamente.',
-      );
+      notify('No se pudo registrar', err instanceof Error ? err.message : 'Intenta nuevamente.');
     } finally {
       setSubmitting(false);
     }
-  }, [session, finalWasteType, selectedContainer, state, notify, resolvedBinType, markConfirmed, invalidateCosmetics, showReward]);
+  }, [
+    session,
+    finalWasteType,
+    selectedContainer,
+    state,
+    notify,
+    resolvedBinType,
+    markConfirmed,
+    invalidateCosmetics,
+    showReward,
+  ]);
 
   const handleConfirm = useCallback(async () => {
     if (!finalWasteType || !selectedContainer) {
@@ -136,11 +144,15 @@ export function InstructionsScreen() {
       );
 
       const buttons = [
-        nearestContainer ? {
-          text: 'Seleccionar punto cercano',
-          onPress: () => { setSelectedContainerId(nearestContainer!.id); },
-          style: 'default' as const,
-        } : null,
+        nearestContainer
+          ? {
+              text: 'Seleccionar punto cercano',
+              onPress: () => {
+                setSelectedContainer(nearestContainer!);
+              },
+              style: 'default' as const,
+            }
+          : null,
         {
           text: 'Continuar sin punto',
           onPress: () => {
@@ -180,7 +192,10 @@ export function InstructionsScreen() {
             { text: 'Verificar ubicación', onPress: () => {}, style: 'default' },
             {
               text: 'Registrar sin verificación',
-              onPress: () => { setSubmitting(true); proceedWithRegistration(); },
+              onPress: () => {
+                setSubmitting(true);
+                proceedWithRegistration();
+              },
               style: 'destructive',
             },
             { text: 'Cancelar', onPress: () => {}, style: 'cancel' },
@@ -192,15 +207,21 @@ export function InstructionsScreen() {
 
     setSubmitting(true);
     proceedWithRegistration();
-  }, [finalWasteType, selectedContainer, session, settings, studentLocation, proceedWithRegistration, notify, resolvedBinType, setSelectedContainerId, clearSelectedContainer]);
+  }, [
+    finalWasteType,
+    selectedContainer,
+    session,
+    settings,
+    studentLocation,
+    proceedWithRegistration,
+    notify,
+    resolvedBinType,
+    setSelectedContainer,
+    clearSelectedContainer,
+  ]);
 
   useEffect(() => {
-    if (
-      initialSkip.current &&
-      !autoSubmitted.current &&
-      selectedContainer &&
-      finalWasteType
-    ) {
+    if (initialSkip.current && !autoSubmitted.current && selectedContainer && finalWasteType) {
       autoSubmitted.current = true;
       handleConfirm();
     }
@@ -223,7 +244,12 @@ export function InstructionsScreen() {
     | { kind: 'deposit'; text: string; imageUrl: string | null; key: string };
 
   const allSteps: StepItem[] = [
-    ...cachedSteps.map((s) => ({ kind: 'step' as const, text: s.text, imageUrl: s.imageUrl, key: s.id })),
+    ...cachedSteps.map((s) => ({
+      kind: 'step' as const,
+      text: s.text,
+      imageUrl: s.imageUrl,
+      key: s.id,
+    })),
     { kind: 'deposit', text: depositText, imageUrl: depositImageUrl, key: '__deposit__' },
   ];
 
@@ -247,11 +273,7 @@ export function InstructionsScreen() {
           const imageFirst = index % 2 === 0;
 
           const imageBlock = item.imageUrl ? (
-            <Image
-              source={{ uri: item.imageUrl }}
-              style={styles.stepImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: item.imageUrl }} style={styles.stepImage} resizeMode="cover" />
           ) : (
             <View style={[styles.stepImage, isDeposit && styles.stepImageDeposit]} />
           );
