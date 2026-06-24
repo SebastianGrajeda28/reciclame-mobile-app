@@ -15,9 +15,16 @@ import {
 } from '@/src/ui';
 import { LoginScreen } from '@/src/features/auth/screens/LoginScreen';
 import { useAuth } from '@/src/hooks/useAuth';
+import { registerPushToken } from '@/src/services/pushNotifications';
 
 function AuthGate({ children }: PropsWithChildren) {
   const { session, loading, offlineMode, setOfflineMode } = useAuth();
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      registerPushToken(session.user.id).catch(() => {});
+    }
+  }, [session?.user?.id]);
 
   if (loading) {
     return (
