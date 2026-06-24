@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { CalendarIcon, CheckCircle2, ScanSearch, Scale, Users } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
-import { fetchDashboard, type DashboardResponse } from "../services/dashboardService";
-import { useUser } from "@/shared/context/UserContext";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
+import { useUser } from "@/shared/context/UserContext";
+import { CalendarIcon, CheckCircle2, Scale, ScanSearch, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
+import { ResidueComparisonGrid } from "../components/ResidueComparisonGrid";
+import { ResidueFilterChips } from "../components/ResidueFilterChips";
+import { fetchDashboard, type DashboardResponse } from "../services/dashboardService";
 
 type DatePreset = "last7" | "last30" | "historical" | "custom";
 type DashboardTab = "flow" | "results";
@@ -62,7 +64,7 @@ const recognitionQuality = [
 
 const funnelSteps = [
   { label: "Iniciaron", value: 100, color: "#0b2f4e" },
-  { label: "Processing", value: 91, color: "#1c8fdf" },
+  { label: "Procesaron", value: 91, color: "#1c8fdf" },
   { label: "Mapa", value: 67, color: "#22c76f" },
   { label: "Instrucciones", value: 52, color: "#3ed08b" },
   { label: "Confirmaron", value: 43, color: "#129a56" },
@@ -77,15 +79,6 @@ const weeklyTrend = [
   { label: "sem. 11", value: 58 },
   { label: "sem. 12", value: 64 },
   { label: "sem. 13", value: 67 },
-];
-
-const detailRows = [
-  { residue: "Plásticos PET", scans: 312, confirmed: 271, rate: "87%", kilograms: "8.1 kg" },
-  { residue: "Cartón", scans: 198, confirmed: 165, rate: "83%", kilograms: "24.8 kg" },
-  { residue: "Papel mixto", scans: 174, confirmed: 146, rate: "84%", kilograms: "3.9 kg" },
-  { residue: "Tetra Pak", scans: 129, confirmed: 101, rate: "78%", kilograms: "1.8 kg" },
-  { residue: "Vidrio", scans: 118, confirmed: 97, rate: "82%", kilograms: "5.1 kg" },
-  { residue: "Latas", scans: 93, confirmed: 76, rate: "81%", kilograms: "2.4 kg" },
 ];
 
 const categoryChartConfig = {
@@ -167,14 +160,17 @@ function formatRangeLabel(dateFrom: Date, dateTo: Date) {
   return `${formatDate(dateFrom)} - ${formatDate(dateTo)}`;
 }
 
+const mockToday = new Date(2026, 5, 11);
+
 export default function MetricsDashboard() {
   const { session } = useUser();
-  const [dateFrom, setDateFrom] = useState<Date>(new Date(2026, 5, 1));
-  const [dateTo, setDateTo] = useState<Date>(new Date(2026, 5, 11));
+  const [dateFrom, setDateFrom] = useState<Date>(addDays(mockToday, -6));
+  const [dateTo, setDateTo] = useState<Date>(mockToday);
   const [datePreset, setDatePreset] = useState<DatePreset>("last7");
   const [activeTab, setActiveTab] = useState<DashboardTab>("flow");
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [selectedResidues, setSelectedResidues] = useState<string[]>([]);
   const totalDays = useMemo(() => differenceInDaysInclusive(dateFrom, dateTo), [dateFrom, dateTo]);
   const topResidueChartHeight = Math.max(220, (dashboardData?.topResidues.length ?? topResidues.length) * 30 + 20);
 
@@ -246,6 +242,7 @@ export default function MetricsDashboard() {
 
   const renderedFunnel = dashboardData?.funnel.map((step, index) => ({
     ...step,
+    label: funnelSteps[index]?.label ?? step.label,
     color: funnelSteps[index]?.color ?? "#0b2f4e",
   })) ?? funnelSteps;
 
@@ -265,15 +262,14 @@ export default function MetricsDashboard() {
     })) ?? recognitionQuality.map((row) => ({ ...row, count: row.value }));
 
   const renderedTrend = dashboardData?.trend ?? weeklyTrend;
+  const allResidues = useMemo(
+    () => dashboardData?.detailRows.map((row) => row.residue) ?? [],
+    [dashboardData]
+  );
 
-  const renderedDetailRows =
-    dashboardData?.detailRows.map((row) => ({
-      residue: row.residue,
-      scans: row.scans,
-      confirmed: row.confirmed,
-      rate: `${row.rate}%`,
-      kilograms: `${row.kilograms.toFixed(1)} kg`,
-    })) ?? detailRows;
+  const activeResidues = selectedResidues.length > 0 ? selectedResidues : allResidues;
+
+  const filteredDetailRows = dashboardData?.detailRows.filter((row) => activeResidues.includes(row.residue)) ?? [];
 
   const funnelMaxValue = Math.max(...renderedFunnel.map((step) => step.value), 1);
 
@@ -284,22 +280,20 @@ export default function MetricsDashboard() {
       return;
     }
 
-    const base = new Date(2026, 5, 11);
-
     if (preset === "last7") {
-      setDateFrom(addDays(base, -6));
-      setDateTo(base);
+      setDateFrom(addDays(mockToday, -6));
+      setDateTo(mockToday);
       return;
     }
 
     if (preset === "last30") {
-      setDateFrom(addDays(base, -29));
-      setDateTo(base);
+      setDateFrom(addDays(mockToday, -29));
+      setDateTo(mockToday);
       return;
     }
 
     setDateFrom(new Date(2025, 0, 1));
-    setDateTo(base);
+    setDateTo(mockToday);
   };
 
   // Hasta tener datos reales se muestra carga, no valores de relleno.
@@ -379,7 +373,7 @@ export default function MetricsDashboard() {
                     : "border-[#d7e6f2] bg-white text-[#0b2f4e] hover:border-[#b9d8c8]"
                 )}
               >
-                Custom
+                Personalizado
                 <CalendarIcon className="h-4 w-4" />
               </button>
             </PopoverTrigger>
@@ -667,45 +661,29 @@ export default function MetricsDashboard() {
       </AppSurface>
 
       <AppSurface className="mt-5">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Residuos por detalle</h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Resumen detallado por tipo de residuo para el periodo seleccionado.
-              </p>
-            </div>
-            <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
-              {renderedDetailRows.length} residuos
-            </span>
-          </div>
+  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Residuos por detalle</h3>
+        <p className="mt-1 text-sm text-slate-500">
+          Compara escaneos, confirmados, tasa y kg entre los residuos seleccionados.
+        </p>
+      </div>
+    </div>
 
-          <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-            <table className="min-w-full border-collapse text-left">
-              <thead className="bg-slate-50">
-                <tr className="text-sm text-slate-600">
-                  <th className="px-4 py-3 font-semibold">Residuo</th>
-                  <th className="px-4 py-3 font-semibold">Escaneos</th>
-                  <th className="px-4 py-3 font-semibold">Confirmados</th>
-                  <th className="px-4 py-3 font-semibold">Tasa</th>
-                  <th className="px-4 py-3 font-semibold">Kg totales</th>
-                </tr>
-              </thead>
-              <tbody>
-                {renderedDetailRows.map((row) => (
-                  <tr key={row.residue} className="border-t border-slate-200 text-sm text-[#0b2f4e]">
-                    <td className="px-4 py-3 font-medium">{row.residue}</td>
-                    <td className="px-4 py-3">{row.scans}</td>
-                    <td className="px-4 py-3">{row.confirmed}</td>
-                    <td className="px-4 py-3">{row.rate}</td>
-                    <td className="px-4 py-3">{row.kilograms}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </AppSurface>
+    <div className="mt-4">
+      <ResidueFilterChips
+        options={dashboardData.detailRows.map((row) => ({ residue: row.residue }))}
+        selected={activeResidues}
+        onChange={setSelectedResidues}
+      />
+    </div>
+
+    <div className="mt-5">
+      <ResidueComparisonGrid rows={filteredDetailRows} />
+    </div>
+  </section>
+</AppSurface>
 
     </AppPage>
   );

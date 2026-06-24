@@ -32,6 +32,9 @@ export function AppSegmentedControl<T extends string>({
           <Pressable
             key={seg.value}
             onPress={() => onChange(seg.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={seg.label}
             style={[
               styles.segment,
               isActive ? (dark ? styles.segmentActiveDark : styles.segmentActiveLight) : null,

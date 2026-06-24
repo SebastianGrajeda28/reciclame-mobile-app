@@ -8,11 +8,10 @@ import { ProfileHeroCard } from '@/src/features/profile/components/ProfileHeroCa
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileStatsGrid } from '@/src/features/profile/components/ProfileStatsGrid';
 import { ProfileStreakCard } from '@/src/features/profile/components/ProfileStreakCard';
-import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
-import { useProfileSummary } from '@/src/features/profile/hooks/useProfileSummary';
+import { useProfileGamification } from '@/src/features/profile/hooks/useProfileGamification';
 import { useStreakProgress } from '@/src/features/profile/hooks/useStreakProgress';
-import { formatActiveTime, formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
+import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppButton, AppCard, AppIcon, AppText, theme } from '@/src/ui';
 
@@ -20,42 +19,10 @@ export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
-  const { data: summaryData, loading: summaryLoading } = useProfileSummary();
+  const { lastUnlockedBadges, stats } = useProfileGamification();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
   const [lostDismissed, setLostDismissed] = useState(false);
   const showStreakLost = Boolean(streakData?.justExpired) && !lostDismissed;
-
-  const featuredIds = profileGamificationSnapshot.featuredBadgeIds as readonly string[];
-  const featuredBadges = profileGamificationSnapshot.allBadges.filter((b) =>
-    featuredIds.includes(b.id),
-  );
-
-  const stats = [
-    {
-      id: 'weight',
-      value: summaryLoading ? '...' : `${(summaryData?.totalWeightKg ?? 0).toFixed(1)} kg`,
-      label: 'Peso total',
-      icon: 'scale' as const,
-    },
-    {
-      id: 'items',
-      value: summaryLoading ? '...' : String(summaryData?.totalItems ?? 0),
-      label: 'Artículos reciclados',
-      icon: 'package' as const,
-    },
-    {
-      id: 'active-since',
-      value: summaryLoading ? '...' : formatActiveTime(summaryData?.memberSince),
-      label: 'Activo desde',
-      icon: 'calendar' as const,
-    },
-    {
-      id: 'badges',
-      value: summaryLoading ? '...' : String(summaryData?.achievementsCount ?? 0),
-      label: 'Insignias ganadas',
-      icon: 'award' as const,
-    },
-  ];
 
   return (
     <ProfileScreenContainer>
@@ -101,7 +68,7 @@ export function ProfileScreen() {
         <AppIcon name="chevronRight" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
       </Pressable>
       <ProfileAchievementsPreviewCard
-        featuredBadges={featuredBadges}
+        featuredBadges={lastUnlockedBadges}
         onSeeAllPress={() => router.push(routes.profileAchievements)}
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />

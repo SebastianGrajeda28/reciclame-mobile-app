@@ -13,6 +13,8 @@ export type BinType = {
   name: string;
   color: string | null;
   description: string | null;
+  imageUrl: string | null;
+  depositInstruction: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;

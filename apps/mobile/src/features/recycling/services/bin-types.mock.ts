@@ -8,28 +8,10 @@ export const BATTERIES_BIN_TYPE_ID = '33333333-3333-3333-3333-000000000005';
 export const RAEE_BIN_TYPE_ID = '33333333-3333-3333-3333-000000000006';
 
 export const binTypes: BinType[] = [
-  {
-    id: PLASTICS_BIN_TYPE_ID,
-    name: 'Contenedor de plasticos',
-  },
-  {
-    id: NON_RECOVERABLE_BIN_TYPE_ID,
-    name: 'Contenedor de no aprovechables',
-  },
-  {
-    id: GLASS_BIN_TYPE_ID,
-    name: 'Contenedor de vidrio',
-  },
-  {
-    id: PAPER_CARDBOARD_BIN_TYPE_ID,
-    name: 'Contenedor de papel y carton',
-  },
-  {
-    id: BATTERIES_BIN_TYPE_ID,
-    name: 'Contenedor de pilas',
-  },
-  {
-    id: RAEE_BIN_TYPE_ID,
-    name: 'Contenedor RAEE',
-  },
+  { id: PLASTICS_BIN_TYPE_ID, name: 'Contenedor de plasticos', imageUrl: null, depositInstruction: null },
+  { id: NON_RECOVERABLE_BIN_TYPE_ID, name: 'Contenedor de no aprovechables', imageUrl: null, depositInstruction: null },
+  { id: GLASS_BIN_TYPE_ID, name: 'Contenedor de vidrio', imageUrl: null, depositInstruction: null },
+  { id: PAPER_CARDBOARD_BIN_TYPE_ID, name: 'Contenedor de papel y carton', imageUrl: null, depositInstruction: null },
+  { id: BATTERIES_BIN_TYPE_ID, name: 'Contenedor de pilas', imageUrl: null, depositInstruction: null },
+  { id: RAEE_BIN_TYPE_ID, name: 'Contenedor RAEE', imageUrl: null, depositInstruction: null },
 ];

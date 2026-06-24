@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,8 +9,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import type { FunFact, FunFactPayload } from "../services/FunFactsService";
 import type { WasteType } from "../services/WasteTypesService";
 
@@ -34,13 +40,16 @@ export default function FunFactCard({
   onChangeStatus,
 }: FunFactCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editWasteTypeId, setEditWasteTypeId] = useState(fact.wasteTypeId ?? "");
+  const [editWasteTypeId, setEditWasteTypeId] = useState(
+    fact.wasteTypeId ?? "",
+  );
   const [editText, setEditText] = useState(fact.text);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const wasteTypeName =
     wasteTypes.find((type) => type.id === fact.wasteTypeId)?.name ?? "Sin tipo";
-  const canSave = editWasteTypeId.trim().length > 0 && editText.trim().length > 0;
+  const canSave =
+    editWasteTypeId.trim().length > 0 && editText.trim().length > 0;
 
   function cancelEdit() {
     setEditWasteTypeId(fact.wasteTypeId ?? "");
@@ -51,7 +60,10 @@ export default function FunFactCard({
   async function confirmPendingAction() {
     try {
       if (pendingAction === "edit") {
-        await onUpdate(fact.id, { text: editText.trim(), wasteTypeId: editWasteTypeId });
+        await onUpdate(fact.id, {
+          text: editText.trim(),
+          wasteTypeId: editWasteTypeId,
+        });
         setIsEditing(false);
       }
 
@@ -92,8 +104,14 @@ export default function FunFactCard({
         {isEditing ? (
           <div className="space-y-4">
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[#0b2f4e]">Tipo de residuo</span>
-              <Select value={editWasteTypeId} onValueChange={setEditWasteTypeId} disabled={isSaving}>
+              <span className="mb-2 block text-sm font-semibold text-[#0b2f4e]">
+                Tipo de residuo
+              </span>
+              <Select
+                value={editWasteTypeId}
+                onValueChange={setEditWasteTypeId}
+                disabled={isSaving}
+              >
                 <SelectTrigger className="w-full border-[#d9dee2] bg-white">
                   <SelectValue placeholder="Selecciona un tipo de residuo" />
                 </SelectTrigger>
@@ -108,7 +126,9 @@ export default function FunFactCard({
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[#0b2f4e]">Texto del fun fact</span>
+              <span className="mb-2 block text-sm font-semibold text-[#0b2f4e]">
+                Texto del dato curioso
+              </span>
               <Textarea
                 value={editText}
                 onChange={(event) => setEditText(event.target.value)}
@@ -127,7 +147,12 @@ export default function FunFactCard({
                 <Check className="h-4 w-4" />
                 Confirmar cambio
               </Button>
-              <Button type="button" variant="outline" disabled={isSaving} onClick={cancelEdit}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSaving}
+                onClick={cancelEdit}
+              >
                 <X className="h-4 w-4" />
                 Cancelar
               </Button>
@@ -183,7 +208,12 @@ export default function FunFactCard({
         )}
       </article>
 
-      <AlertDialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
+      <AlertDialog
+        open={!!pendingAction}
+        onOpenChange={(open) => {
+          if (!open) setPendingAction(null);
+        }}
+      >
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>{actionTitle}</AlertDialogTitle>
@@ -191,7 +221,10 @@ export default function FunFactCard({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSaving}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction disabled={isSaving} onClick={confirmPendingAction}>
+            <AlertDialogAction
+              disabled={isSaving}
+              onClick={confirmPendingAction}
+            >
               {isSaving
                 ? "Guardando..."
                 : pendingAction === "deactivate"
