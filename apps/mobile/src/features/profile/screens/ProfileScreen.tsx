@@ -44,13 +44,15 @@ export function ProfileScreen() {
     ? new Date(Date.now() + 30 * 60 * 60 * 1000).toISOString()
     : (streakData?.recoverableUntil ?? null);
   const level = DEV_SIMULATE_RECOVERY ? 3 : (streakData?.level ?? 1);
-  const lostStreakDays = DEV_SIMULATE_RECOVERY ? 12 : (streakData?.streakDays ?? 0);
+  // Días reales perdidos (no streakDays, que vale 0 tras morir) para que la oferta no diga "0 días".
+  const lostStreakDays = DEV_SIMULATE_RECOVERY ? 12 : (streakData?.streakDaysLost ?? 0);
 
   const recoveryCountdown = useRecoveryCountdown(recoverableUntil);
   const canRecover = recoveries > 0 && recoveryCountdown != null && !recoveryCountdown.expired;
   const showRecover = canRecover && !justRecovered;
-  // Card de pérdida estándar solo cuando NO se ofrece recuperación.
-  const showStreakLost = Boolean(streakData?.justExpired) && !showRecover && !lostDismissed;
+  // Card de pérdida estándar solo cuando NO se ofrece recuperación (ni se acaba de recuperar).
+  const showStreakLost =
+    Boolean(streakData?.justExpired) && !showRecover && !justRecovered && !lostDismissed;
   const recoverUrgent = isRecoveryUrgent(recoveryCountdown);
   // Plazo en gris; rojo si urge (<6h).
   const recoverAccent = recoverUrgent ? theme.colors.danger : theme.colors.textSecondary;

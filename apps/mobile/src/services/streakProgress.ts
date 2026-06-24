@@ -13,6 +13,8 @@ export type StreakProgress = {
   recoveries: number;
   /** Instante (ISO) hasta el que se puede recuperar; null si no hay oferta. */
   recoverableUntil: string | null;
+  /** Días reales de la racha perdida (para mostrar en la oferta); null si no aplica. */
+  streakDaysLost: number | null;
 };
 
 /** Resultado de recuperar una racha con un escudo. */
@@ -41,6 +43,7 @@ export async function getStreakProgress(userId: string): Promise<StreakProgress 
     justExpired: Boolean(row.streak_just_expired),
     recoveries: row.recoveries ?? 0,
     recoverableUntil: row.recoverable_until ?? null,
+    streakDaysLost: row.streak_days_lost ?? null,
   };
 }
 

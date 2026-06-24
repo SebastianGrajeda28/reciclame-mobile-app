@@ -156,7 +156,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "heat" integer, "level" integer, "last_recycling_date" "date", "streak_expires_at" timestamp with time zone, "streak_just_expired" boolean, "recoveries" integer, "recoverable_until" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."get_progress_with_decay"("p_user_id" "uuid") RETURNS TABLE("streak_days" integer, "heat" integer, "level" integer, "last_recycling_date" "date", "streak_expires_at" timestamp with time zone, "streak_just_expired" boolean, "recoveries" integer, "recoverable_until" timestamp with time zone, "streak_days_lost" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -170,13 +170,14 @@ DECLARE
   expires          timestamptz;
   out_expired_at        timestamptz;
   out_recoverable_until timestamptz;
+  lost_days             int;
 BEGIN
   SELECT * INTO rec
   FROM public.user_progress
   WHERE user_id = p_user_id AND is_active = true;
 
   IF NOT FOUND THEN
-    RETURN QUERY SELECT 0, 0, 1, NULL::date, NULL::timestamptz, false, 0, NULL::timestamptz;
+    RETURN QUERY SELECT 0, 0, 1, NULL::date, NULL::timestamptz, false, 0, NULL::timestamptz, NULL::int;
     RETURN;
   END IF;
 
@@ -234,6 +235,11 @@ BEGIN
     out_recoverable_until := NULL;
   END IF;
 
+  -- Días reales perdidos (para que la oferta muestre los días correctos, no 0): si murió en esta
+  -- lectura, los pre-muerte; si ya estaba sellada, los guardados en streak_days_at_death.
+  lost_days := COALESCE(rec.streak_days_at_death,
+                        CASE WHEN just_expired THEN COALESCE(rec.streak_days, 0) ELSE NULL END);
+
   RETURN QUERY SELECT
     effective_streak,
     effective_heat,
@@ -242,7 +248,8 @@ BEGIN
     expires,
     just_expired,
     COALESCE(rec.recoveries, 0),
-    out_recoverable_until;
+    out_recoverable_until,
+    lost_days;
 END;
 $$;
 
@@ -693,6 +700,8 @@ BEGIN
     streak_days          = restored_streak,
     streak_expired_at    = NULL,
     streak_days_at_death = NULL,
+    -- Arranca "fresca hoy": sin esto, get_progress volvería a matar la racha mañana por el hueco viejo.
+    last_recycling_date  = public.app_today(),
     updated_at           = now()
   WHERE user_id = p_user_id;
 
