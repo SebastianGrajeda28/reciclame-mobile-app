@@ -43,6 +43,9 @@ export const HEAT_FIRE_COLORS: { maxPercent: number; color: string }[] = [
 export const HEAT_MAX = 100;
 export const HEAT_DECAY = 30;
 
+/** Calor base al recuperar la racha con un escudo. */
+export const RECOVERY_BASE_HEAT = 50;
+
 export function heatGainForLevel(level: StreakLevel): number {
   return (level * (level + 1)) / 2;
 }
