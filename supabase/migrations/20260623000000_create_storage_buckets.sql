@@ -39,7 +39,7 @@ create policy "admin write instruction-step-images"
       select 1 from public.user_roles ur
       join public.roles r on r.id = ur.role_id
       where ur.user_id = auth.uid()
-        and r.name = 'admin'
+        and upper(r.name) = 'ADMIN'
     )
   );
 
@@ -52,7 +52,7 @@ create policy "admin update instruction-step-images"
       select 1 from public.user_roles ur
       join public.roles r on r.id = ur.role_id
       where ur.user_id = auth.uid()
-        and r.name = 'admin'
+        and upper(r.name) = 'ADMIN'
     )
   );
 
@@ -65,7 +65,7 @@ create policy "admin delete instruction-step-images"
       select 1 from public.user_roles ur
       join public.roles r on r.id = ur.role_id
       where ur.user_id = auth.uid()
-        and r.name = 'admin'
+        and upper(r.name) = 'ADMIN'
     )
   );
 
@@ -78,7 +78,7 @@ create policy "admin write bin-type-images"
       select 1 from public.user_roles ur
       join public.roles r on r.id = ur.role_id
       where ur.user_id = auth.uid()
-        and r.name = 'admin'
+        and upper(r.name) = 'ADMIN'
     )
   );
 
@@ -91,7 +91,7 @@ create policy "admin update bin-type-images"
       select 1 from public.user_roles ur
       join public.roles r on r.id = ur.role_id
       where ur.user_id = auth.uid()
-        and r.name = 'admin'
+        and upper(r.name) = 'ADMIN'
     )
   );
 
@@ -104,6 +104,6 @@ create policy "admin delete bin-type-images"
       select 1 from public.user_roles ur
       join public.roles r on r.id = ur.role_id
       where ur.user_id = auth.uid()
-        and r.name = 'admin'
+        and upper(r.name) = 'ADMIN'
     )
   );
