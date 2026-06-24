@@ -25,4 +25,5 @@ export type Account = {
   email: string;
   name: string;
   role: string | null;
+  isActive: boolean | null;
 };

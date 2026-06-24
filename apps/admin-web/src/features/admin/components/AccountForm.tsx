@@ -1,4 +1,3 @@
-import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,12 +8,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useForm, useWatch } from "react-hook-form";
 
 interface AccountFormData {
   name: string;
   email: string;
   password?: string;
-  role: "ADMIN" | "MANAGER" | "VIEWER";
+  role: "ADMIN" | "MANAGER";
 }
 
 interface AccountFormProps {
@@ -30,7 +30,7 @@ export function AccountForm({ mode, initialData, onSubmit, disabled }: AccountFo
       name: initialData?.name ?? "",
       email: initialData?.email ?? "",
       password: "",
-      role: initialData?.role ?? "VIEWER",
+      role: initialData?.role ?? "MANAGER",
     },
   });
 
@@ -70,7 +70,6 @@ export function AccountForm({ mode, initialData, onSubmit, disabled }: AccountFo
           <SelectContent>
             <SelectItem value="ADMIN">Administrador</SelectItem>
             <SelectItem value="MANAGER">Manager</SelectItem>
-            <SelectItem value="VIEWER">Viewer</SelectItem>
           </SelectContent>
         </Select>
       </div>

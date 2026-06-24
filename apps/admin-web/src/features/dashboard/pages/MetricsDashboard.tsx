@@ -64,7 +64,7 @@ const recognitionQuality = [
 
 const funnelSteps = [
   { label: "Iniciaron", value: 100, color: "#0b2f4e" },
-  { label: "Processing", value: 91, color: "#1c8fdf" },
+  { label: "Procesaron", value: 91, color: "#1c8fdf" },
   { label: "Mapa", value: 67, color: "#22c76f" },
   { label: "Instrucciones", value: 52, color: "#3ed08b" },
   { label: "Confirmaron", value: 43, color: "#129a56" },
@@ -242,6 +242,7 @@ export default function MetricsDashboard() {
 
   const renderedFunnel = dashboardData?.funnel.map((step, index) => ({
     ...step,
+    label: funnelSteps[index]?.label ?? step.label,
     color: funnelSteps[index]?.color ?? "#0b2f4e",
   })) ?? funnelSteps;
 
@@ -372,7 +373,7 @@ export default function MetricsDashboard() {
                     : "border-[#d7e6f2] bg-white text-[#0b2f4e] hover:border-[#b9d8c8]"
                 )}
               >
-                Custom
+                Personalizado
                 <CalendarIcon className="h-4 w-4" />
               </button>
             </PopoverTrigger>
