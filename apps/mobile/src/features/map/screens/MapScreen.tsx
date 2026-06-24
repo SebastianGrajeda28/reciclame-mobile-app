@@ -88,7 +88,7 @@ export function MapScreen() {
   const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const [category, setCategory] = useState<string>('all');
-  const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
+  const { state, setSelectedContainer, clearSelectedContainer } = useRecycleFlow();
   const { data: streakData } = useStreakProgress();
   const { finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
@@ -192,7 +192,10 @@ export function MapScreen() {
           region={pUCPRegion}
           centerCoordinate={location}
           selectedMarkerId={state.selectedContainerId}
-          onMarkerPress={setSelectedContainerId}
+          onMarkerPress={(id) => {
+            const container = nearbyPoints.find((item) => item.id === id);
+            if (container) setSelectedContainer(container);
+          }}
           onMapReady={(fn) => setRecenter(() => fn)}
         />
         <Pressable style={styles.locationButton} onPress={() => recenter?.()}>
