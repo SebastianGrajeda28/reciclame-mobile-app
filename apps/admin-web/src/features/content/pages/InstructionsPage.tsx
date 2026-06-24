@@ -3,22 +3,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 import { useUser } from "@/shared/context/UserContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RotateCcw, Trash2 } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import InstructionStepsSection, {
   InstructionPreviewRail,
 } from "../components/InstructionStepsSection";
+import { getBinTypeByWasteTypeId, type BinType } from "../services/BinTypesService";
 import {
   createInstruction,
-  resetInstruction,
   getInstructions,
+  resetInstruction,
   type Instruction,
   type InstructionStep,
 } from "../services/InstructionsService";
-import { getBinTypeByWasteTypeId, type BinType } from "../services/BinTypesService";
-import { getWasteTypes } from "../services/WasteTypesService";
 import { getUniversities } from "../services/UniversitiesService";
+import { getWasteTypes } from "../services/WasteTypesService";
 
 const INSTRUCTIONS_QUERY_KEY = ["admin-instructions"];
 const WASTE_TYPES_QUERY_KEY = ["admin-waste-types"];
