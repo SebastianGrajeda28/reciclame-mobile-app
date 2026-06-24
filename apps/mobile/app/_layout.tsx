@@ -1,3 +1,9 @@
+import { Stack, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import { useEffect } from 'react';
+import { Pressable } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { CosmeticsInvalidationProvider } from '@/src/contexts/CosmeticsInvalidationContext';
 import { RewardOverlayProvider } from '@/src/contexts/RewardOverlayContext';
 import { StreakInvalidationProvider } from '@/src/contexts/StreakInvalidationContext';
@@ -8,15 +14,16 @@ import { RecycleRewardOverlay } from '@/src/features/recycling/components/Recycl
 import { RecycleFlowProvider } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { AuthProvider } from '@/src/hooks/useAuth';
 import { UserSettingsProvider } from '@/src/hooks/useUserSettings';
+import { setupNotificationListeners } from '@/src/services/pushNotifications';
 import { AppIcon } from '@/src/ui';
-import { Stack, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import { Pressable } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 WebBrowser.maybeCompleteAuthSession();
 
 export default function RootLayout() {
   const router = useRouter();
+
+  useEffect(() => setupNotificationListeners(), []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
@@ -39,23 +46,27 @@ export default function RootLayout() {
                         <Stack.Screen name="recycle/processing" options={{ title: 'Procesar residuo' }} />
                         <Stack.Screen name="recycle/manual" options={{ title: 'Seleccionar residuo' }} />
                         <Stack.Screen name="recycle/instructions" options={{ title: 'Instrucciones' }} />
-                  <Stack.Screen
-                    name="recycle/success"
-                    options={{ title: 'Reciclaje registrado', headerLeft: () => null }}
-                  />
-                  <Stack.Screen name="recycle/history" 
-                  options={{ title: 'Historial',
-                    headerLeft: () => (<Pressable 
-                      onPress={() => router.replace('/(tabs)')}
-                      hitSlop={12}
-                      accessibilityRole="button"
-                      accessibilityLabel="Volver al inicio"
-                      >
-                        <AppIcon name="arrowBack" size={24} color="#111" />
-                      </Pressable>
-                    ),
-                   }} />
-                </Stack>
+                        <Stack.Screen
+                          name="recycle/success"
+                          options={{ title: 'Reciclaje registrado', headerLeft: () => null }}
+                        />
+                        <Stack.Screen
+                          name="recycle/history"
+                          options={{
+                            title: 'Historial',
+                            headerLeft: () => (
+                              <Pressable
+                                onPress={() => router.replace('/(tabs)')}
+                                hitSlop={12}
+                                accessibilityRole="button"
+                                accessibilityLabel="Volver al inicio"
+                              >
+                                <AppIcon name="arrowBack" size={24} color="#111" />
+                              </Pressable>
+                            ),
+                          }}
+                        />
+                      </Stack>
                     </AppGate>
                   </RecycleFlowProvider>
                 </AvatarConfigProvider>

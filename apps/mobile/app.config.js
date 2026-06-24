@@ -48,6 +48,14 @@ export default {
           },
         },
       ],
+      [
+        'expo-notifications',
+        {
+          icon: './assets/images/icon.png',
+          color: '#2E8B57',
+          defaultChannel: 'default',
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

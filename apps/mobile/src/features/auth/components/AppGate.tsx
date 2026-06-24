@@ -1,8 +1,12 @@
-import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, StyleSheet, View } from 'react-native';
 import { PermissionStatus, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
+import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, Platform, StyleSheet, View } from 'react-native';
 
+import { LoginScreen } from '@/src/features/auth/screens/LoginScreen';
+import { useAuth } from '@/src/hooks/useAuth';
+import { useNetworkSync } from '@/src/hooks/useNetworkSync';
+import { registerPushToken } from '@/src/services/pushNotifications';
 import {
   AppButton,
   AppCard,
@@ -13,12 +17,15 @@ import {
   AppScreen,
   theme,
 } from '@/src/ui';
-import { LoginScreen } from '@/src/features/auth/screens/LoginScreen';
-import { useAuth } from '@/src/hooks/useAuth';
-import { useNetworkSync } from '@/src/hooks/useNetworkSync';
 
 function AuthGate({ children }: PropsWithChildren) {
   const { session, loading, offlineMode, setOfflineMode } = useAuth();
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      registerPushToken(session.user.id).catch(() => {});
+    }
+  }, [session?.user?.id]);
 
   if (loading) {
     return (

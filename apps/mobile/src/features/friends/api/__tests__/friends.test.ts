@@ -39,9 +39,9 @@ const sampleRow = {
   featured_medals: [
     {
       id: 'bbbbbbbb-0000-0000-0000-000000000001',
+      slug: 'primer-paso',
       name: 'Reciclador Inicial',
       description: 'Primera segregación',
-      image_url: 'https://cdn.example.com/medal-1.png',
     },
   ],
 };
@@ -72,7 +72,7 @@ describe('getFriends', () => {
     expect(friend.avatarConfig).toEqual(sampleAvatarConfig);
     expect(friend.featuredMedals).toHaveLength(1);
     expect(friend.featuredMedals[0].name).toBe('Reciclador Inicial');
-    expect(friend.featuredMedals[0].imageUrl).toBe('https://cdn.example.com/medal-1.png');
+    expect(friend.featuredMedals[0].slug).toBe('primer-paso');
   });
 
   test('Debería retornar lista vacía cuando el usuario no tiene amigos', async () => {
@@ -270,9 +270,9 @@ describe('getPendingRequests', () => {
     featured_medals: [
       {
         id: 'med-001',
+        slug: 'primer-paso',
         name: 'Primera medalla',
         description: null,
-        image_url: null,
       },
     ],
     created_at: '2026-06-19T10:00:00Z',
