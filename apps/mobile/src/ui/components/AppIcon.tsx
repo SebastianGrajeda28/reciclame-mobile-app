@@ -46,6 +46,7 @@ export type AppIconName =
   | 'chevronDown'
   | 'mail'
   | 'calendar'
+  | 'clock'
   | 'trophy'
   | 'lock'
   | 'google'
@@ -60,7 +61,9 @@ export type AppIconName =
   | 'fileDocument'
   | 'locate'
   | 'package'
-  | 'eyeOff';
+  | 'eyeOff'
+  | 'shield'
+  | 'shieldOutline';
 
 type AppIconProps = {
   name: AppIconName;
@@ -149,6 +152,8 @@ export function AppIcon({ name, size, color, style }: AppIconProps) {
       return <AntDesign name="mail" size={size} color={color} style={style} />;
     case 'calendar':
       return <AntDesign name="calendar" size={size} color={color} style={style} />;
+    case 'clock':
+      return <Feather name="clock" size={size} color={color} style={style} />;
     case 'trophy':
       return <FontAwesome6 name="trophy" size={size} color={color} style={style} />;
     case 'lock':
@@ -202,6 +207,12 @@ export function AppIcon({ name, size, color, style }: AppIconProps) {
       return <Feather name="crosshair" size={size} color={color} style={style} />;
     case 'eyeOff':
       return <Feather name="eye-off" size={size} color={color} style={style} />;
+    case 'shield':
+      return <MaterialCommunityIcons name="shield-check" size={size} color={color} style={style} />;
+    case 'shieldOutline':
+      return (
+        <MaterialCommunityIcons name="shield-outline" size={size} color={color} style={style} />
+      );
     case 'package':
       return (
         <MaterialCommunityIcons

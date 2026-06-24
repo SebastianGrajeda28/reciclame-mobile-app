@@ -72,9 +72,19 @@ const semantic = {
   },
 } as const;
 
+// Color con alpha, para evitar rgba ad-hoc en pantallas.
+function withAlpha(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export const theme = {
   palette,
   semantic,
+  withAlpha,
   // Product-facing aliases.
   // Default app code should use theme.colors.* first.
   // Reach for theme.palette.* only when creating DS primitives or implementing a design-specified tone.
@@ -83,6 +93,7 @@ export const theme = {
     background: palette.neutral[50],
     surface: palette.neutral[0],
     surfaceMuted: palette.neutral[50],
+    scrim: 'rgba(15, 23, 42, 0.55)', // velo oscuro detrás de overlays/modales
 
     // Text
     textPrimary: palette.neutral[900],
@@ -246,6 +257,13 @@ export const theme = {
       shadowRadius: 0,
       shadowOffset: { width: 0, height: 0 },
       elevation: 0,
+    },
+    // Halo de color (el llamador fija shadowColor).
+    glow: {
+      shadowOffset: { width: 0, height: 0 },
+      shadowRadius: 16,
+      shadowOpacity: 0.45,
+      elevation: 6,
     },
     // Legacy alias
     card: {
