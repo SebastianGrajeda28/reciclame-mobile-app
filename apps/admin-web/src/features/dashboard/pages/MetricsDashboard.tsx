@@ -129,7 +129,7 @@ const recognitionQuality = [
 
 const funnelSteps = [
   { label: "Iniciaron", value: 100, color: "#0b2f4e" },
-  { label: "Processing", value: 91, color: "#1c8fdf" },
+  { label: "Procesamiento", value: 91, color: "#1c8fdf" },
   { label: "Mapa", value: 67, color: "#22c76f" },
   { label: "Instrucciones", value: 52, color: "#3ed08b" },
   { label: "Confirmaron", value: 43, color: "#129a56" },
@@ -433,7 +433,7 @@ export default function MetricsDashboard() {
           Métricas
         </h1>
         <p className="mt-2 text-sm text-slate-500">
-          Vista general del rendimiento de reciclaje y participacion dentro de
+          Vista general del rendimiento de reciclaje y participación dentro de
           la plataforma.
         </p>
         {loadError ? (
@@ -461,14 +461,14 @@ export default function MetricsDashboard() {
             Métricas
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            Vista general del rendimiento de reciclaje y participacion dentro de
+            Vista general del rendimiento de reciclaje y participación dentro de
             la plataforma.
           </p>
         </div>
         <div className="flex flex-wrap items-center content-center gap-3 md:self-center md:justify-end">
           {[
-            { key: "last7", label: "Ultima semana" },
-            { key: "last30", label: "Ultimo mes" },
+            { key: "last7", label: "Última semana" },
+            { key: "last30", label: "Último mes" },
             { key: "historical", label: "Histórico" },
           ].map((preset) => {
             const active =
@@ -514,7 +514,7 @@ export default function MetricsDashboard() {
                     : "border-[#d7e6f2] bg-white text-[#0b2f4e] hover:border-[#b9d8c8]",
                 )}
               >
-                Custom
+                Personalizado
                 <CalendarIcon className="h-4 w-4" />
               </button>
             </PopoverTrigger>
@@ -657,7 +657,7 @@ export default function MetricsDashboard() {
                       </p>
                     </div>
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      Calidad de clasificacion
+                      Calidad de clasificación
                     </span>
                   </div>
 
@@ -742,10 +742,10 @@ export default function MetricsDashboard() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <h3 className="text-[1.55rem] font-bold text-[#0b2f4e]">
-                        Residuos mas reciclados
+                        Residuos más reciclados
                       </h3>
                       <p className="mt-1 text-sm text-slate-500">
-                        Comparativo de residuos con mas confirmaciones en el
+                        Comparativo de residuos con más confirmaciones en el
                         periodo.
                       </p>
                     </div>
@@ -809,12 +809,12 @@ export default function MetricsDashboard() {
                         Tendencia temporal
                       </h3>
                       <p className="mt-1 text-sm text-slate-500">
-                        Evolucion de reciclajes confirmados a lo largo del
+                        Evolución de reciclajes confirmados a lo largo del
                         tiempo.
                       </p>
                     </div>
                     <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
-                      Periodo de {totalDays} dias
+                      Periodo de {totalDays} días
                     </span>
                   </div>
 

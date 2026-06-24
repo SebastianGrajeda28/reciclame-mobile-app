@@ -1,15 +1,32 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, UserPlus, X } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import ManageUserModal from "../components/ManageUserModal";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useQuery } from "@tanstack/react-query";
+import { Search, UserPlus, X } from "lucide-react";
+import { useState } from "react";
 import CreateUserDialog from "../components/CreateUserDialog";
-import { getAdminUsers, getUserRoleAssignments, type AppUser } from "../services/AdminUsersService";
+import ManageUserModal from "../components/ManageUserModal";
+import {
+  getAdminUsers,
+  getUserRoleAssignments,
+  type AppUser,
+} from "../services/AdminUsersService";
 
 type AdminUsersData = {
   users: AppUser[];
@@ -35,7 +52,7 @@ function UsersTableSkeleton() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Email</TableHead>
+              <TableHead>Correo</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Último login</TableHead>
@@ -45,11 +62,21 @@ function UsersTableSkeleton() {
           <TableBody>
             {Array.from({ length: 6 }).map((_, index) => (
               <TableRow key={index}>
-                <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-48" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-32" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -67,7 +94,9 @@ async function fetchAdminUsers(): Promise<AdminUsersData> {
 
   return {
     users,
-    roleMap: new Map(assignments.map((assignment) => [assignment.userId, assignment.roleName])),
+    roleMap: new Map(
+      assignments.map((assignment) => [assignment.userId, assignment.roleName]),
+    ),
   };
 }
 
@@ -77,13 +106,7 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["admin-users"],
     queryFn: fetchAdminUsers,
     staleTime: 60_000,
@@ -94,7 +117,9 @@ export default function UsersPage() {
   const roleMap = data?.roleMap ?? new Map<string, string>();
 
   const filtered = users.filter((user) => {
-    const matchesSearch = user.email.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = user.email
+      .toLowerCase()
+      .includes(search.toLowerCase());
     const hasRole = roleMap.has(user.id);
     const matchesRole =
       roleFilter === "all" ||
@@ -111,8 +136,13 @@ export default function UsersPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Gestión de Cuentas</h1>
         <div className="flex items-center gap-3">
-          {isFetching && <span className="text-sm text-gray-500">Actualizando...</span>}
-          <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
+          {isFetching && (
+            <span className="text-sm text-gray-500">Actualizando...</span>
+          )}
+          <Button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2"
+          >
             <UserPlus className="h-4 w-4" />
             Crear empleado
           </Button>
@@ -123,7 +153,7 @@ export default function UsersPage() {
         <div className="relative max-w-sm min-w-48 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="Buscar por email..."
+            placeholder="Buscar por correo..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="pl-9 pr-9"
@@ -139,7 +169,10 @@ export default function UsersPage() {
             </button>
           )}
         </div>
-        <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as RoleFilter)}>
+        <Select
+          value={roleFilter}
+          onValueChange={(value) => setRoleFilter(value as RoleFilter)}
+        >
           <SelectTrigger className="w-44">
             <SelectValue placeholder="Filtrar por rol" />
           </SelectTrigger>
@@ -151,11 +184,13 @@ export default function UsersPage() {
         </Select>
       </div>
 
-      <div className={`overflow-hidden rounded-xl border border-gray-200 shadow-sm transition-opacity ${isFetching ? "opacity-60" : "opacity-100"}`}>
+      <div
+        className={`overflow-hidden rounded-xl border border-gray-200 shadow-sm transition-opacity ${isFetching ? "opacity-60" : "opacity-100"}`}
+      >
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Email</TableHead>
+              <TableHead>Correo</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Último login</TableHead>
@@ -165,7 +200,10 @@ export default function UsersPage() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-gray-400">
+                <TableCell
+                  colSpan={5}
+                  className="py-8 text-center text-gray-400"
+                >
                   No se encontraron usuarios.
                 </TableCell>
               </TableRow>
@@ -181,7 +219,9 @@ export default function UsersPage() {
                     {roleMap.has(user.id) ? (
                       <Badge variant="outline">{roleMap.get(user.id)}</Badge>
                     ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-300">Sin rol</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-300">
+                        Sin rol
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -190,7 +230,9 @@ export default function UsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-gray-500 dark:text-gray-300">
-                    {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("es-PE") : "—"}
+                    {user.lastLoginAt
+                      ? new Date(user.lastLoginAt).toLocaleString("es-PE")
+                      : "—"}
                   </TableCell>
                   <TableCell className="text-sm text-gray-500 dark:text-gray-300">
                     {new Date(user.createdAt).toLocaleDateString("es-PE")}

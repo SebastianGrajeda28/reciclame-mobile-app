@@ -4,7 +4,7 @@ import ProfilePopover from "./ProfilePopover";
 
 const NAV_ITEMS = [
   { label: "Métricas", path: "/metricas" },
-  { label: "Fun Facts", path: "/fun-facts" },
+  { label: "Datos curiosos", path: "/fun-facts" },
   { label: "Instrucciones", path: "/instrucciones" },
 ];
 
@@ -30,11 +30,14 @@ export default function RoleNavbar() {
     <div className="absolute inset-0 flex items-center">
       <div className="pointer-events-none absolute inset-x-0 flex justify-center">
         <div className="pointer-events-auto">
-          <nav aria-label="Navegacion principal">
+          <nav aria-label="Navegación principal">
             <ul className="flex items-center gap-10">
               {NAV_ITEMS.map((item) => (
                 <li key={item.path}>
-                  <Link to={item.path} className={linkClasses(location.pathname === item.path)}>
+                  <Link
+                    to={item.path}
+                    className={linkClasses(location.pathname === item.path)}
+                  >
                     {item.label}
                     <span
                       className={
