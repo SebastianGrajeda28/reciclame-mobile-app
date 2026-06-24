@@ -91,7 +91,7 @@ export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
   const managerRole = availableRoles.find((r) => r.name.toUpperCase() === "MANAGER");
 
   const activeChanged = isActive !== user.isActive;
-  const roleChanged = hasRole && isActive && selectedRoleId !== user.roleId;
+  const roleChanged = isActive && selectedRoleId !== user.roleId;
   const hasChanges = activeChanged || roleChanged;
 
   const selectedRoleName = availableRoles.find((r) => r.id === selectedRoleId)?.name ?? "";
@@ -103,9 +103,13 @@ export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
         if (isActive) await restoreUser(user.id);
         else await deactivateUser(user.id);
       }
-      if (roleChanged && selectedRoleId && user.userRoleAssignmentId) {
-        await deactivateUserRole(user.userRoleAssignmentId);
-        await assignUserRole(user.id, selectedRoleId);
+      if (roleChanged) {
+        if (user.userRoleAssignmentId) {
+          await deactivateUserRole(user.userRoleAssignmentId);
+        }
+        if (selectedRoleId) {
+          await assignUserRole(user.id, selectedRoleId);
+        }
       }
       toast.success("Cambios guardados correctamente");
       onUpdated();
@@ -176,10 +180,19 @@ export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
                 </div>
               </div>
 
-              {hasRole && isActive && (
+              {isActive ? (
                 <div className="rounded-xl border border-gray-200 p-4">
-                  <p className="mb-2 text-sm font-medium">Rol asignado</p>
+                  <p className="mb-2 text-sm font-medium">
+                    {hasRole ? "Rol asignado" : "Asignar rol"}
+                  </p>
                   <div className="inline-flex w-full rounded-lg border border-[#d9dee2] bg-white p-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRoleId(null)}
+                      className={toggleClasses(selectedRoleId === null)}
+                    >
+                      Sin rol
+                    </button>
                     <button
                       type="button"
                       disabled={!adminRole}
@@ -198,9 +211,7 @@ export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
                     </button>
                   </div>
                 </div>
-              )}
-
-              {hasRole && !isActive && (
+              ) : (
                 <div className="rounded-xl border border-gray-200 p-4">
                   <p className="text-sm text-gray-400">
                     El rol no puede modificarse mientras la cuenta esté inactiva.

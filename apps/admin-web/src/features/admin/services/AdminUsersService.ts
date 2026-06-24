@@ -78,7 +78,7 @@ function mapUserRoleRow(row: UserRoleRow): UserRoleAssignment {
   };
 }
 
-export type RoleFilter = "all" | "admin" | "manager";
+export type RoleFilter = "all" | "admin" | "manager" | "none";
 export type SortColumn = "email" | "lastLoginAt" | "updatedAt" | "createdAt";
 export type SortDirection = "asc" | "desc";
 

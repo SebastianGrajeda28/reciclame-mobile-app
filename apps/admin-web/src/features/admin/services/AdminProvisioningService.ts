@@ -18,3 +18,4 @@ export async function provisionAdminUser(input: ProvisionAdminUserInput): Promis
   const response = data as { error?: string } | null;
   if (response?.error) throw new Error(response.error);
 }
+
