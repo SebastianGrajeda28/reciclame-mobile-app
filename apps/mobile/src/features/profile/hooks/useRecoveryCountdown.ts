@@ -2,11 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { formatRecoveryWindow, type RecoveryWindow } from '../utils/recovery';
 
-/**
- * Cuenta regresiva en vivo de la ventana de recuperación (#259/RF-054). Devuelve null si no hay
- * ventana abierta (racha viva o fuera de plazo). Refresca cada minuto. Mismo patrón que
- * useStreakCountdown.
- */
+/** Cuenta regresiva en vivo de la ventana; null fuera de plazo. Refresca cada minuto. */
 export function useRecoveryCountdown(recoverableUntil: string | null): RecoveryWindow | null {
   const [now, setNow] = useState(() => Date.now());
 

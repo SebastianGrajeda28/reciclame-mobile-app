@@ -7,10 +7,7 @@ export type RecoveryWindow = {
   label: string;
 };
 
-/**
- * Formatea el tiempo restante de la ventana de recuperación (#259/RF-054). Función pura para
- * poder testearla sin React ni temporizadores (mismo patrón que formatStreakCountdown).
- */
+/** Formatea el tiempo restante de la ventana de recuperación (pura, testeable). */
 export function formatRecoveryWindow(msRemaining: number): RecoveryWindow {
   if (!Number.isFinite(msRemaining) || msRemaining <= 0) {
     return {
@@ -35,10 +32,7 @@ export function formatRecoveryWindow(msRemaining: number): RecoveryWindow {
   return { expired: false, days, hours, minutes, label: `Te quedan ${core} para recuperar` };
 }
 
-/**
- * ¿La ventana entra en zona de urgencia (menos de `thresholdHours`)? Para virar el chip a danger
- * sin depender solo del color (se acompaña de icono + texto por accesibilidad).
- */
+/** ¿Quedan menos de `thresholdHours` para recuperar? */
 export function isRecoveryUrgent(window: RecoveryWindow | null, thresholdHours = 6): boolean {
   if (!window || window.expired) return false;
   return window.days === 0 && window.hours < thresholdHours;
