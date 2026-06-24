@@ -3,11 +3,12 @@ import { STORAGE_BUCKETS } from "@reciclame/shared-domain";
 
 async function uploadToStorage(bucket: string, key: string, file: File): Promise<string> {
   const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `${key}.${ext}`;
+  const ts = Date.now();
+  const path = `${key}_${ts}.${ext}`;
 
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(path, file, { upsert: true });
+    .upload(path, file, { upsert: false });
 
   if (error) throw new Error(error.message);
 
