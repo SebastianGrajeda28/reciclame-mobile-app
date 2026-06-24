@@ -1,11 +1,11 @@
 import {
-    createContext,
-    PropsWithChildren,
-    useCallback,
-    useContext,
-    useMemo,
-    useRef,
-    useState,
+  createContext,
+  PropsWithChildren,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 
 import { containers } from '@/src/features/recycling/services/containers.mock';
@@ -16,13 +16,13 @@ import type {
 } from '@/src/features/recycling/types/recycling.types';
 import type { StreakResult } from '../api/recyclingLogs';
 import {
-    advanceStep,
-    clearPendingSession,
-    flushAndStartNewSession,
-    flushSession,
-    savePendingSession,
-    type FlowStep,
-    type LocalRecyclingSession,
+  advanceStep,
+  clearPendingSession,
+  flushAndStartNewSession,
+  flushSession,
+  savePendingSession,
+  type FlowStep,
+  type LocalRecyclingSession,
 } from '../api/recyclingSessions';
 
 type RecycleFlowState = {
@@ -40,13 +40,8 @@ type RecycleFlowState = {
 type RecycleFlowContextValue = {
   state: RecycleFlowState;
   setCapturedPhotoUri: (uri?: string) => void;
-<<<<<<< HEAD
-  setPrediction: (wasteTypeId: string, confidence: number) => void;
-  setUnidentifiedPrediction: (wasteTypeId: string, confidence: number) => void;
-=======
   setPrediction: (wasteTypeId: string, confidence: number, wasteType?: WasteType) => void;
   setPredictedWasteType: (wasteType: WasteType, confidence: number) => void;
->>>>>>> fix/261-main-flow-instructions
   setFinalWasteTypeId: (wasteTypeId: string) => void;
   setFinalWasteType: (wasteType: WasteType) => void;
   setSelectedContainerId: (containerId: string) => void;
@@ -116,32 +111,11 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     });
   }, [updateSession]);
 
-<<<<<<< HEAD
-  // Predicción con confianza por debajo del umbral: guardamos la mejor apuesta del
-  // modelo y su confianza para la sesión/analítica, pero NO fijamos finalWasteTypeId
-  // para que la UI muestre el estado "No identificado" y obligue a reintentar o corregir.
-  const setUnidentifiedPrediction = useCallback((wasteTypeId: string, confidence: number) => {
-    setState((prev) => ({
-      ...prev,
-      predictedWasteTypeId: wasteTypeId,
-      predictionConfidence: confidence,
-      finalWasteTypeId: undefined,
-    }));
-    updateSession({
-      predictedWasteTypeId: wasteTypeId,
-      confidenceScore: confidence,
-      detectionType: 'auto',
-    });
-  }, [updateSession]);
-
-  const setFinalWasteTypeId = useCallback((wasteTypeId: string) => {
-=======
   const setPredictedWasteType = useCallback((wasteType: WasteType, confidence: number) => {
     setPrediction(wasteType.id, confidence, wasteType);
   }, [setPrediction]);
 
   const setFinalWasteType = useCallback((wasteType: WasteType) => {
->>>>>>> fix/261-main-flow-instructions
     setState((prev) => {
       const hasPrediction = prev.predictedWasteTypeId !== undefined;
       const overridden = hasPrediction && prev.predictedWasteTypeId !== wasteType.id;
@@ -241,11 +215,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       state,
       setCapturedPhotoUri,
       setPrediction,
-<<<<<<< HEAD
-      setUnidentifiedPrediction,
-=======
       setPredictedWasteType,
->>>>>>> fix/261-main-flow-instructions
       setFinalWasteTypeId,
       setFinalWasteType,
       setSelectedContainerId,
@@ -267,11 +237,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
       setFinalWasteTypeId,
       setFinalWasteType,
       setPrediction,
-<<<<<<< HEAD
-      setUnidentifiedPrediction,
-=======
       setPredictedWasteType,
->>>>>>> fix/261-main-flow-instructions
       setSelectedContainerId,
       setSelectedContainer,
       clearSelectedContainer,

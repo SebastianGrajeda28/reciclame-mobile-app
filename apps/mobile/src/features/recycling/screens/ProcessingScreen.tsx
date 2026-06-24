@@ -30,19 +30,24 @@ export function ProcessingScreen() {
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { fact } = useRotatingFunFact();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
-  // `classifying` cubre el tiempo que tarda el modelo. Al terminar puede haber:
-  //  - finalWasteType definido  → confianza ≥ umbral (identificado)
-  //  - finalWasteType ausente   → confianza < umbral o error (no identificado)
   const [classifying, setClassifying] = useState(!state.finalWasteTypeId);
   const navigatingForward = useRef(false);
   const studentLocation = useStudentLocation();
   const { settings } = useUserSettings();
 
-  const threshold = getConfidenceThreshold();
   const confidence = state.predictionConfidence ?? 0;
+
+  console.log('[ProcessingScreen] Estado actual:', {
+    finalWasteTypeId: state.finalWasteTypeId,
+    selectedContainerId: state.selectedContainerId,
+    confidence,
+    classifying,
+    hasPhotoUri: !!state.capturedPhotoUri,
+  });
 
   useEffect(() => {
     return navigation.addListener('beforeRemove', () => {
+      console.log('[ProcessingScreen] beforeRemove listener', { navigatingForward: navigatingForward.current });
       if (!navigatingForward.current) {
         clearPrediction();
       }
@@ -50,6 +55,7 @@ export function ProcessingScreen() {
   }, [navigation, clearPrediction]);
 
   useEffect(() => {
+    console.log('[ProcessingScreen] Marcando step como "processing"');
     markStep('processing');
   }, [markStep]);
 
@@ -57,38 +63,72 @@ export function ProcessingScreen() {
   useEffect(() => {
     if (startedRef.current) return;
     if (state.finalWasteTypeId) {
+      console.log('[ProcessingScreen] Ya hay finalWasteTypeId, no necesita clasificación');
       setClassifying(false);
       return;
     }
     startedRef.current = true;
     let mounted = true;
+    console.log('[ProcessingScreen] Iniciando clasificación de residuo:', state.capturedPhotoUri);
     classifyWaste(state.capturedPhotoUri ?? 'manual-seed')
       .then((result) => {
+        console.log('[ProcessingScreen] Resultado de clasificación:', result);
         if (!mounted) return;
-        if (result.confidence >= threshold) {
+
+        if (result.confidence >= getConfidenceThreshold()) {
+          console.log('[ProcessingScreen] Confianza suficiente, predicción válida:', result.wasteTypeId, result.confidence);
           setPrediction(result.wasteTypeId, result.confidence);
 
-      // Auto-select closest recycling point if location verification is enabled
-      if (settings?.locationVerificationEnabled) {
-        const closestContainer = findClosestRecyclingPoint(
-          studentLocation.latitude,
-          studentLocation.longitude,
-          result.wasteTypeId,
-        );
-        if (closestContainer) {
-          setSelectedContainer(closestContainer);
+          // Auto-select closest recycling point if location verification is enabled
+          if (settings?.locationVerificationEnabled) {
+            console.log('[ProcessingScreen] Buscando contenedor más cercano para:', result.wasteTypeId);
+            const closestContainer = findClosestRecyclingPoint(
+              studentLocation.latitude,
+              studentLocation.longitude,
+              result.wasteTypeId,
+            );
+            if (closestContainer) {
+              console.log('[ProcessingScreen] Contenedor más cercano encontrado:', closestContainer.id);
+              setSelectedContainer(closestContainer);
+            } else {
+              console.warn('[ProcessingScreen] No se encontró contenedor cercano');
+            }
+          }
+        } else {
+          console.warn('[ProcessingScreen] Confianza insuficiente:', result.confidence, 'umbral:', getConfidenceThreshold());
         }
-      }
-    });
+
+        setClassifying(false);
+      })
+      .catch((error) => {
+        console.error('[ProcessingScreen] Error en clasificación:', error);
+        if (mounted) {
+          setClassifying(false);
+        }
+      });
     return () => {
       mounted = false;
     };
   }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainer]);
 
   const containerMismatch = useMemo(() => {
-    if (!state.selectedContainerId || !resolvedBinType) return false;
+    if (!state.selectedContainerId || !resolvedBinType) {
+      console.log('[ProcessingScreen] Mismatch check: no hay contenedor o binType', {
+        selectedContainerId: state.selectedContainerId,
+        hasBinType: !!resolvedBinType,
+      });
+      return false;
+    }
     const container = containers.find((c) => c.id === state.selectedContainerId);
-    return container ? !container.availableBinTypeIds.includes(resolvedBinType.id) : false;
+    const isMismatch = container ? !container.availableBinTypeIds.includes(resolvedBinType.id) : false;
+    if (isMismatch) {
+      console.warn('[ProcessingScreen] ⚠️ Mismatch detectado:', {
+        container: container?.id,
+        binType: resolvedBinType.id,
+        availableTypes: container?.availableBinTypeIds,
+      });
+    }
+    return isMismatch;
   }, [resolvedBinType, state.selectedContainerId]);
 
   const categoryConfig = useMemo(() => {
@@ -107,7 +147,7 @@ export function ProcessingScreen() {
           ) : (
             <View style={styles.imagePlaceholder} />
           )}
-          {!classifying && confidence >= threshold && (
+          {!classifying && confidence >= getConfidenceThreshold() && (
             <View style={styles.confidenceBadge}>
               <AppText style={styles.confidenceText}>
                 ✓ {Math.round(confidence * 100)}% confianza
