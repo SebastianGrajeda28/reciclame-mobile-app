@@ -1,8 +1,8 @@
--- Restrict all dev_* RPCs so only users with the DEV role can call them.
+-- Restrict all dev_* RPCs so only users with the ADMIN role can call them.
 -- Without this, any authenticated user could manipulate their own streak/achievements.
 -- Redefines every dev_* function with a role guard at the top.
 
--- Helper called by each dev function to abort if the caller is not DEV.
+-- Helper called by each dev function to abort if the caller is not ADMIN.
 create or replace function public._dev_assert_role()
 returns void
 language plpgsql
@@ -14,10 +14,10 @@ begin
     select 1 from public.user_roles ur
     join public.roles r on r.id = ur.role_id
     where ur.user_id = auth.uid()
-      and upper(r.name) = 'DEV'
+      and upper(r.name) = 'ADMIN'
       and ur.is_active = true
   ) then
-    raise exception 'dev role required';
+    raise exception 'admin role required';
   end if;
 end;
 $$;
