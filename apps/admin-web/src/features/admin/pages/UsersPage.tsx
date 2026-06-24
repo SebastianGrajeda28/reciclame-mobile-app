@@ -261,7 +261,6 @@ export default function UsersPage() {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="admin">Administradores</SelectItem>
                 <SelectItem value="manager">Managers</SelectItem>
-                <SelectItem value="none">Sin rol</SelectItem>
               </SelectContent>
             </Select>
             {isFetching && <span className="text-sm text-slate-500">Actualizando...</span>}

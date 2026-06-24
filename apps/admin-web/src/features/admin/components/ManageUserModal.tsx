@@ -188,13 +188,6 @@ export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
                   <div className="inline-flex w-full rounded-lg border border-[#d9dee2] bg-white p-1">
                     <button
                       type="button"
-                      onClick={() => setSelectedRoleId(null)}
-                      className={toggleClasses(selectedRoleId === null)}
-                    >
-                      Sin rol
-                    </button>
-                    <button
-                      type="button"
                       disabled={!adminRole}
                       onClick={() => adminRole && setSelectedRoleId(adminRole.id)}
                       className={toggleClasses(selectedRoleId === adminRole?.id)}
