@@ -29,10 +29,11 @@ export function SuccessScreen() {
     router.replace('/recycle/camera');
   }
 
-  function handleViewHistory() {
-    resetFlow();
-    router.replace(routes.recycleHistory);
-  }
+ function handleViewHistory() {
+  resetFlow();
+  router.dismissAll();              // limpia el stack de recycle → queda en (tabs)
+  router.push(routes.recycleHistory); // empuja historial sobre tabs
+}
 
   return (
     <AppScreen padded centered style={styles.root}>

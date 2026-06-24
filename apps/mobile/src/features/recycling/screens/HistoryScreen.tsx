@@ -16,8 +16,7 @@ import {
 } from '@/src/features/recycling/utils/historyGrouping';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppChip, AppIcon, AppScreen, AppSegmentedControl, AppText, theme } from '@/src/ui';
-import { router, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -40,17 +39,10 @@ function SkeletonItem() {
 }
 
 export function HistoryScreen() {
-  const navigation = useNavigation();
   const currentUser = useCurrentUser();
   const [horizon, setHorizon] = useState<Horizon>('all');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    return navigation.addListener('beforeRemove', (e) => {
-      e.preventDefault();
-      router.dismissAll();
-    });
-  }, [navigation]);
 
   const filters = useMemo(() => {
     const start = horizonStart(horizon);
