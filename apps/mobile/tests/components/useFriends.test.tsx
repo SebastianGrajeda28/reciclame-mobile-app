@@ -19,9 +19,9 @@ const sampleFriend: FriendSummary = {
   featuredMedals: [
     {
       id: 'bbbbbbbb-0000-0000-0000-000000000001',
+      slug: 'primer-paso',
       name: 'Reciclador Inicial',
       description: 'Primera segregación',
-      imageUrl: 'https://cdn.example.com/medal-1.png',
     },
   ],
 };

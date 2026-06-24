@@ -3,9 +3,9 @@ import type { FriendMedal, FriendRequest, FriendSummary } from '@/src/types/frie
 
 type FriendMedalRow = {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
-  image_url: string | null;
 };
 
 type FriendSummaryRow = {
@@ -21,9 +21,9 @@ type FriendSummaryRow = {
 function mapFriendMedal(row: FriendMedalRow): FriendMedal {
   return {
     id: row.id,
+    slug: row.slug,
     name: row.name,
     description: row.description ?? undefined,
-    imageUrl: row.image_url ?? undefined,
   };
 }
 

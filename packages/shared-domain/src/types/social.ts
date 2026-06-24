@@ -21,9 +21,9 @@ export type FriendSummary = {
 
 export type FriendMedal = {
   id: string;
+  slug: string;
   name: string;
   description?: string | null;
-  imageUrl?: string | null;
 };
 
 export type FriendRequest = {
