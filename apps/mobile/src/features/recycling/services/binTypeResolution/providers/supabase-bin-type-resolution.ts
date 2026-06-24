@@ -1,6 +1,11 @@
 import { supabase } from '@/src/services/supabase/client';
 import type { BinType } from '@/src/features/recycling/types/recycling.types';
 import type { BinTypeResolutionService } from '@/src/features/recycling/services/binTypeResolution/types';
+import {
+  getLocalBinTypeForMapping,
+  saveMappingsCache,
+  saveBinTypesCache,
+} from '@/src/services/local/referenceData';
 
 type BinTypeRow = {
   id: string;
@@ -34,6 +39,13 @@ async function getBinTypeByWasteTypeId(
   wasteTypeId: string,
   universityId: string,
 ): Promise<BinType | null> {
+  const cached = getLocalBinTypeForMapping(wasteTypeId, universityId);
+  if (cached) {
+    console.log(`[BIN_RESOLUTION] cache HIT — waste=${wasteTypeId} → binType="${cached.name}"`);
+    return cached;
+  }
+
+  console.log(`[BIN_RESOLUTION] cache MISS — consultando Supabase para waste=${wasteTypeId}`);
   const { data, error } = await supabase
     .from('map_waste_type_bin_types')
     .select('bin_types(id,name,description,image_url,deposit_instruction,is_active)')
@@ -47,9 +59,18 @@ async function getBinTypeByWasteTypeId(
   }
 
   const binTypeRow = pickBinTypeRow(data as WasteTypeBinTypeRow | null);
-  if (!binTypeRow || !binTypeRow.is_active) return null;
+  if (!binTypeRow || !binTypeRow.is_active) {
+    console.log(`[BIN_RESOLUTION] Supabase: sin mapping para waste=${wasteTypeId}`);
+    return null;
+  }
 
-  return mapBinType(binTypeRow);
+  const result = mapBinType(binTypeRow);
+  console.log(`[BIN_RESOLUTION] Supabase OK — waste=${wasteTypeId} → binType="${result.name}" — guardando en cache`);
+
+  saveBinTypesCache([result]);
+  saveMappingsCache([{ wasteTypeId, universityId, binTypeId: result.id }]);
+
+  return result;
 }
 
 export const supabaseBinTypeResolution: BinTypeResolutionService = {

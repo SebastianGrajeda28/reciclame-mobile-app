@@ -1,5 +1,10 @@
 import { supabase } from '@/src/services/supabase/client';
 import type { UserSetting } from '@/src/types/user';
+import {
+  getLocalUserSettings,
+  isUserSettingsCacheStale,
+  saveUserSettings,
+} from '@/src/services/local/userSettings';
 
 export type UserSettingPatch = {
   notificationsEnabled?: boolean;
@@ -8,6 +13,16 @@ export type UserSettingPatch = {
 };
 
 export async function getUserSettings(userId: string): Promise<UserSetting | null> {
+  console.log(`[SETTINGS] getUserSettings userId=${userId}`);
+  if (!isUserSettingsCacheStale(userId)) {
+    const local = getLocalUserSettings(userId);
+    if (local) {
+      console.log('[SETTINGS] getUserSettings: devolviendo desde cache local');
+      return local;
+    }
+  }
+
+  console.log('[SETTINGS] getUserSettings: consultando Supabase');
   const { data, error } = await supabase
     .from('user_settings')
     .select('id, user_id, notifications_enabled, skip_recycling_instructions, profile_visibility, language, location_verification_enabled, updated_at')
@@ -15,12 +30,18 @@ export async function getUserSettings(userId: string): Promise<UserSetting | nul
     .maybeSingle();
 
   if (error) {
+    console.warn(`[SETTINGS] getUserSettings: error Supabase — ${error.message} — intentando cache`);
+    const stale = getLocalUserSettings(userId);
+    if (stale) return stale;
     throw new Error(error.message);
   }
 
-  if (!data) return null;
+  if (!data) {
+    console.log('[SETTINGS] getUserSettings: sin settings en Supabase');
+    return null;
+  }
 
-  return {
+  const settings: UserSetting = {
     id: data.id,
     userId: data.user_id,
     notificationsEnabled: data.notifications_enabled,
@@ -30,9 +51,14 @@ export async function getUserSettings(userId: string): Promise<UserSetting | nul
     locationVerificationEnabled: data.location_verification_enabled ?? false,
     updatedAt: data.updated_at ?? null,
   };
+
+  console.log('[SETTINGS] getUserSettings: settings obtenidos de Supabase y guardados en cache');
+  saveUserSettings(settings);
+  return settings;
 }
 
 export async function updateUserSetting(userId: string, patch: UserSettingPatch): Promise<UserSetting> {
+  console.log(`[SETTINGS] updateUserSetting userId=${userId} patch=`, patch);
   const snakePatch: Record<string, unknown> = { user_id: userId, updated_at: new Date().toISOString() };
 
   if (patch.notificationsEnabled !== undefined) {
@@ -55,7 +81,7 @@ export async function updateUserSetting(userId: string, patch: UserSettingPatch)
     throw new Error(error?.message ?? 'No se pudo actualizar la configuración del usuario.');
   }
 
-  return {
+  const updated: UserSetting = {
     id: data.id,
     userId: data.user_id,
     notificationsEnabled: data.notifications_enabled,
@@ -65,4 +91,8 @@ export async function updateUserSetting(userId: string, patch: UserSettingPatch)
     locationVerificationEnabled: data.location_verification_enabled ?? false,
     updatedAt: data.updated_at ?? null,
   };
+
+  console.log('[SETTINGS] updateUserSetting: actualizado en Supabase y guardado en cache local');
+  saveUserSettings(updated);
+  return updated;
 }

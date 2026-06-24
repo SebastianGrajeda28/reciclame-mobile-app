@@ -16,6 +16,7 @@ type RecyclingRecordRow = {
   detection_type: string | null;
   confidence_score: number | null;
   estimated_weight: number | null;
+  heat_gained: number | null;
   status: string | null;
   created_at: string;
   synced: number;
@@ -103,20 +104,25 @@ export function markRecordSynced(id: string): void {
 }
 
 export function upsertRemoteRecord(
-  item: RecyclingLogListItem & { userId: string },
+  item: RecyclingLogListItem & { userId: string; binTypeId?: string; recyclingPointId?: string },
 ): void {
   db.runSync(
     `INSERT OR REPLACE INTO recycling_records
-       (id, user_id, waste_type_id, waste_type_name, recycling_point_name,
-        detection_type, confidence_score, status, created_at, synced)
-     VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, 1)`,
+       (id, user_id, waste_type_id, waste_type_name, bin_type_id,
+        recycling_point_id, recycling_point_name,
+        detection_type, confidence_score, heat_gained, status, created_at, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     [
       item.id,
       item.userId,
+      item.wasteTypeId ?? null,
       item.wasteTypeName,
+      item.binTypeId ?? null,
+      item.recyclingPointId ?? null,
       item.recyclingPointName,
       item.detectionType ?? null,
       item.confidenceScore ?? null,
+      item.heatGained ?? null,
       item.status ?? 'confirmed',
       item.createdAt,
     ],

@@ -17,6 +17,7 @@ db.execSync(`
     detection_type        TEXT,
     confidence_score      REAL,
     estimated_weight      REAL,
+    heat_gained           INTEGER,
     status                TEXT NOT NULL DEFAULT 'confirmed',
     created_at            TEXT NOT NULL,
     synced                INTEGER NOT NULL DEFAULT 0
@@ -51,7 +52,46 @@ db.execSync(`
     steps_json    TEXT NOT NULL DEFAULT '[]',
     cached_at     TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS waste_types (
+    id                 TEXT PRIMARY KEY,
+    name               TEXT NOT NULL,
+    description        TEXT,
+    estimated_weight_g REAL NOT NULL DEFAULT 50,
+    cached_at          TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS bin_types (
+    id                   TEXT PRIMARY KEY,
+    name                 TEXT NOT NULL,
+    description          TEXT,
+    image_url            TEXT,
+    deposit_instruction  TEXT,
+    cached_at            TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS waste_type_bin_type_mappings (
+    waste_type_id  TEXT NOT NULL,
+    university_id  TEXT NOT NULL,
+    bin_type_id    TEXT NOT NULL,
+    cached_at      TEXT NOT NULL,
+    PRIMARY KEY (waste_type_id, university_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS user_settings (
+    user_id                        TEXT PRIMARY KEY,
+    notifications_enabled          INTEGER NOT NULL DEFAULT 1,
+    skip_recycling_instructions    INTEGER NOT NULL DEFAULT 0,
+    profile_visibility             TEXT,
+    language                       TEXT,
+    location_verification_enabled  INTEGER NOT NULL DEFAULT 0,
+    updated_at                     TEXT,
+    cached_at                      TEXT NOT NULL
+  );
 `);
+
+// Migrations for existing installs — ADD COLUMN fails silently if the column already exists.
+try { db.execSync('ALTER TABLE recycling_records ADD COLUMN heat_gained INTEGER;'); } catch { /* already exists */ }
 
 const tableCount = db.getFirstSync<{ count: number }>(
   `SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`,

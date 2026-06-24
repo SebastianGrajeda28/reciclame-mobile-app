@@ -109,7 +109,7 @@ export async function getRecyclingLogs(userId: string): Promise<RecyclingLogList
     const { data, error } = await supabase
       .from('recycling_records')
       .select(
-        'id, created_at, detection_type, confidence_score, status, waste_types(name), recycling_points(name)',
+        'id, created_at, waste_type_id, bin_type_id, recycling_point_id, heat_gained, detection_type, confidence_score, status, waste_types(name), recycling_points(name)',
       )
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -121,17 +121,32 @@ export async function getRecyclingLogs(userId: string): Promise<RecyclingLogList
     const items: RecyclingLogListItem[] = data.map((row) => ({
       id: row.id,
       createdAt: row.created_at,
+      wasteTypeId: row.waste_type_id ?? undefined,
       wasteTypeName:
         (row.waste_types as unknown as { name: string } | null)?.name ?? 'Desconocido',
       recyclingPointName:
         (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
       detectionType: row.detection_type ?? undefined,
       confidenceScore: row.confidence_score ?? undefined,
+      heatGained: row.heat_gained ?? undefined,
       status: row.status ?? undefined,
     }));
 
-    for (const item of items) {
-      upsertRemoteRecord({ ...item, userId });
+    for (const row of data) {
+      upsertRemoteRecord({
+        id: row.id,
+        userId,
+        createdAt: row.created_at,
+        wasteTypeId: row.waste_type_id ?? undefined,
+        wasteTypeName: (row.waste_types as unknown as { name: string } | null)?.name ?? 'Desconocido',
+        recyclingPointName: (row.recycling_points as unknown as { name: string } | null)?.name ?? 'Desconocido',
+        binTypeId: row.bin_type_id ?? undefined,
+        recyclingPointId: row.recycling_point_id ?? undefined,
+        detectionType: row.detection_type ?? undefined,
+        confidenceScore: row.confidence_score ?? undefined,
+        heatGained: row.heat_gained ?? undefined,
+        status: row.status ?? undefined,
+      });
     }
     console.log(`[HISTORY] Cache local actualizada con ${items.length} registros`);
 

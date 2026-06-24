@@ -9,6 +9,16 @@ import {
   refreshInstructionsCache,
 } from '@/src/features/recycling/api/content';
 import {
+  isWasteTypesCacheStale,
+  isBinTypesCacheStale,
+  isMappingsCacheStale,
+  refreshWasteTypesCache,
+  refreshBinTypesCache,
+  refreshMappingsCache,
+} from '@/src/features/recycling/api/referenceData';
+
+const PUCP_UNIVERSITY_ID = '00000000-0000-0000-0000-000000000001';
+import {
   getPendingRecyclingRecords,
   markRecordSynced,
 } from '@/src/services/local/recyclingRecords';
@@ -93,6 +103,21 @@ export async function refreshStaleContentCaches(): Promise<void> {
       name: 'recycling_points',
       stale: isRecyclingPointsCacheStale(),
       refresh: refreshRecyclingPointsCache,
+    },
+    {
+      name: 'waste_types',
+      stale: isWasteTypesCacheStale(),
+      refresh: refreshWasteTypesCache,
+    },
+    {
+      name: 'bin_types',
+      stale: isBinTypesCacheStale(),
+      refresh: refreshBinTypesCache,
+    },
+    {
+      name: 'mappings',
+      stale: isMappingsCacheStale(),
+      refresh: () => refreshMappingsCache(PUCP_UNIVERSITY_ID),
     },
   ];
 

@@ -1,9 +1,24 @@
 import { mock } from 'bun:test';
 
+// Polyfill __DEV__ required by Expo modules (expo-sqlite, expo/async-require, etc.)
+(global as unknown as Record<string, unknown>).__DEV__ = false;
+
 // Stub react-native and AsyncStorage before any test file imports them.
 // react-native/index.js uses Flow's `import typeof` syntax which Bun can't parse.
 mock.module('react-native', () => ({
   Platform: { OS: 'ios' },
+  TurboModuleRegistry: { get: () => null, getEnforcing: () => ({}) },
+  NativeModules: {},
+}));
+
+mock.module('expo-sqlite', () => ({
+  openDatabaseSync: () => ({
+    execSync: () => {},
+    runSync: () => {},
+    getFirstSync: () => null,
+    getAllSync: () => [],
+    withTransactionSync: (fn: () => void) => fn(),
+  }),
 }));
 
 mock.module('@react-native-async-storage/async-storage', () => ({
