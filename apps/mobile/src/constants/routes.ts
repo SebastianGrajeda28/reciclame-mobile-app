@@ -4,6 +4,7 @@ export const routes = {
   profileFeaturedBadges: '/profile/featured-badges',
   profileAvatar: '/profile/avatar',
   profileSettings: '/profile/settings',
+  profileStreak: '/profile/streak',
   recycleCamera: '/recycle/camera',
   recycleProcessing: '/recycle/processing',
   recycleManual: '/recycle/manual',
@@ -11,4 +12,5 @@ export const routes = {
   recycleSuccess: '/recycle/success',
   recycleHistory: '/recycle/history',
   friendsAdd: '/(tabs)/friends/add',
+  devPanel: '/dev',
 } as const;

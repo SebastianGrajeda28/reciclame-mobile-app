@@ -1,6 +1,10 @@
 import { StyleSheet, View } from 'react-native';
-import { AppCard, AppIcon, AppText, theme } from '@/src/ui';
-import { formatShortDate } from '@/src/utils/dates';
+import { AppIcon, AppText, theme } from '@/src/ui';
+import {
+  categoryIconForWasteTypeId,
+  categoryStyleForWasteTypeId,
+} from '@/src/features/recycling/services/historyCategories';
+import { formatHistoryTime } from '@/src/features/recycling/utils/historyGrouping';
 import type { RecyclingLogListItem } from '@/src/types/recycling';
 
 type Props = {
@@ -8,78 +12,108 @@ type Props = {
 };
 
 export function RecyclingHistoryItem({ item }: Props) {
-  const isAuto = item.detectionType === 'auto';
+  const iconStyle = categoryStyleForWasteTypeId(item.wasteTypeId);
+  const iconName = categoryIconForWasteTypeId(item.wasteTypeId);
+  const heat = item.heatGained ?? 0;
+  const a11yLabel = [
+    item.wasteTypeName,
+    item.recyclingPointName,
+    formatHistoryTime(item.createdAt).replace(' · ', ', '),
+    heat > 0 ? `+${heat} de calor` : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
-    <AppCard padding="sm" elevation="xs">
-      <View style={styles.row}>
-        <View style={styles.iconWrap}>
-          <AppIcon name="recycle" size={theme.iconSizes.md} color={theme.colors.primary} />
-        </View>
-        <View style={styles.body}>
-          <AppText style={styles.wasteType}>{item.wasteTypeName}</AppText>
-          <AppText style={styles.point} numberOfLines={1}>{item.recyclingPointName}</AppText>
-          <View style={styles.meta}>
-            <AppText style={styles.date}>{formatShortDate(new Date(item.createdAt))}</AppText>
-            <View style={[styles.badge, isAuto ? styles.badgeAuto : styles.badgeManual]}>
-              <AppText style={styles.badgeText}>{isAuto ? 'Auto' : 'Manual'}</AppText>
+    <View style={styles.row} accessible accessibilityLabel={a11yLabel}>
+      <View style={[styles.iconWrap, { backgroundColor: iconStyle.bg }]}>
+        <AppIcon name={iconName} size={theme.iconSizes.md} color={iconStyle.fg} />
+      </View>
+      <View style={styles.body}>
+        <View style={styles.titleRow}>
+          <AppText style={styles.wasteType} numberOfLines={1}>
+            {item.wasteTypeName}
+          </AppText>
+          {heat > 0 ? (
+            <View style={styles.heatPill}>
+              <AppIcon name="flame" size={theme.iconSizes.sm} color={theme.colors.warning} />
+              <AppText style={styles.heatText} numberOfLines={1}>
+                +{heat}
+              </AppText>
             </View>
-          </View>
+          ) : null}
+        </View>
+        <View style={styles.metaRow}>
+          <AppText style={styles.point} numberOfLines={1}>
+            {item.recyclingPointName}
+          </AppText>
+          <AppText style={styles.time}>{formatHistoryTime(item.createdAt)}</AppText>
         </View>
       </View>
-    </AppCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.primarySubtle,
+    width: 40,
+    height: 40,
+    borderRadius: theme.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: {
     flex: 1,
-    gap: theme.spacing.xs,
+    minWidth: 0,
+    gap: theme.spacing.xxs,
   },
-  wasteType: {
-    fontSize: theme.fontSizes.md,
-    fontWeight: theme.fontWeights.semibold,
-    color: theme.colors.textPrimary,
-  },
-  point: {
-    fontSize: theme.fontSizes.sm,
-    color: theme.colors.textSecondary,
-  },
-  meta: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
-  date: {
+  wasteType: {
+    flex: 1,
+    fontSize: theme.fontSizes.md,
+    fontWeight: theme.fontWeights.semibold,
+    color: theme.colors.textPrimary,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  point: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: theme.fontSizes.sm,
+    color: theme.colors.textSecondary,
+  },
+  time: {
     fontSize: theme.fontSizes.xs,
     color: theme.colors.textSecondary,
   },
-  badge: {
+  heatPill: {
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.warningBg,
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: theme.radius.pill,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radius.full,
   },
-  badgeAuto: {
-    backgroundColor: theme.colors.infoBg,
-  },
-  badgeManual: {
-    backgroundColor: theme.colors.surfaceMuted,
-  },
-  badgeText: {
-    fontSize: theme.fontSizes.xs,
-    color: theme.colors.textSecondary,
+  heatText: {
+    fontSize: theme.fontSizes.sm,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.warning,
   },
 });

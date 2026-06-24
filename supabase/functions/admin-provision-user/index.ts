@@ -10,7 +10,7 @@ type ProvisionPayload = {
   email?: string;
   password?: string;
   name?: string;
-  roleName?: "ADMIN" | "MANAGER" | "VIEWER" | string;
+  roleName?: "ADMIN" | "MANAGER" | string;
 };
 
 Deno.serve(async (req) => {

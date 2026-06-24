@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
-import type { Instruction, InstructionPayload, StepOrderBody } from "@reciclame/shared-domain";
+import type { Instruction, InstructionBody, InstructionPayload, InstructionStep } from "@reciclame/shared-domain";
 
-export type { Instruction, InstructionPayload, StepOrderBody };
+export type { Instruction, InstructionBody, InstructionStep, InstructionPayload };
 
 type InstructionRow = {
   id: string;
@@ -9,7 +9,6 @@ type InstructionRow = {
   body: string | null;
   image_url: string | null;
   waste_type_id: string | null;
-  is_active: boolean;
   created_at: string;
   updated_at: string | null;
 };
@@ -21,30 +20,30 @@ function mapInstruction(row: InstructionRow): Instruction {
     body: row.body,
     imageUrl: row.image_url,
     wasteTypeId: row.waste_type_id,
-    isActive: row.is_active,
+    isActive: true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-export function parseStepOrder(instruction: Instruction): string[] {
+export function parseSteps(instruction: Instruction): InstructionStep[] {
   if (!instruction.body) return [];
   try {
-    const parsed = JSON.parse(instruction.body) as StepOrderBody;
-    return Array.isArray(parsed.stepOrder) ? parsed.stepOrder : [];
+    const parsed = JSON.parse(instruction.body) as InstructionBody;
+    return Array.isArray(parsed.steps) ? parsed.steps : [];
   } catch {
     return [];
   }
 }
 
-export function encodeStepOrder(ids: string[]): string {
-  return JSON.stringify({ stepOrder: ids } satisfies StepOrderBody);
+export function encodeSteps(steps: InstructionStep[]): string {
+  return JSON.stringify({ steps } satisfies InstructionBody);
 }
 
 export async function getInstructions(): Promise<Instruction[]> {
   const { data, error } = await supabase
     .from("instructions")
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
+    .select("id, title, body, image_url, waste_type_id, created_at, updated_at")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -57,9 +56,9 @@ export async function createInstruction(values: InstructionPayload) {
     .insert({
       title: values.title,
       waste_type_id: values.wasteTypeId ?? null,
-      body: values.body ?? null,
+      body: values.body ?? encodeSteps([]),
     })
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
+    .select("id, title, body, image_url, waste_type_id, created_at, updated_at")
     .single();
 
   if (error) throw new Error(error.message);
@@ -76,33 +75,18 @@ export async function updateInstruction(id: string, values: InstructionPayload) 
     .from("instructions")
     .update(patch)
     .eq("id", id)
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
+    .select("id, title, body, image_url, waste_type_id, created_at, updated_at")
     .single();
 
   if (error) throw new Error(error.message);
   return mapInstruction(data);
 }
 
-export async function deactivateInstruction(id: string) {
-  const { data, error } = await supabase
+export async function resetInstruction(id: string): Promise<void> {
+  const { error } = await supabase
     .from("instructions")
-    .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
-    .single();
+    .update({ body: encodeSteps([]), updated_at: new Date().toISOString() })
+    .eq("id", id);
 
   if (error) throw new Error(error.message);
-  return mapInstruction(data);
-}
-
-export async function restoreInstruction(id: string) {
-  const { data, error } = await supabase
-    .from("instructions")
-    .update({ is_active: true, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("id, title, body, image_url, waste_type_id, is_active, created_at, updated_at")
-    .single();
-
-  if (error) throw new Error(error.message);
-  return mapInstruction(data);
 }

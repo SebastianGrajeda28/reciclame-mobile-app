@@ -1,22 +1,22 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
 
 import { routes } from '@/src/constants/routes';
+import { recoverStreak } from '@/src/features/profile/api/streak';
 import { ProfileAchievementsPreviewCard } from '@/src/features/profile/components/ProfileAchievementsPreviewCard';
 import { ProfileHeroCard } from '@/src/features/profile/components/ProfileHeroCard';
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileStatsGrid } from '@/src/features/profile/components/ProfileStatsGrid';
 import { ProfileStreakCard } from '@/src/features/profile/components/ProfileStreakCard';
 import { StreakRecoveryOverlay } from '@/src/features/profile/components/StreakRecoveryOverlay';
-import { profileGamificationSnapshot } from '@/src/features/profile/data/profileGamification';
 import { RECOVERY_BASE_HEAT } from '@/src/features/profile/constants/streak';
+import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
+import { useProfileGamification } from '@/src/features/profile/hooks/useProfileGamification';
 import { useRecoveryCountdown } from '@/src/features/profile/hooks/useRecoveryCountdown';
 import { useStreakProgress } from '@/src/features/profile/hooks/useStreakProgress';
 import { formatMemberSince } from '@/src/features/profile/utils/formatMemberSince';
 import { isRecoveryUrgent } from '@/src/features/profile/utils/recovery';
-import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
-import { recoverStreak } from '@/src/features/profile/api/streak';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppButton, AppCard, AppIcon, AppText, theme } from '@/src/ui';
 
@@ -27,6 +27,7 @@ export function ProfileScreen() {
   const currentUser = useCurrentUser();
   const { data: streakData, refetch } = useStreakProgress();
   const { config: avatarConfig } = useAvatarConfig();
+  const { lastUnlockedBadges, stats } = useProfileGamification();
   const displayName = currentUser?.displayName ?? 'Tu perfil';
 
   const [recoverVisible, setRecoverVisible] = useState(false);
@@ -35,6 +36,7 @@ export function ProfileScreen() {
   const [justRecovered, setJustRecovered] = useState(false);
   const [recoveredDays, setRecoveredDays] = useState<number | null>(null);
   const [recoveredHeat, setRecoveredHeat] = useState(RECOVERY_BASE_HEAT);
+  const [lostDismissed, setLostDismissed] = useState(false);
 
   // Oferta visible solo con escudo y dentro de la ventana (override de QA en DEV).
   const recoveries = DEV_SIMULATE_RECOVERY ? 1 : (streakData?.recoveries ?? 0);
@@ -47,14 +49,11 @@ export function ProfileScreen() {
   const recoveryCountdown = useRecoveryCountdown(recoverableUntil);
   const canRecover = recoveries > 0 && recoveryCountdown != null && !recoveryCountdown.expired;
   const showRecover = canRecover && !justRecovered;
+  // Card de pérdida estándar solo cuando NO se ofrece recuperación.
+  const showStreakLost = Boolean(streakData?.justExpired) && !showRecover && !lostDismissed;
   const recoverUrgent = isRecoveryUrgent(recoveryCountdown);
   // Plazo en gris; rojo si urge (<6h).
   const recoverAccent = recoverUrgent ? theme.colors.danger : theme.colors.textSecondary;
-
-  const featuredIds = profileGamificationSnapshot.featuredBadgeIds as readonly string[];
-  const featuredBadges = profileGamificationSnapshot.allBadges.filter((b) =>
-    featuredIds.includes(b.id),
-  );
 
   async function handleRecover() {
     if (recovering) return;
@@ -118,12 +117,27 @@ export function ProfileScreen() {
           ) : null}
           <AppButton label="Recuperar mi racha" onPress={() => setRecoverVisible(true)} />
         </AppCard>
+      ) : showStreakLost ? (
+        <AppCard style={styles.lostCard}>
+          <View style={styles.lostHeader}>
+            <AppIcon name="alertCircle" size={theme.iconSizes.md} color={theme.colors.danger} />
+            <AppText variant="h3" style={styles.lostTitle}>
+              Perdiste tu racha
+            </AppText>
+          </View>
+          <AppText variant="caption" muted style={styles.lostText}>
+            Pasó el tiempo de gracia sin segregar. Tu nivel se mantiene — empieza una nueva racha
+            reciclando hoy.
+          </AppText>
+          <AppButton variant="outline" label="Entendido" onPress={() => setLostDismissed(true)} />
+        </AppCard>
       ) : null}
       <ProfileStreakCard
         currentStreakDays={streakData?.streakDays ?? 0}
         heat={streakData?.heat ?? 0}
         level={streakData?.level ?? 1}
         recycledToday={streakData?.recycledToday ?? false}
+        expiresAt={streakData?.expiresAt ?? null}
       />
       <StreakRecoveryOverlay
         visible={recoverVisible}
@@ -136,12 +150,22 @@ export function ProfileScreen() {
         onConfirm={handleRecover}
         onDismiss={closeRecover}
       />
+      <Pressable
+        style={({ pressed }) => [styles.historyRow, pressed && styles.historyRowPressed]}
+        onPress={() => router.push(routes.profileStreak)}
+      >
+        <View style={styles.historyLeft}>
+          <AppIcon name="flame" size={theme.iconSizes.sm} color={theme.colors.primary} />
+          <AppText style={styles.historyLabel}>Racha y actividad</AppText>
+        </View>
+        <AppIcon name="chevronRight" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
+      </Pressable>
       <ProfileAchievementsPreviewCard
-        featuredBadges={featuredBadges}
+        featuredBadges={lastUnlockedBadges}
         onSeeAllPress={() => router.push(routes.profileAchievements)}
         onCustomizePress={() => router.push(routes.profileFeaturedBadges)}
       />
-      <ProfileStatsGrid stats={profileGamificationSnapshot.stats} />
+      <ProfileStatsGrid stats={stats} />
       <Pressable
         style={({ pressed }) => [styles.historyRow, pressed && styles.historyRowPressed]}
         onPress={() => router.push(routes.recycleHistory)}
@@ -171,6 +195,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.s1,
+  },
+  lostCard: {
+    gap: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.danger,
+  },
+  lostHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  lostTitle: {
+    color: theme.colors.danger,
+  },
+  lostText: {
+    lineHeight: 18,
   },
   historyRow: {
     flexDirection: 'row',

@@ -7,6 +7,7 @@ import { AvatarComposer } from '@/src/features/profile/components/AvatarComposer
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
+import { useUnlockedCosmetics } from '@/src/features/profile/hooks/useUnlockedCosmetics';
 import {
   AvatarConfig,
   AvatarRace,
@@ -76,6 +77,7 @@ type SwatchItem = {
   label?: string;
   source?: number | null;
   selected: boolean;
+  locked?: boolean;
   onPress: () => void;
 };
 
@@ -106,16 +108,22 @@ function buildNullableSwatchItems(
   updateFn: (value: string) => void,
   nullUpdateFn: () => void,
   isNull: boolean,
+  restrictedStyles: Set<string>,
+  earnedStyles: Set<string>,
 ): SwatchItem[] {
   return [
     { id: '__none', label: 'Ninguno', source: null, selected: isNull, onPress: nullUpdateFn },
-    ...styles.map((style) => ({
-      id: style,
-      label: style,
-      source: getAsset(keyFn(`${activeColor ?? defaultColor}_${style}`)),
-      selected: activeStyle === style,
-      onPress: () => updateFn(`${activeColor ?? defaultColor}_${style}`),
-    })),
+    ...styles.map((style) => {
+      const isLocked = restrictedStyles.has(style) && !earnedStyles.has(style);
+      return {
+        id: style,
+        label: style,
+        source: getAsset(keyFn(`${activeColor ?? defaultColor}_${style}`)),
+        selected: activeStyle === style,
+        locked: isLocked,
+        onPress: isLocked ? () => {} : () => updateFn(`${activeColor ?? defaultColor}_${style}`),
+      };
+    }),
   ];
 }
 
@@ -124,17 +132,19 @@ function buildColoredStyleItems(
   activeStyle: string | null,
   activeColor: string | null,
   availableColors: string[],
-  availableStyles: string[],
+  allStyles: string[],
   savedColorMap: Record<string, string>,
   keyFn: (colorAndStyle: string) => string,
   updateFn: (colorAndStyle: string) => void,
   saveColorFn: (style: string, color: string) => void,
   nullUpdateFn: () => void,
   isNull: boolean,
+  restrictedStyles: Set<string>,
+  earnedStyles: Set<string>,
 ): SwatchItem[] {
   return [
     { id: '__none', label: 'Ninguno', source: null, selected: isNull, onPress: nullUpdateFn },
-    ...availableStyles.map((style) => {
+    ...allStyles.map((style) => {
       const savedColor = savedColorMap[style];
       const firstColor = availableColors.find((c) => getAsset(keyFn(`${c}_${style}`)) !== null) ?? null;
       if (!firstColor) return null;
@@ -143,12 +153,14 @@ function buildColoredStyleItems(
         : (savedColor && getAsset(keyFn(`${savedColor}_${style}`)) !== null ? savedColor : firstColor);
       const source = getAsset(keyFn(`${previewColor}_${style}`));
       if (source === null) return null;
+      const isLocked = restrictedStyles.has(style) && !earnedStyles.has(style);
       return {
         id: style,
         label: style,
         source,
         selected: activeStyle === style,
-        onPress: () => {
+        locked: isLocked,
+        onPress: isLocked ? () => {} : () => {
           const color = savedColor && getAsset(keyFn(`${savedColor}_${style}`)) !== null
             ? savedColor : firstColor;
           saveColorFn(style, color);
@@ -193,10 +205,17 @@ function Swatch({ item, showLabel }: { item: SwatchItem; showLabel?: boolean }) 
     <View style={styles.swatchWrapper}>
       <TouchableOpacity
         onPress={item.onPress}
-        style={[styles.swatch, item.selected && styles.swatchSelected]}
+        style={[styles.swatch, item.selected && styles.swatchSelected, item.locked && styles.swatchLocked]}
         accessibilityLabel={item.label}
       >
-        {item.source ? (
+        {item.locked ? (
+          <>
+            {item.source ? <Image source={item.source} style={[styles.swatchImage, styles.swatchImageLocked]} resizeMode="contain" /> : null}
+            <View style={styles.swatchLockOverlay}>
+              <AppIcon name="lock" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
+            </View>
+          </>
+        ) : item.source ? (
           <Image source={item.source} style={styles.swatchImage} resizeMode="contain" />
         ) : (
           <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
@@ -238,6 +257,7 @@ function ColorDot({ color, selected, onPress, hexOverride }: { color: string; se
 
 export function ProfileAvatarScreen() {
   const { config, setConfig, save, saving, hasChanges } = useAvatarConfig();
+  const { restricted, earned } = useUnlockedCosmetics();
   const [group, setGroup] = useState<Group>('General');
   const [tab, setTab] = useState<Tab>('Raza');
   const { map: hatColors, setColor: setHatColor } = useItemColorMap('avatar:hatColors');
@@ -285,27 +305,27 @@ export function ProfileAvatarScreen() {
         ));
       }
       case 'Pelo': {
+        if (config.hair === null) return null;
         const { color: hairColor, style: activeHairStyle } = parseSimpleColorStyle(config.hair);
         const resolvedHairColor = hairColor ?? hairColors['color'] ?? HAIR_COLORS[0];
-        if (!activeHairStyle && !hairColors['color']) return null;
         return HAIR_COLORS.map((color) => (
           <ColorDot key={color} color={color} selected={resolvedHairColor === color}
             onPress={() => { setHairColor('color', color); if (activeHairStyle) update({ hair: `${color}_${activeHairStyle}` }); }} />
         ));
       }
       case 'Barba': {
+        if (config.beard === null) return null;
         const { color: beardColor, style: activeBeardStyle } = parseSimpleColorStyle(config.beard);
         const resolvedBeardColor = beardColor ?? beardColors['color'] ?? BEARD_COLORS[0];
-        if (!activeBeardStyle && !beardColors['color']) return null;
         return BEARD_COLORS.map((color) => (
           <ColorDot key={color} color={color} selected={resolvedBeardColor === color}
             onPress={() => { setBeardColor('color', color); if (activeBeardStyle) update({ beard: `${color}_${activeBeardStyle}` }); }} />
         ));
       }
       case 'Bigote': {
+        if (config.moustache === null) return null;
         const { color: moustacheColor, style: activeMoustacheStyle } = parseSimpleColorStyle(config.moustache);
         const resolvedMoustacheColor = moustacheColor ?? moustacheColors['color'] ?? MOUSTACHE_COLORS[0];
-        if (!activeMoustacheStyle && !moustacheColors['color']) return null;
         return MOUSTACHE_COLORS.map((color) => (
           <ColorDot key={color} color={color} selected={resolvedMoustacheColor === color}
             onPress={() => { setMoustacheColor('color', color); if (activeMoustacheStyle) update({ moustache: `${color}_${activeMoustacheStyle}` }); }} />
@@ -468,6 +488,7 @@ export function ProfileAvatarScreen() {
               (v) => { setHairColor('color', savedHairColor); update({ hair: v }); },
               () => update({ hair: null }),
               config.hair === null,
+              restricted.hair, earned.hair,
             )}
           />
         );
@@ -484,6 +505,7 @@ export function ProfileAvatarScreen() {
               (v) => { setBeardColor('color', savedBeardColor); update({ beard: v }); },
               () => update({ beard: null }),
               config.beard === null,
+              restricted.beard, earned.beard,
             )}
           />
         );
@@ -500,6 +522,7 @@ export function ProfileAvatarScreen() {
               (v) => { setMoustacheColor('color', savedMoustacheColor); update({ moustache: v }); },
               () => update({ moustache: null }),
               config.moustache === null,
+              restricted.moustache, earned.moustache,
             )}
           />
         );
@@ -517,6 +540,7 @@ export function ProfileAvatarScreen() {
               (style, color) => setClothesColor(style, color),
               () => update({ clothes: null }),
               config.clothes === null,
+              restricted.clothes, earned.clothes,
             )}
           />
         );
@@ -534,6 +558,7 @@ export function ProfileAvatarScreen() {
               (style, color) => setHatColor(style, color),
               () => update({ hat: null }),
               config.hat === null,
+              restricted.hat, earned.hat,
             )}
           />
         );
@@ -569,8 +594,8 @@ export function ProfileAvatarScreen() {
             try {
               await save(config);
               router.back();
-            } catch {
-              Alert.alert('Error al guardar', 'No se pudo guardar el avatar. Intenta nuevamente.');
+            } catch (e) {
+              Alert.alert('Error al guardar', e instanceof Error ? e.message : 'Error desconocido');
             }
           }}
           style={styles.primaryAction}
@@ -614,7 +639,9 @@ export function ProfileAvatarScreen() {
           <View style={styles.colorAreaHeader}>
             <AppText variant="caption" style={styles.cardLabel}>Color</AppText>
           </View>
-          <View style={styles.colorChips}>{colorDots}</View>
+          <ScrollView style={styles.colorScroll} contentContainerStyle={styles.colorChips}>
+            {colorDots}
+          </ScrollView>
         </View>
       ) : null}
 
@@ -694,6 +721,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  colorScroll: {
+    maxHeight: 100,
+  },
   colorChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -764,6 +794,17 @@ const styles = StyleSheet.create({
   swatchImage: {
     width: SWATCH_SIZE - 4,
     height: SWATCH_SIZE - 4,
+  },
+  swatchLocked: {
+    opacity: 0.5,
+  },
+  swatchImageLocked: {
+    opacity: 0.4,
+  },
+  swatchLockOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
   },
   swatchWrapper: {
     alignItems: 'center',

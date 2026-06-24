@@ -1,8 +1,8 @@
 -- Recuperación de racha (#256-259 / RF-051..054). Léxico: "recuperar" / "escudo".
--- B1 columnas · B2 get_progress expone recoveries/recoverable_until · B3 gana 1 escudo/día sobre el
--- tope (cap nivel-1, silencioso) · B4 RPC recover_streak (anti-IDOR + días reales) · B5 sella la muerte.
+-- Se aplica sobre develop: conserva sus fixes (#176/#177/#260: app_today, streak->0 al morir,
+-- streak_expires_at/streak_just_expired) y añade columnas, sellado, ganancia de escudos y el RPC.
 
--- B1 — columnas en user_progress (idempotente).
+-- B1 — columnas (idempotente).
 ALTER TABLE public.user_progress
   ADD COLUMN IF NOT EXISTS recoveries integer NOT NULL DEFAULT 0;
 ALTER TABLE public.user_progress
@@ -12,16 +12,13 @@ ALTER TABLE public.user_progress
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'user_progress_recoveries_check'
-  ) THEN
-    ALTER TABLE public.user_progress
-      ADD CONSTRAINT user_progress_recoveries_check CHECK (recoveries >= 0);
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_progress_recoveries_check') THEN
+    ALTER TABLE public.user_progress ADD CONSTRAINT user_progress_recoveries_check CHECK (recoveries >= 0);
   END IF;
 END
 $$;
 
--- B5 (cron) — sella streak_expired_at + streak_days_at_death al morir, idempotente.
+-- B5 (cron) — sella la muerte sobre la base de develop (streak_days -> 0, app_today()).
 CREATE OR REPLACE FUNCTION public.apply_daily_heat_decay()
 RETURNS void
 LANGUAGE plpgsql
@@ -32,13 +29,12 @@ BEGIN
   UPDATE public.user_progress
   SET
     heat        = CASE WHEN heat - 30 <= 0 THEN 50 ELSE heat - 30 END,
-    streak_days = CASE WHEN heat - 30 <= 0 THEN public.streak_level_checkpoint(level) ELSE streak_days END,
-    -- Abre la ventana de 48h solo si hay escudo y aún no estaba sellada (idempotente).
+    streak_days = CASE WHEN heat - 30 <= 0 THEN 0  ELSE streak_days END,
+    -- Recuperación: al morir con escudo, sella la ventana de 48h + días reales (idempotente).
     streak_expired_at = CASE
                           WHEN heat - 30 <= 0 AND recoveries > 0 AND streak_expired_at IS NULL THEN now()
                           ELSE streak_expired_at
                         END,
-    -- Guarda los días reales pre-muerte (mismo guard, antes del checkpoint del nivel).
     streak_days_at_death = CASE
                              WHEN heat - 30 <= 0 AND recoveries > 0 AND streak_expired_at IS NULL THEN streak_days
                              ELSE streak_days_at_death
@@ -47,13 +43,12 @@ BEGIN
   WHERE
     is_active = true
     AND streak_days > 0
-    AND (last_recycling_date IS NULL OR last_recycling_date < CURRENT_DATE);
+    AND (last_recycling_date IS NULL OR last_recycling_date < public.app_today());
 END;
 $$;
 
--- B2 + B5 (lectura) — get_progress_with_decay expone recoveries/recoverable_until y sella la muerte.
--- Columnas nuevas AL FINAL del RETURNS TABLE. DROP previo: CREATE OR REPLACE no puede cambiar el
--- tipo de retorno de una función existente (las columnas que añade son parte de la firma).
+-- B2 — get_progress_with_decay: develop (expires/just_expired) + recuperación (recoveries/recoverable_until).
+-- DROP previo: cambia el tipo de retorno (CREATE OR REPLACE no puede).
 DROP FUNCTION IF EXISTS public.get_progress_with_decay(uuid);
 CREATE OR REPLACE FUNCTION public.get_progress_with_decay(p_user_id uuid)
 RETURNS TABLE (
@@ -61,6 +56,8 @@ RETURNS TABLE (
   heat                int,
   level               int,
   last_recycling_date date,
+  streak_expires_at   timestamptz,
+  streak_just_expired boolean,
   recoveries          int,
   recoverable_until   timestamptz
 )
@@ -69,11 +66,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  rec                   public.user_progress%ROWTYPE;
-  days_missed           int := 0;
-  effective_heat        int;
-  effective_streak      int;
-  just_died             boolean := false;
+  rec              public.user_progress%ROWTYPE;
+  days_missed      int := 0;
+  effective_heat   int;
+  effective_streak int;
+  just_expired     boolean := false;
+  today            date := public.app_today();
+  expires          timestamptz;
   out_expired_at        timestamptz;
   out_recoverable_until timestamptz;
 BEGIN
@@ -82,26 +81,28 @@ BEGIN
   WHERE user_id = p_user_id AND is_active = true;
 
   IF NOT FOUND THEN
-    RETURN QUERY SELECT 0, 0, 1, NULL::date, 0, NULL::timestamptz;
+    RETURN QUERY SELECT 0, 0, 1, NULL::date, NULL::timestamptz, false, 0, NULL::timestamptz;
     RETURN;
   END IF;
 
   out_expired_at := rec.streak_expired_at;
 
   IF rec.last_recycling_date IS NOT NULL THEN
-    days_missed := GREATEST(0, (CURRENT_DATE - rec.last_recycling_date) - 1);
+    days_missed := GREATEST(0, (today - rec.last_recycling_date) - 1);
   END IF;
 
   effective_heat   := COALESCE(rec.heat, 50)::int;
   effective_streak := COALESCE(rec.streak_days, 0);
 
-  IF effective_streak > 0 AND days_missed > 0 AND rec.updated_at::date < CURRENT_DATE THEN
+  IF effective_streak > 0 AND days_missed > 0
+     AND (rec.updated_at AT TIME ZONE 'America/Lima')::date < today THEN
     effective_heat := effective_heat - (30 * days_missed);
 
     IF effective_heat <= 0 THEN
-      just_died        := true;
       effective_heat   := 50;
-      effective_streak := public.streak_level_checkpoint(COALESCE(rec.level, 1));
+      effective_streak := 0;
+      just_expired     := true;
+      -- Recuperación: al morir con escudo, abre la ventana de 48h (idempotente).
       IF COALESCE(rec.recoveries, 0) > 0 AND rec.streak_expired_at IS NULL THEN
         out_expired_at := now();
       END IF;
@@ -111,8 +112,9 @@ BEGIN
     SET
       heat        = effective_heat,
       streak_days = effective_streak,
+      -- Recuperación: sella días reales pre-muerte + marca temporal (idempotente).
       streak_days_at_death = CASE
-                               WHEN just_died AND COALESCE(rec.recoveries, 0) > 0 AND rec.streak_expired_at IS NULL
+                               WHEN just_expired AND COALESCE(rec.recoveries, 0) > 0 AND rec.streak_expired_at IS NULL
                                  THEN COALESCE(rec.streak_days, 0)
                                ELSE streak_days_at_death
                              END,
@@ -121,7 +123,14 @@ BEGIN
     WHERE user_id = p_user_id;
   END IF;
 
-  -- Oferta abierta solo con escudo y dentro de la ventana de 48h; si no, NULL.
+  IF effective_streak > 0 THEN
+    expires := ((today + CEIL(effective_heat / 30.0)::int)::timestamp)
+                 AT TIME ZONE 'America/Lima';
+  ELSE
+    expires := NULL;
+  END IF;
+
+  -- Recuperación: oferta abierta solo con escudo y dentro de la ventana de 48h.
   IF out_expired_at IS NOT NULL
      AND COALESCE(rec.recoveries, 0) > 0
      AND now() < out_expired_at + interval '48 hours' THEN
@@ -135,14 +144,16 @@ BEGIN
     effective_heat,
     COALESCE(rec.level, 1),
     rec.last_recycling_date,
+    expires,
+    just_expired,
     COALESCE(rec.recoveries, 0),
     out_recoverable_until;
 END;
 $$;
 
--- B3 — gana 1 escudo por día que excede el tope de calor (cap nivel-1, silencioso).
+-- B3 — handle_post_segregation_progress: develop + ganancia de escudo (cap nivel-1, silencioso).
 CREATE OR REPLACE FUNCTION public.handle_post_segregation_progress()
-RETURNS TRIGGER
+RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -151,11 +162,12 @@ DECLARE
   progress_record public.user_progress%ROWTYPE;
   is_first_action_today boolean := false;
   new_streak int;
-  new_heat numeric;
-  new_level int;
-  heat_gain int;
-  raw_heat numeric;
+  new_heat   numeric;
+  new_level  int;
+  heat_gain  int;
+  raw_heat   numeric;
   new_recoveries int;
+  today      date := public.app_today();
 BEGIN
   SELECT * INTO progress_record
   FROM public.user_progress
@@ -164,7 +176,7 @@ BEGIN
 
   IF FOUND THEN
     IF progress_record.last_recycling_date IS NULL
-       OR progress_record.last_recycling_date < CURRENT_DATE THEN
+       OR progress_record.last_recycling_date < today THEN
       is_first_action_today := true;
     END IF;
 
@@ -175,9 +187,11 @@ BEGIN
       heat_gain  := public.heat_gain_for_level(COALESCE(progress_record.level, 1));
       raw_heat   := COALESCE(progress_record.heat, 50) + heat_gain;
       new_heat   := LEAST(100, raw_heat);
-      new_level  := public.compute_streak_level(new_streak);
-
-      -- Si el calor del día excede el tope, +1 escudo (cap nivel-1); el resto se descarta.
+      new_level  := GREATEST(
+        COALESCE(progress_record.level, 1),
+        public.compute_streak_level(new_streak)
+      );
+      -- Recuperación: si el calor del día excede el tope, +1 escudo (cap nivel-1).
       IF raw_heat > 100 THEN
         new_recoveries := LEAST(GREATEST(0, new_level - 1), new_recoveries + 1);
       END IF;
@@ -189,34 +203,31 @@ BEGIN
 
     UPDATE public.user_progress
     SET
-      streak_days        = new_streak,
-      heat               = new_heat,
-      level              = new_level,
-      recoveries         = new_recoveries,
-      last_recycling_date = CURRENT_DATE,
-      updated_at         = now()
+      streak_days      = new_streak,
+      heat             = new_heat,
+      level            = new_level,
+      recoveries       = new_recoveries,
+      best_streak_days = GREATEST(COALESCE(best_streak_days, 0), new_streak),
+      last_recycling_date = today,
+      updated_at       = now()
     WHERE user_id = NEW.user_id;
   ELSE
     INSERT INTO public.user_progress (
-      user_id, points, streak_days, heat, level, last_recycling_date
+      user_id, points, streak_days, heat, level, best_streak_days, last_recycling_date
     ) VALUES (
-      NEW.user_id, 0, 1, 51, 1, CURRENT_DATE
+      NEW.user_id, 0, 1, 51, 1, 1, today
     );
   END IF;
+
+  PERFORM public.check_and_unlock_achievements(NEW.user_id);
 
   RETURN NEW;
 END;
 $$;
 
--- B4 — RPC recover_streak: anti-IDOR (check explícito auth.uid()) + restauración honesta de días.
--- Devuelve {success, streak_days, heat, level} para pintar la UI sin refetch.
+-- B4 — RPC recover_streak: anti-IDOR (check explícito auth.uid()) + restauración honesta.
 CREATE OR REPLACE FUNCTION public.recover_streak(p_user_id uuid)
-RETURNS TABLE (
-  success     boolean,
-  streak_days int,
-  heat        int,
-  level       int
-)
+RETURNS TABLE (success boolean, streak_days int, heat int, level int)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth
@@ -225,7 +236,7 @@ DECLARE
   rec             public.user_progress%ROWTYPE;
   restored_streak int;
 BEGIN
-  -- P0 anti-IDOR: SECURITY DEFINER bypasa RLS; la autorización la da este check, no RLS.
+  -- P0 anti-IDOR: SECURITY DEFINER bypasa RLS; la autorización la da este check, no RLS (cf. #174).
   IF p_user_id IS DISTINCT FROM auth.uid() THEN
     RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
   END IF;
@@ -235,7 +246,7 @@ BEGIN
   WHERE user_id = p_user_id AND is_active = true
   FOR UPDATE;
 
-  -- Validación server-side: escudo, racha muerta sellada y dentro de la ventana de 48h.
+  -- Validación server-side: escudo, racha muerta sellada y dentro de la ventana 48h. Si no, success=false.
   IF NOT FOUND
      OR COALESCE(rec.recoveries, 0) <= 0
      OR rec.streak_expired_at IS NULL

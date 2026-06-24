@@ -5,23 +5,24 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
-import { useStudentLocation } from '@/src/features/map/hooks/useStudentLocation';
 import {
-  useRecycleFlow,
-  useResolvedRecycleSelection,
+    useRecycleFlow,
+    useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
-  BATTERIES_BIN_TYPE_ID,
-  GLASS_BIN_TYPE_ID,
-  NON_RECOVERABLE_BIN_TYPE_ID,
-  PAPER_CARDBOARD_BIN_TYPE_ID,
-  PLASTICS_BIN_TYPE_ID,
-  RAEE_BIN_TYPE_ID,
+    BATTERIES_BIN_TYPE_ID,
+    GLASS_BIN_TYPE_ID,
+    NON_RECOVERABLE_BIN_TYPE_ID,
+    PAPER_CARDBOARD_BIN_TYPE_ID,
+    PLASTICS_BIN_TYPE_ID,
+    RAEE_BIN_TYPE_ID,
 } from '@/src/features/recycling/services/bin-types.mock';
 import type { NearbyRecyclingPoint } from '@/src/features/recycling/services/recycling-points';
-import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
+import { useStreakProgress } from '@/src/hooks/useStreakProgress';
+import { useStudentLocation } from '@/src/hooks/useStudentLocation';
+import { AppButton, AppIcon, AppScreen, AppText, StreakHeatBadge, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
 
 const pUCPRegion = {
@@ -87,7 +88,8 @@ export function MapScreen() {
   const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const [category, setCategory] = useState<string>('all');
-  const { state, setSelectedContainerId, clearSelectedContainer } = useRecycleFlow();
+  const { state, setSelectedContainer, clearSelectedContainer } = useRecycleFlow();
+  const { data: streakData } = useStreakProgress();
   const { finalWasteType } = useResolvedRecycleSelection();
   const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
     state.finalWasteTypeId,
@@ -149,7 +151,11 @@ export function MapScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <AppText style={styles.title}>Reciclaje</AppText>
-          <AppText style={styles.score}>4 🔥</AppText>
+          <StreakHeatBadge
+            streakDays={streakData?.streakDays ?? 0}
+            level={streakData?.level ?? 1}
+            heat={streakData?.heat ?? 0}
+          />
         </View>
       </View>
 
@@ -186,7 +192,10 @@ export function MapScreen() {
           region={pUCPRegion}
           centerCoordinate={location}
           selectedMarkerId={state.selectedContainerId}
-          onMarkerPress={setSelectedContainerId}
+          onMarkerPress={(id) => {
+            const container = nearbyPoints.find((item) => item.id === id);
+            if (container) setSelectedContainer(container);
+          }}
           onMapReady={(fn) => setRecenter(() => fn)}
         />
         <Pressable style={styles.locationButton} onPress={() => recenter?.()}>
@@ -284,10 +293,6 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.display,
     lineHeight: theme.fontSizes.display + theme.spacing.xs,
     fontWeight: theme.fontWeights.bold,
-  },
-  score: {
-    color: theme.recycle.headerScore,
-    fontWeight: theme.fontWeights.semibold,
   },
   filterRow: {
     paddingHorizontal: theme.spacing.lg,

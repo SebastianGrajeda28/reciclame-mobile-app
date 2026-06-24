@@ -1,19 +1,25 @@
 import { supabase } from "@/lib/supabase";
 import { STORAGE_BUCKETS } from "@reciclame/shared-domain";
 
-export async function uploadInstructionStepImage(key: string, file: File): Promise<string> {
+async function uploadToStorage(bucket: string, key: string, file: File): Promise<string> {
   const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `${key}.${ext}`;
+  const ts = Date.now();
+  const path = `${key}_${ts}.${ext}`;
 
   const { error } = await supabase.storage
-    .from(STORAGE_BUCKETS.instructionStepImages)
-    .upload(path, file, { upsert: true });
+    .from(bucket)
+    .upload(path, file, { upsert: false });
 
   if (error) throw new Error(error.message);
 
-  const { data } = supabase.storage
-    .from(STORAGE_BUCKETS.instructionStepImages)
-    .getPublicUrl(path);
-
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
+}
+
+export function uploadInstructionStepImage(key: string, file: File): Promise<string> {
+  return uploadToStorage(STORAGE_BUCKETS.instructionStepImages, key, file);
+}
+
+export function uploadBinTypeImage(binTypeId: string, file: File): Promise<string> {
+  return uploadToStorage(STORAGE_BUCKETS.binTypeImages, binTypeId, file);
 }

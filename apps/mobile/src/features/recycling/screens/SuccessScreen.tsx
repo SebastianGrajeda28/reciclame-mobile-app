@@ -1,19 +1,23 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { routes } from '@/src/constants/routes';
 import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
+import { StreakCelebrationOverlay } from '@/src/features/recycling/components/StreakCelebrationOverlay';
 import { useFunFactByWasteTypeId } from '@/src/features/recycling/hooks/useFunFact';
 import {
   useRecycleFlow,
   useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
-import { AppButton, AppScreen, AppText, theme } from '@/src/ui';
+import { AppButton, AppIcon, AppScreen, AppText, StreakHeatBadge, theme } from '@/src/ui';
 
 export function SuccessScreen() {
-  const { resetFlow } = useRecycleFlow();
+  const { resetFlow, state } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { funFact } = useFunFactByWasteTypeId(finalWasteType?.id);
+  const streak = state.streakResult;
+  const [showCelebration, setShowCelebration] = useState(Boolean(streak?.streakExtendedToday));
 
   function handleDone() {
     resetFlow();
@@ -27,24 +31,42 @@ export function SuccessScreen() {
 
   return (
     <AppScreen padded centered style={styles.root}>
-      <View style={styles.iconWrap}>
-        <View style={styles.iconCircle}>
-          <AppText style={styles.check}>✓</AppText>
-        </View>
+      <View style={styles.iconCircle}>
+        <AppIcon name="check" size={theme.iconSizes.xl} color={theme.colors.textInverse} />
       </View>
 
-      <AppText style={styles.title}>¡Reciclaje registrado!</AppText>
+      <AppText variant="h2" style={styles.center}>
+        ¡Reciclaje registrado!
+      </AppText>
 
-      {finalWasteType && (
-        <AppText muted style={styles.subtitle}>
-          {finalWasteType.categoryLabel}
-        </AppText>
+      {(finalWasteType || selectedContainer) && (
+        <View style={styles.metaWrap}>
+          {finalWasteType && (
+            <AppText variant="body" muted style={styles.center}>
+              {finalWasteType.categoryLabel}
+            </AppText>
+          )}
+          {selectedContainer && (
+            <AppText variant="bodyS" muted style={styles.center}>
+              {selectedContainer.name}
+            </AppText>
+          )}
+        </View>
       )}
-      {selectedContainer && (
-        <AppText muted style={styles.subtitle}>
-          {selectedContainer.name}
-        </AppText>
-      )}
+
+      {streak?.alreadyRecycledToday ? (
+        <View style={styles.streakPill}>
+          <AppText variant="caption" style={styles.streakPillText}>
+            Ya aseguraste tu racha hoy
+          </AppText>
+          <StreakHeatBadge
+            streakDays={streak.streakDays}
+            level={streak.level}
+            heat={streak.heat}
+            size="sm"
+          />
+        </View>
+      ) : null}
 
       {funFact ? <FunFactCard text={funFact.text} style={styles.funFact} /> : null}
 
@@ -57,6 +79,16 @@ export function SuccessScreen() {
           onPress={() => router.replace(routes.recycleHistory)}
         />
       </View>
+
+      {streak ? (
+        <StreakCelebrationOverlay
+          visible={showCelebration}
+          streakDays={streak.streakDays}
+          level={streak.level}
+          leveledUp={streak.leveledUp}
+          onDismiss={() => setShowCelebration(false)}
+        />
+      ) : null}
     </AppScreen>
   );
 }
@@ -65,34 +97,38 @@ export default SuccessScreen;
 
 const styles = StyleSheet.create({
   root: {
-    gap: theme.spacing.sm,
-  },
-  iconWrap: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    gap: theme.spacing.s3,
   },
   iconCircle: {
-    width: 72,
-    height: 72,
+    width: 80,
+    height: 80,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.success,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: theme.spacing.s2,
+    ...theme.shadows.md,
   },
-  check: {
-    color: '#fff',
-    fontSize: theme.fontSizes.xxl,
-    fontWeight: theme.fontWeights.bold,
-  },
-  title: {
-    fontSize: theme.fontSizes.xl,
-    fontWeight: theme.fontWeights.bold,
-    color: theme.colors.textPrimary,
+  center: {
     textAlign: 'center',
   },
-  subtitle: {
-    fontSize: theme.fontSizes.md,
-    textAlign: 'center',
+  metaWrap: {
+    alignItems: 'center',
+    gap: theme.spacing.s1,
+  },
+  streakPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s1,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.s3,
+    paddingVertical: theme.spacing.s1,
+    borderRadius: theme.radius.full,
+    marginTop: theme.spacing.s1,
+  },
+  streakPillText: {
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeights.semibold,
   },
   funFact: {
     width: '100%',
@@ -100,7 +136,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     width: '100%',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.lg,
+    gap: theme.spacing.s2,
+    marginTop: theme.spacing.s5,
   },
 });

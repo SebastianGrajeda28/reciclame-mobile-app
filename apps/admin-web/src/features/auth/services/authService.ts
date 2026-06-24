@@ -1,24 +1,40 @@
-import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import type { Session } from "@supabase/supabase-js";
 
 export async function signInWithEmail(email: string, password: string): Promise<void> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const authError = new Error(error.message) as Error & { status?: number };
+    authError.status = error.status;
+    throw authError;
+  }
 }
 
 export async function requestPasswordReset(email: string, redirectTo: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const authError = new Error(error.message) as Error & { status?: number };
+    authError.status = error.status;
+    throw authError;
+  }
 }
 
 export async function updateCurrentUserPassword(password: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const authError = new Error(error.message) as Error & { status?: number };
+    authError.status = error.status;
+    throw authError;
+  }
 }
 
 export async function signOutCurrentUser(): Promise<void> {
   const { error } = await supabase.auth.signOut();
-  if (error) throw new Error(error.message);
+  if (error) {
+    const authError = new Error(error.message) as Error & { status?: number };
+    authError.status = error.status;
+    throw authError;
+  }
 }
 
 export async function getCurrentSession(): Promise<Session | null> {

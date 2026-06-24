@@ -1,7 +1,3 @@
-import { useEffect } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -11,8 +7,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import type { WasteType } from "../services/WasteTypesService";
 
 export const FUN_FACT_MAX_LENGTH = 255;
@@ -23,7 +29,7 @@ export const funFactFormSchema = z.object({
   text: z
     .string()
     .trim()
-    .min(1, "Escribe el contenido del fun fact.")
+    .min(1, "Escribe el contenido del dato curioso.")
     .max(FUN_FACT_MAX_LENGTH, `Máximo ${FUN_FACT_MAX_LENGTH} caracteres.`),
 });
 
@@ -70,16 +76,24 @@ export default function FunFactForm({
           name="wasteTypeId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-semibold text-[#0b2f4e]">Tipo de residuo</FormLabel>
+              <FormLabel className="text-sm font-semibold text-[#0b2f4e]">
+                Tipo de residuo
+              </FormLabel>
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
-                disabled={isSubmitting || isWasteTypesLoading || hasWasteTypesError}
+                disabled={
+                  isSubmitting || isWasteTypesLoading || hasWasteTypesError
+                }
               >
                 <FormControl>
                   <SelectTrigger className="h-11 w-full border-slate-200 bg-white">
                     <SelectValue
-                      placeholder={isWasteTypesLoading ? "Cargando tipos..." : "Selecciona un tipo de residuo"}
+                      placeholder={
+                        isWasteTypesLoading
+                          ? "Cargando tipos..."
+                          : "Selecciona un tipo de residuo"
+                      }
                     />
                   </SelectTrigger>
                 </FormControl>
@@ -97,7 +111,9 @@ export default function FunFactForm({
         />
 
         {hasWasteTypesError && (
-          <p className="mt-2 text-sm text-red-600">No se pudieron cargar los tipos de residuo.</p>
+          <p className="mt-2 text-sm text-red-600">
+            No se pudieron cargar los tipos de residuo.
+          </p>
         )}
 
         <FormField
@@ -105,7 +121,9 @@ export default function FunFactForm({
           name="text"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-semibold text-[#0b2f4e]">Texto</FormLabel>
+              <FormLabel className="text-sm font-semibold text-[#0b2f4e]">
+                Texto
+              </FormLabel>
               <FormControl>
                 <Textarea
                   {...field}

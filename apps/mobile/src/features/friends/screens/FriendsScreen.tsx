@@ -1,84 +1,35 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { router, type Href } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AvatarComposer } from '@/src/avatar';
+import type { AvatarConfig } from '@/src/avatar/avatarCatalog';
 import { routes } from '@/src/constants/routes';
 import { useFriends } from '@/src/features/friends/hooks/useFriends';
+import { usePendingRequests } from '@/src/features/friends/hooks/usePendingRequests';
+import { useRespondToRequest } from '@/src/features/friends/hooks/useRespondToRequest';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
-import type { FriendMedal, FriendSummary } from '@/src/types/friend';
-import { AppButton, AppIcon, AppText, theme } from '@/src/ui';
+import type { FriendMedal, FriendRequest, FriendSummary } from '@/src/types/friend';
+import {
+  AppButton,
+  AppIcon,
+  AppIconButton,
+  AppSegmentedControl,
+  AppText,
+  StreakHeatBadge,
+  theme,
+} from '@/src/ui';
+import { formatRelativeTime } from '@/src/utils/dates';
+
+type Tab = 'friends' | 'requests';
 
 const MAX_VISIBLE_MEDALS = 3;
-const USE_MOCK_FRIENDS = true; // así hasta que el supabase remoto tenga todo (por si acaso)
 
-const mockFriends: FriendSummary[] = [
-  {
-    id: 'mock-friend-1',
-    name: 'Alice Smith',
-    currentStreak: 70,
-    featuredMedals: [
-      { id: 'mock-medal-1', name: 'Eco inicial' },
-      { id: 'mock-medal-2', name: 'Bosque vivo' },
-      { id: 'mock-medal-3', name: 'Botella limpia' },
-    ],
-  },
-  {
-    id: 'mock-friend-2',
-    name: 'Bob Johnson',
-    currentStreak: 45,
-    featuredMedals: [
-      { id: 'mock-medal-4', name: 'Caja pro' },
-      { id: 'mock-medal-5', name: 'Botella limpia' },
-      { id: 'mock-medal-6', name: 'Racha dorada' },
-    ],
-  },
-  {
-    id: 'mock-friend-3',
-    name: 'Charlie Brown',
-    currentStreak: 17,
-    featuredMedals: [
-      { id: 'mock-medal-7', name: 'Caja pro' },
-      { id: 'mock-medal-8', name: 'Bosque vivo' },
-      { id: 'mock-medal-9', name: 'Botella limpia' },
-    ],
-  },
-  {
-    id: 'mock-friend-4',
-    name: 'Diana Prince',
-    currentStreak: 5,
-    featuredMedals: [
-      { id: 'mock-medal-10', name: 'Reciclaje constante' },
-      { id: 'mock-medal-11', name: 'Gota limpia' },
-    ],
-  },
-  {
-    id: 'mock-friend-5',
-    name: 'Ariel War',
-    currentStreak: 3,
-    featuredMedals: [{ id: 'mock-medal-12', name: 'Pila segura' }],
-  },
-  {
-    id: 'mock-friend-6',
-    name: 'Ethan Walker',
-    currentStreak: 1,
-    featuredMedals: [{ id: 'mock-medal-13', name: 'Pila segura' }],
-  },
-  {
-    id: 'mock-friend-7',
-    name: 'Francis Deen',
-    currentStreak: 67,
-    featuredMedals: [{ id: 'mock-medal-16', name: 'Pila segura' }],
-  },
-  {
-    id: 'mock-friend-8',
-    name: 'Gin Bates',
-    currentStreak: 42,
-    featuredMedals: [
-      { id: 'mock-medal-7', name: 'Caja pro' },
-      { id: 'mock-medal-8', name: 'Bosque vivo' },
-      { id: 'mock-medal-9', name: 'Botella limpia' },
-    ],
-  },
+const SEGMENTS: { value: Tab; label: string }[] = [
+  { value: 'friends', label: 'Amigos' },
+  { value: 'requests', label: 'Solicitudes' },
 ];
 
 function buildInitials(name: string) {
@@ -90,13 +41,26 @@ function buildInitials(name: string) {
     .join('');
 }
 
-function FriendAvatar({ friend }: { friend: FriendSummary }) {
-  const initials = buildInitials(friend.name);
+// ── Shared: avatar ────────────────────────────────────────────────────────────
+
+function UserAvatar({
+  name,
+  avatarConfig,
+  avatarUrl,
+}: {
+  name: string;
+  avatarConfig?: Record<string, unknown> | null;
+  avatarUrl?: string | null;
+}) {
+  const initials = buildInitials(name);
+  const config = avatarConfig as AvatarConfig | null | undefined;
 
   return (
     <View style={styles.avatarShell}>
-      {friend.avatarUrl ? (
-        <Image source={{ uri: friend.avatarUrl }} style={styles.avatarImage} />
+      {config ? (
+        <AvatarComposer config={config} size={68} blink={false} />
+      ) : avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
       ) : (
         <View style={styles.avatarFallback}>
           <AppText variant="h4" style={styles.avatarInitials}>
@@ -107,6 +71,8 @@ function FriendAvatar({ friend }: { friend: FriendSummary }) {
     </View>
   );
 }
+
+// ── Shared: medal strip ───────────────────────────────────────────────────────
 
 function FriendMedalBadge({ medal }: { medal: FriendMedal }) {
   return (
@@ -121,9 +87,9 @@ function FriendMedalBadge({ medal }: { medal: FriendMedal }) {
 }
 
 function FriendMedalStrip({ medals }: { medals: FriendMedal[] }) {
-  const visibleMedals = medals.slice(0, MAX_VISIBLE_MEDALS);
+  const visible = medals.slice(0, MAX_VISIBLE_MEDALS);
 
-  if (visibleMedals.length === 0) {
+  if (visible.length === 0) {
     return (
       <AppText variant="caption" muted>
         Sin medallas destacadas
@@ -133,28 +99,41 @@ function FriendMedalStrip({ medals }: { medals: FriendMedal[] }) {
 
   return (
     <View style={styles.medalStrip}>
-      {visibleMedals.map((medal) => (
+      {visible.map((medal) => (
         <FriendMedalBadge key={medal.id} medal={medal} />
       ))}
     </View>
   );
 }
 
+// ── Friends tab ───────────────────────────────────────────────────────────────
+
+type FriendsTabProps = {
+  data: FriendSummary[];
+  loading: boolean;
+  refreshing: boolean;
+  error: string | null;
+  refresh: () => void;
+  refetch: () => void;
+};
+
 function FriendListItem({ friend }: { friend: FriendSummary }) {
   return (
-    <View style={styles.friendCard}>
-      <FriendAvatar friend={friend} />
-      <View style={styles.friendBody}>
-        <AppText variant="h4" numberOfLines={1} style={styles.friendName}>
+    <View style={styles.card}>
+      <UserAvatar name={friend.name} avatarConfig={friend.avatarConfig} avatarUrl={friend.avatarUrl} />
+      <View style={styles.cardBody}>
+        <AppText variant="h4" numberOfLines={1} style={styles.cardName}>
           {friend.name}
         </AppText>
         <FriendMedalStrip medals={friend.featuredMedals} />
+        {friend.lastActivityAt ? (
+          <AppText variant="caption" muted>
+            {formatRelativeTime(friend.lastActivityAt)}
+          </AppText>
+        ) : null}
       </View>
       <View style={styles.streakBox}>
-        <AppText variant="h4" style={styles.streakValue}>
-          {friend.currentStreak}
-        </AppText>
-        <AppIcon name="flame" size={theme.iconSizes.lg} color={theme.colors.secondary} />
+        <StreakHeatBadge streakDays={friend.currentStreak} />
       </View>
     </View>
   );
@@ -179,23 +158,206 @@ function FriendsEmptyState() {
   );
 }
 
+function FriendsTab({ data: friends, loading, refreshing, error, refresh, refetch }: FriendsTabProps) {
+  const showInitialLoading = loading && friends.length === 0;
+
+  if (showInitialLoading) {
+    return (
+      <View style={styles.centerState}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerState}>
+        <AppIcon name="alertCircle" size={theme.iconSizes.xl} color={theme.colors.danger} />
+        <AppText variant="h4" style={styles.errorTitle}>
+          No pudimos cargar tus amigos
+        </AppText>
+        <AppText variant="bodyS" muted style={styles.errorMessage}>
+          {error}
+        </AppText>
+        <AppButton label="Reintentar" variant="outline" onPress={refetch} />
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={friends}
+      keyExtractor={(friend) => friend.id}
+      renderItem={({ item }) => <FriendListItem friend={item} />}
+      contentContainerStyle={[
+        styles.listContent,
+        friends.length === 0 ? styles.emptyListContent : null,
+      ]}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      ListEmptyComponent={<FriendsEmptyState />}
+      refreshing={refreshing}
+      onRefresh={refresh}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+}
+
+// ── Requests tab ──────────────────────────────────────────────────────────────
+
+type RequestsTabProps = {
+  data: FriendRequest[];
+  loading: boolean;
+  refreshing: boolean;
+  error: string | null;
+  refresh: () => void;
+  refetch: () => void;
+  onRespond: (friendshipId: string, action: 'accept' | 'decline') => void;
+};
+
+function FriendRequestItem({
+  request,
+  onAccept,
+  onReject,
+}: {
+  request: FriendRequest;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  return (
+    <View style={styles.card}>
+      <UserAvatar name={request.name} avatarConfig={request.avatarConfig} />
+      <View style={styles.cardBody}>
+        <AppText variant="h4" numberOfLines={1} style={styles.cardName}>
+          {request.name}
+        </AppText>
+        <FriendMedalStrip medals={request.featuredMedals} />
+      </View>
+      <View style={styles.requestActions}>
+        <AppIconButton
+          accessibilityLabel="Aceptar solicitud"
+          variant="primary"
+          onPress={onAccept}
+          icon={<AppIcon name="plus" size={theme.iconSizes.sm} color={theme.colors.textPrimary} />}
+          style={styles.actionButton}
+        />
+        <AppIconButton
+          accessibilityLabel="Rechazar solicitud"
+          variant="danger"
+          onPress={onReject}
+          icon={<AppIcon name="trash" size={theme.iconSizes.sm} color={theme.colors.textInverse} />}
+          style={styles.actionButton}
+        />
+      </View>
+    </View>
+  );
+}
+
+function RequestsEmptyState() {
+  return (
+    <View style={styles.emptyState}>
+      <Image
+        source={require('@/assets/images/no-friend-requests.png')}
+        style={styles.emptyImage}
+        resizeMode="contain"
+      />
+      <AppText variant="h4" style={styles.emptyTitle}>
+        No tienes solicitudes.. aún
+      </AppText>
+    </View>
+  );
+}
+
+function RequestsTab({
+  data: requests,
+  loading,
+  refreshing,
+  error,
+  refresh,
+  refetch,
+  onRespond,
+}: RequestsTabProps) {
+  const showInitialLoading = loading && requests.length === 0;
+
+  if (showInitialLoading) {
+    return (
+      <View style={styles.centerState}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerState}>
+        <AppIcon name="alertCircle" size={theme.iconSizes.xl} color={theme.colors.danger} />
+        <AppText variant="h4" style={styles.errorTitle}>
+          No pudimos cargar las solicitudes
+        </AppText>
+        <AppText variant="bodyS" muted style={styles.errorMessage}>
+          {error}
+        </AppText>
+        <AppButton label="Reintentar" variant="outline" onPress={refetch} />
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={requests}
+      keyExtractor={(req) => req.id}
+      renderItem={({ item }) => (
+        <FriendRequestItem
+          request={item}
+          onAccept={() => onRespond(item.id, 'accept')}
+          onReject={() => onRespond(item.id, 'decline')}
+        />
+      )}
+      contentContainerStyle={[
+        styles.listContent,
+        requests.length === 0 ? styles.emptyListContent : null,
+      ]}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      ListEmptyComponent={<RequestsEmptyState />}
+      refreshing={refreshing}
+      onRefresh={refresh}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+}
+
+// ── Root screen ───────────────────────────────────────────────────────────────
+
 export function FriendsScreen() {
   const currentUser = useCurrentUser();
-  const {
-    data: remoteFriends,
-    loading,
-    refreshing,
-    error,
-    refresh,
-    refetch,
-  } = useFriends(USE_MOCK_FRIENDS ? null : (currentUser?.id ?? null));
+  const [activeTab, setActiveTab] = useState<Tab>('friends');
 
-  const friends = USE_MOCK_FRIENDS ? mockFriends : remoteFriends;
-  const screenLoading = USE_MOCK_FRIENDS ? false : loading;
-  const screenRefreshing = USE_MOCK_FRIENDS ? false : refreshing;
-  const screenError = USE_MOCK_FRIENDS ? null : error;
-  const handleRefresh = USE_MOCK_FRIENDS ? undefined : refresh;
-  const showInitialLoading = screenLoading && friends.length === 0;
+  const friendsState = useFriends(currentUser?.id ?? null);
+  const requestsState = usePendingRequests();
+  const { submit } = useRespondToRequest();
+
+  const hasMounted = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (hasMounted.current) {
+        friendsState.refresh();
+        requestsState.refresh();
+      } else {
+        hasMounted.current = true;
+      }
+    }, [friendsState.refresh, requestsState.refresh]),
+  );
+
+  const handleRespond = useCallback(
+    async (friendshipId: string, action: 'accept' | 'decline') => {
+      const ok = await submit(friendshipId, action);
+      if (ok) {
+        requestsState.refresh();
+        if (action === 'accept') friendsState.refresh();
+      }
+    },
+    [submit, requestsState.refresh, friendsState.refresh],
+  );
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -206,35 +368,28 @@ export function FriendsScreen() {
         <View style={styles.headerUnderline} />
       </View>
 
-      {showInitialLoading ? (
-        <View style={styles.centerState}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      ) : screenError ? (
-        <View style={styles.centerState}>
-          <AppIcon name="alertCircle" size={theme.iconSizes.xl} color={theme.colors.danger} />
-          <AppText variant="h4" style={styles.errorTitle}>
-            No pudimos cargar tus amigos
-          </AppText>
-          <AppText variant="bodyS" muted style={styles.errorMessage}>
-            {screenError}
-          </AppText>
-          <AppButton label="Reintentar" variant="outline" onPress={refetch} />
-        </View>
+      <View style={styles.segmentedWrapper}>
+        <AppSegmentedControl segments={SEGMENTS} value={activeTab} onChange={setActiveTab} />
+      </View>
+
+      {activeTab === 'friends' ? (
+        <FriendsTab
+          data={friendsState.data}
+          loading={friendsState.loading}
+          refreshing={friendsState.refreshing}
+          error={friendsState.error}
+          refresh={friendsState.refresh}
+          refetch={friendsState.refetch}
+        />
       ) : (
-        <FlatList
-          data={friends}
-          keyExtractor={(friend) => friend.id}
-          renderItem={({ item }) => <FriendListItem friend={item} />}
-          contentContainerStyle={[
-            styles.listContent,
-            friends.length === 0 ? styles.emptyListContent : null,
-          ]}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListEmptyComponent={<FriendsEmptyState />}
-          refreshing={screenRefreshing}
-          onRefresh={handleRefresh}
-          showsVerticalScrollIndicator={false}
+        <RequestsTab
+          data={requestsState.data}
+          loading={requestsState.loading}
+          refreshing={requestsState.refreshing}
+          error={requestsState.error}
+          refresh={requestsState.refresh}
+          refetch={requestsState.refetch}
+          onRespond={handleRespond}
         />
       )}
 
@@ -261,7 +416,7 @@ const styles = StyleSheet.create({
   header: {
     alignSelf: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.s5,
+    marginBottom: theme.spacing.s4,
   },
   headerTitle: {
     fontWeight: theme.fontWeights.extrabold,
@@ -271,6 +426,10 @@ const styles = StyleSheet.create({
     height: 1,
     marginTop: theme.spacing.s1,
     backgroundColor: theme.colors.textPrimary,
+  },
+  segmentedWrapper: {
+    paddingHorizontal: theme.components.screenPaddingHorizontal,
+    marginBottom: theme.spacing.s4,
   },
   listContent: {
     paddingHorizontal: theme.components.screenPaddingHorizontal,
@@ -282,7 +441,7 @@ const styles = StyleSheet.create({
   separator: {
     height: theme.spacing.s2,
   },
-  friendCard: {
+  card: {
     minHeight: 84,
     borderWidth: 1,
     borderColor: theme.palette.navy[200],
@@ -315,13 +474,13 @@ const styles = StyleSheet.create({
   avatarInitials: {
     color: theme.colors.secondary,
   },
-  friendBody: {
+  cardBody: {
     flex: 1,
     minWidth: 0,
     marginLeft: theme.spacing.s3,
     gap: theme.spacing.s2,
   },
-  friendName: {
+  cardName: {
     fontWeight: theme.fontWeights.extrabold,
   },
   medalStrip: {
@@ -350,8 +509,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: theme.spacing.s1,
   },
-  streakValue: {
-    fontWeight: theme.fontWeights.extrabold,
+  requestActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s2,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
   },
   centerState: {
     flex: 1,

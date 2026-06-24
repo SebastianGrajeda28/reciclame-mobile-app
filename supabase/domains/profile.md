@@ -18,6 +18,8 @@
 ### Functions
 - `public.update_user_avatar(...)`
 - `public.get_friends_with_profile(...)`
+- `public.get_my_friend_code()`
+- `public.add_friend_by_code(...)`
 
 ## Current source files
 

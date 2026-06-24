@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { getCurrentAccount, type Account } from "@/features/account/services/accountService";
 import { getCurrentSession, onAuthStateChanged } from "@/features/auth/services/authService";
+import type { Session } from "@supabase/supabase-js";
+import { createContext, useContext, useEffect, useState } from "react";
 
 interface UserContextValue {
   account: Account | null;
@@ -41,6 +41,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     bootstrap();
 
     const subscription = onAuthStateChanged(async (_event, nextSession) => {
+      setLoading(true);
       setSession(nextSession);
       if (nextSession) {
         try {
@@ -54,6 +55,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       } else if (mounted) {
         setAccount(null);
       }
+      if (mounted) setLoading(false);
     });
 
     return () => {

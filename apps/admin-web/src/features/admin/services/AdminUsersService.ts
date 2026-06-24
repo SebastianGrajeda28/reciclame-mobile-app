@@ -1,15 +1,46 @@
 import { supabase } from "@/lib/supabase";
-import type { AppUser, Role, UserRoleAssignment } from "@reciclame/shared-domain";
+import type { Role } from "@reciclame/shared-domain";
+import { ADMIN_RPCS } from "@reciclame/shared-domain";
+export type { Role };
 
-export type { AppUser, Role, UserRoleAssignment };
-
-type UserRow = {
+export type AppUser = {
   id: string;
   email: string;
-  created_at: string;
-  updated_at: string | null;
-  last_login_at: string | null;
-  is_active: boolean;
+  name: string;
+  createdAt: string;
+  updatedAt: string | null;
+  lastLoginAt: string | null;
+  isActive: boolean;
+  roleId: string | null;
+  roleName: string | null;
+  userRoleAssignmentId: string | null;
+};
+
+export type UserRoleAssignment = {
+  id: string;
+  userId: string;
+  roleId: string;
+  roleName: string;
+  isActive: boolean;
+  updatedAt: string | null;
+};
+
+type UserListRow = {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string | null;
+  lastLoginAt: string | null;
+  isActive: boolean;
+  roleId: string | null;
+  roleName: string | null;
+  userRoleAssignmentId: string | null;
+};
+
+type GetUsersListResponse = {
+  total: number;
+  items: UserListRow[];
 };
 
 type UserRoleRow = {
@@ -17,39 +48,81 @@ type UserRoleRow = {
   user_id: string;
   role_id: string;
   is_active: boolean;
+  updated_at: string | null;
   roles: { name: string } | { name: string }[] | null;
 };
 
-function mapUser(row: UserRow): AppUser {
+function mapUserRow(row: UserListRow): AppUser {
   return {
     id: row.id,
     email: row.email,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    lastLoginAt: row.last_login_at,
-    isActive: row.is_active,
+    name: row.name,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    lastLoginAt: row.lastLoginAt,
+    isActive: row.isActive,
+    roleId: row.roleId ?? null,
+    roleName: row.roleName ?? null,
+    userRoleAssignmentId: row.userRoleAssignmentId ?? null,
   };
 }
 
-function mapAssignment(row: UserRoleRow): UserRoleAssignment {
-  const roleName = Array.isArray(row.roles) ? row.roles[0]?.name ?? "" : row.roles?.name ?? "";
+function mapUserRoleRow(row: UserRoleRow): UserRoleAssignment {
   return {
     id: row.id,
     userId: row.user_id,
     roleId: row.role_id,
-    roleName,
+    roleName: Array.isArray(row.roles) ? row.roles[0]?.name ?? "" : row.roles?.name ?? "",
     isActive: row.is_active,
+    updatedAt: row.updated_at ?? null,
   };
 }
 
-export async function getAdminUsers(): Promise<AppUser[]> {
-  const { data, error } = await supabase
-    .from("users")
-    .select("id, email, created_at, updated_at, last_login_at, is_active")
-    .order("created_at", { ascending: false });
+export type RoleFilter = "all" | "admin" | "manager";
+export type SortColumn = "email" | "lastLoginAt" | "updatedAt" | "createdAt";
+export type SortDirection = "asc" | "desc";
 
+export type GetAdminUsersParams = {
+  limit: number;
+  offset: number;
+  isActive?: boolean | null;
+  roleFilter?: RoleFilter;
+  search?: string;
+  sortBy?: SortColumn;
+  sortDir?: SortDirection;
+};
+
+export type GetAdminUsersResult = {
+  total: number;
+  users: AppUser[];
+};
+
+export async function getAdminUsers({
+  limit,
+  offset,
+  isActive = null,
+  roleFilter = "all",
+  search,
+  sortBy = "createdAt",
+  sortDir = "desc",
+}: GetAdminUsersParams): Promise<GetAdminUsersResult> {
+  const { data, error } = await supabase.rpc(ADMIN_RPCS.usersList, {
+    p_limit: limit,
+    p_offset: offset,
+    p_is_active: isActive,
+    p_role_filter: roleFilter,
+    p_search: search?.trim() ? search.trim() : null,
+    p_sort_by: sortBy,
+    p_sort_dir: sortDir,
+  });
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapUser);
+
+  const response = (data as GetUsersListResponse) ?? { total: 0, items: [] };
+
+  return {
+    total: response.total ?? 0,
+    users: (response.items ?? []).map(mapUserRow),
+  };
 }
 
 export async function getRoles(): Promise<Role[]> {
@@ -66,25 +139,29 @@ export async function getRoles(): Promise<Role[]> {
 export async function getUserRoleAssignments(userId?: string): Promise<UserRoleAssignment[]> {
   let query = supabase
     .from("user_roles")
-    .select("id, user_id, role_id, is_active, roles(name)")
+    .select("id, user_id, role_id, is_active, updated_at, roles(name)")
     .eq("is_active", true);
 
   if (userId) query = query.eq("user_id", userId);
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return ((data ?? []) as UserRoleRow[]).map(mapAssignment);
+
+  return (data ?? []).map((row) => mapUserRoleRow(row as UserRoleRow));
 }
 
 export async function assignUserRole(userId: string, roleId: string): Promise<UserRoleAssignment> {
   const { data, error } = await supabase
     .from("user_roles")
-    .insert({ user_id: userId, role_id: roleId })
-    .select("id, user_id, role_id, is_active, roles(name)")
+    .upsert(
+      { user_id: userId, role_id: roleId, is_active: true },
+      { onConflict: "user_id,role_id" }
+    )
+    .select("id, user_id, role_id, is_active, updated_at, roles(name)")
     .single();
 
   if (error) throw new Error(error.message);
-  return mapAssignment(data as UserRoleRow);
+  return mapUserRoleRow(data as UserRoleRow);
 }
 
 export async function deactivateUserRole(assignmentId: string): Promise<void> {

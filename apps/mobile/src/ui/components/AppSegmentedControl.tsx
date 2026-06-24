@@ -10,7 +10,7 @@ type Segment<T extends string> = {
 };
 
 type AppSegmentedControlProps<T extends string> = {
-  segments: [Segment<T>, Segment<T>];
+  segments: Segment<T>[];
   value: T;
   onChange: (value: T) => void;
   dark?: boolean;
@@ -32,6 +32,9 @@ export function AppSegmentedControl<T extends string>({
           <Pressable
             key={seg.value}
             onPress={() => onChange(seg.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={seg.label}
             style={[
               styles.segment,
               isActive ? (dark ? styles.segmentActiveDark : styles.segmentActiveLight) : null,
@@ -43,8 +46,12 @@ export function AppSegmentedControl<T extends string>({
                 style={[
                   styles.label,
                   isActive
-                    ? dark ? styles.labelActiveDark : styles.labelActiveLight
-                    : dark ? styles.labelInactiveDark : styles.labelInactiveLight,
+                    ? dark
+                      ? styles.labelActiveDark
+                      : styles.labelActiveLight
+                    : dark
+                      ? styles.labelInactiveDark
+                      : styles.labelInactiveLight,
                 ]}
               >
                 {seg.label}

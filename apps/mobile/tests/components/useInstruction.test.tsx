@@ -24,12 +24,8 @@ const sampleInstruction: Instruction = {
   steps: [
     {
       id: 'step-1',
-      instructionId: 'inst-1',
       text: 'Enjuaga con agua',
       imageUrl: null,
-      isActive: true,
-      createdAt: '2026-05-30T01:05:00Z',
-      updatedAt: '2026-05-30T01:06:00Z',
     },
   ],
 };

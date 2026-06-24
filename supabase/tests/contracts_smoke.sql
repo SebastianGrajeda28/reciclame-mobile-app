@@ -26,6 +26,10 @@ begin
   if to_regprocedure('app_profile.update_user_avatar(uuid,uuid)') is null then raise exception 'missing implementation app_profile.update_user_avatar'; end if;
   if to_regprocedure('public.update_featured_medals(uuid,uuid[])') is null then raise exception 'missing wrapper public.update_featured_medals'; end if;
   if to_regprocedure('app_gamification.update_featured_medals(uuid,uuid[])') is null then raise exception 'missing implementation app_gamification.update_featured_medals'; end if;
+  if to_regprocedure('public.get_my_friend_code()') is null then raise exception 'missing wrapper public.get_my_friend_code()'; end if;
+  if to_regprocedure('app_social.get_my_friend_code()') is null then raise exception 'missing implementation app_social.get_my_friend_code()'; end if;
+  if to_regprocedure('public.add_friend_by_code(text)') is null then raise exception 'missing wrapper public.add_friend_by_code(text)'; end if;
+  if to_regprocedure('app_social.add_friend_by_code(text)') is null then raise exception 'missing implementation app_social.add_friend_by_code(text)'; end if;
 end
 $$;
 
@@ -42,6 +46,18 @@ begin
   end if;
   if has_function_privilege('authenticated', 'app_admin.is_current_user_admin()', 'EXECUTE') then
     raise exception 'authenticated should not execute app_admin.is_current_user_admin() directly';
+  end if;
+  if not has_function_privilege('authenticated', 'public.get_my_friend_code()', 'EXECUTE') then
+    raise exception 'authenticated missing execute on public.get_my_friend_code()';
+  end if;
+  if has_function_privilege('authenticated', 'app_social.get_my_friend_code()', 'EXECUTE') then
+    raise exception 'authenticated should not execute app_social.get_my_friend_code() directly';
+  end if;
+  if not has_function_privilege('authenticated', 'public.add_friend_by_code(text)', 'EXECUTE') then
+    raise exception 'authenticated missing execute on public.add_friend_by_code(text)';
+  end if;
+  if has_function_privilege('authenticated', 'app_social.add_friend_by_code(text)', 'EXECUTE') then
+    raise exception 'authenticated should not execute app_social.add_friend_by_code(text) directly';
   end if;
 end
 $$;

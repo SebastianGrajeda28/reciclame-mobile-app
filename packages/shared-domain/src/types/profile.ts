@@ -27,6 +27,7 @@ export type UserSetting = {
   skipRecyclingInstructions: boolean;
   profileVisibility: string | null;
   language: string | null;
+  locationVerificationEnabled: boolean;
   updatedAt: string | null;
 };
 
