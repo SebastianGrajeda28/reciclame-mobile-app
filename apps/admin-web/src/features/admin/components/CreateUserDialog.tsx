@@ -45,7 +45,10 @@ export default function CreateUserDialog({ onClose, onCreated }: Props) {
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
           <X className="h-5 w-5" />
         </button>
-        <h2 className="mb-5 text-lg font-bold">Crear Empleado</h2>
+        <h2 className="mb-1 text-lg font-bold">Crear Nuevo Empleado</h2>
+        <p className="mb-5 text-sm text-slate-500">
+          Si el correo ya pertenece a un usuario de la app móvil, se le asignará el rol y se establecerá la contraseña indicada.
+        </p>
         <AccountForm mode="register" onSubmit={handleSubmit} disabled={saving} />
       </div>
     </div>
