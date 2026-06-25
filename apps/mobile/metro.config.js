@@ -8,6 +8,16 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
+// Force react-native deep imports (e.g. react-native/Libraries/...) to always
+// resolve to the same workspace-root copy. The singletonModules map already
+// redirects the 'react-native' entry point there, but third-party packages that
+// live in apps/mobile/node_modules (e.g. react-native-gesture-handler) use deep
+// imports like 'react-native/Libraries/Utilities/codegenNativeComponent' which
+// bypass the singletonModules map and resolve to the local copy instead. This
+// causes ReactNativeViewConfigRegistry to have two instances → crash.
+config.resolver.extraNodeModules = {
+  'react-native': path.resolve(workspaceRoot, 'node_modules/react-native'),
+};
 config.resolver.assetExts = [
   ...config.resolver.assetExts.filter((ext) => ext !== 'tflite'),
   'tflite',
