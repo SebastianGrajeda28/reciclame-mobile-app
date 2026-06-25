@@ -138,11 +138,7 @@ function EditableCampusCell({
   onChange?: (val: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [localValue, setLocalValue] = useState(value);
-
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
+  const [localValue, setLocalValue] = useState(() => value);
 
   if (pending) {
     return (
