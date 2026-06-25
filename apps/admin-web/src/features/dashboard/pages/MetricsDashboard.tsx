@@ -161,7 +161,7 @@ function formatRangeLabel(dateFrom: Date, dateTo: Date) {
   return `${formatDate(dateFrom)} - ${formatDate(dateTo)}`;
 }
 
-const mockToday = new Date(2026, 5, 11);
+const mockToday = new Date();
 
 export default function MetricsDashboard() {
   const { session } = useUser();
@@ -462,7 +462,12 @@ export default function MetricsDashboard() {
                       <Calendar
                         mode="single"
                         selected={dateFrom}
-                        onSelect={(date) => date && setDateFrom(date)}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          const d = new Date(date);
+                          d.setHours(0, 0, 1, 0);
+                          setDateFrom(d);
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -484,7 +489,12 @@ export default function MetricsDashboard() {
                       <Calendar
                         mode="single"
                         selected={dateTo}
-                        onSelect={(date) => date && setDateTo(date)}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          const d = new Date(date);
+                          d.setHours(23, 59, 59, 0);
+                          setDateTo(d);
+                        }}
                         disabled={(date) => date < dateFrom}
                       />
                     </PopoverContent>
