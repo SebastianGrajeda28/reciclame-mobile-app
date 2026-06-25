@@ -35,6 +35,7 @@ type RecycleFlowState = {
   selectedContainerId?: string;
   selectedContainer?: RecyclingContainer;
   streakResult?: StreakResult;
+  confirmed?: boolean;
 };
 
 type RecycleFlowContextValue = {
@@ -77,6 +78,7 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
   }, [updateSession]);
 
   const markConfirmed = useCallback(async (recyclingRecordId: string) => {
+    setState((prev) => ({ ...prev, confirmed: true }));
     await updateSession({ outcome: 'confirmed', recyclingRecordId, furthestStep: 'success' });
   }, [updateSession]);
 

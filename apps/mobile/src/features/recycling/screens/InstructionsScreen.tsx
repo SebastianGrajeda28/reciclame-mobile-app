@@ -124,6 +124,7 @@ export function InstructionsScreen() {
   ]);
 
   const handleConfirm = useCallback(async () => {
+    if (state.confirmed) return;
     if (!finalWasteType || !selectedContainer) {
       notify('Datos incompletos', 'Falta categoría o contenedor seleccionado.');
       return;

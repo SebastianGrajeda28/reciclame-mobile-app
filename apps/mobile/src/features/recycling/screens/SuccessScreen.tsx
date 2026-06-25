@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useNavigation } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { routes } from '@/src/constants/routes';
@@ -13,27 +13,32 @@ import {
 import { AppButton, AppIcon, AppScreen, AppText, StreakHeatBadge, theme } from '@/src/ui';
 
 export function SuccessScreen() {
+  const navigation = useNavigation();
   const { resetFlow, state } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { funFact } = useFunFactByWasteTypeId(finalWasteType?.id);
   const streak = state.streakResult;
   const [showCelebration, setShowCelebration] = useState(Boolean(streak?.streakExtendedToday));
 
+  // Limpia el flujo al salir definitivamente (replace/dismiss). No se dispara con push,
+  // así que navegar a historial deja el estado intacto para que el usuario pueda volver.
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', () => {
+      resetFlow();
+    });
+  }, [navigation, resetFlow]);
+
   function handleDone() {
-    resetFlow();
     router.replace('/(tabs)');
   }
 
   function handleRecycleAnother() {
-    resetFlow();
     router.replace('/recycle/camera');
   }
 
- function handleViewHistory() {
-  resetFlow();
-  router.dismissAll();              // limpia el stack de recycle → queda en (tabs)
-  router.push(routes.recycleHistory); // empuja historial sobre tabs
-}
+  function handleViewHistory() {
+    router.push(routes.recycleHistory);
+  }
 
   return (
     <AppScreen padded centered style={styles.root}>

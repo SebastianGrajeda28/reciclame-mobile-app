@@ -48,7 +48,19 @@ export default function RootLayout() {
                         <Stack.Screen name="recycle/instructions" options={{ title: 'Instrucciones' }} />
                         <Stack.Screen
                           name="recycle/success"
-                          options={{ title: 'Reciclaje registrado', headerLeft: () => null }}
+                          options={{
+                            title: 'Reciclaje registrado',
+                            headerLeft: () => (
+                              <Pressable
+                                onPress={() => router.replace('/(tabs)')}
+                                hitSlop={12}
+                                accessibilityRole="button"
+                                accessibilityLabel="Volver al inicio"
+                              >
+                                <AppIcon name="arrowBack" size={24} color="#111" />
+                              </Pressable>
+                            ),
+                          }}
                         />
                         <Stack.Screen
                           name="recycle/history"
@@ -56,10 +68,10 @@ export default function RootLayout() {
                             title: 'Historial',
                             headerLeft: () => (
                               <Pressable
-                                onPress={() => router.replace('/(tabs)')}
+                                onPress={() => router.back()}
                                 hitSlop={12}
                                 accessibilityRole="button"
-                                accessibilityLabel="Volver al inicio"
+                                accessibilityLabel="Volver"
                               >
                                 <AppIcon name="arrowBack" size={24} color="#111" />
                               </Pressable>
