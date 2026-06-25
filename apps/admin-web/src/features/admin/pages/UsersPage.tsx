@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import CreateUserDialog from "../components/CreateUserDialog";
 import ManageUserModal from "../components/ManageUserModal";
 import {
+  deactivateEmployee,
   getAdminEmployees,
   restoreUserAccess,
   revokeUserAccess,

@@ -167,7 +167,6 @@ export async function deactivateEmployee(employeeId: string): Promise<void> {
     .from("users")
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", employeeId);
-
   if (error) throw new Error(error.message);
 }
 
