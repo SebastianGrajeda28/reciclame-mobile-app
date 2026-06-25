@@ -18,10 +18,10 @@ config.resolver.assetExts = [
 // Without this, web-only packages (@radix-ui, react-router, etc.) that ship their own
 // nested react copy cause two separate React dispatcher states, breaking hooks at runtime.
 const singletonModules = {
-  react: path.resolve(workspaceRoot, 'node_modules/react/index.js'),
-  'react/jsx-runtime': path.resolve(workspaceRoot, 'node_modules/react/jsx-runtime.js'),
-  'react/jsx-dev-runtime': path.resolve(workspaceRoot, 'node_modules/react/jsx-dev-runtime.js'),
-  'react/compiler-runtime': path.resolve(workspaceRoot, 'node_modules/react/compiler-runtime.js'),
+  react: path.resolve(projectRoot, 'node_modules/react/index.js'),
+  'react/jsx-runtime': path.resolve(projectRoot, 'node_modules/react/jsx-runtime.js'),
+  'react/jsx-dev-runtime': path.resolve(projectRoot, 'node_modules/react/jsx-dev-runtime.js'),
+  'react/compiler-runtime': path.resolve(projectRoot, 'node_modules/react/compiler-runtime.js'),
   'react-dom': path.resolve(workspaceRoot, 'node_modules/react-dom/index.js'),
   'react-native': path.resolve(workspaceRoot, 'node_modules/react-native/index.js'),
   'react-native-renderer': path.resolve(workspaceRoot, 'node_modules/react-native-renderer/index.js'),
