@@ -8,16 +8,6 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
-// Force react-native deep imports (e.g. react-native/Libraries/...) to always
-// resolve to the same workspace-root copy. The singletonModules map already
-// redirects the 'react-native' entry point there, but third-party packages that
-// live in apps/mobile/node_modules (e.g. react-native-gesture-handler) use deep
-// imports like 'react-native/Libraries/Utilities/codegenNativeComponent' which
-// bypass the singletonModules map and resolve to the local copy instead. This
-// causes ReactNativeViewConfigRegistry to have two instances → crash.
-config.resolver.extraNodeModules = {
-  'react-native': path.resolve(workspaceRoot, 'node_modules/react-native'),
-};
 config.resolver.assetExts = [
   ...config.resolver.assetExts.filter((ext) => ext !== 'tflite'),
   'tflite',
@@ -49,6 +39,21 @@ const existingResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (Object.prototype.hasOwnProperty.call(singletonModules, moduleName)) {
     return { type: 'sourceFile', filePath: singletonModules[moduleName] };
+  }
+  // Force react-native/* deep imports to the workspace-root copy of react-native.
+  // Packages stored in Bun's virtual cache (/node_modules/.bun/pkg@ver/node_modules/)
+  // have their own nested react-native peer, so their deep imports (e.g.
+  // 'react-native/Libraries/Utilities/codegenNativeComponent') resolve to that
+  // isolated copy — giving a different ReactNativeViewConfigRegistry instance than
+  // the one used by React's renderer → "View config getter callback...undefined" crash.
+  // Changing originModulePath to the workspace root makes Metro's default resolver
+  // walk up from there and find workspaceRoot/node_modules/react-native first.
+  if (moduleName.startsWith('react-native/')) {
+    return context.resolveRequest(
+      { ...context, originModulePath: path.resolve(workspaceRoot, 'package.json') },
+      moduleName,
+      platform
+    );
   }
   if (moduleName === 'expo-router/entry' || moduleName === './node_modules/expo-router/entry') {
     return { type: 'sourceFile', filePath: expoRouterEntry };
