@@ -42,6 +42,10 @@ ALTER TABLE ONLY "public"."user_roles"
 ALTER TABLE ONLY "public"."user_roles"
     ADD CONSTRAINT "user_roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
 
+CREATE INDEX IF NOT EXISTS "idx_user_roles_active_user_id"
+    ON "public"."user_roles" USING "btree" ("user_id")
+    WHERE ("is_active" = true);
+
 CREATE OR REPLACE FUNCTION "app_admin"."is_current_user_admin"() RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
@@ -66,13 +70,14 @@ declare
   v_email text;
   v_name text;
   v_role text;
+  v_is_active boolean;
 begin
   if v_uid is null then
     raise exception 'unauthenticated';
   end if;
 
-  select u.email
-  into v_email
+  select u.email, u.is_active
+  into v_email, v_is_active
   from public.users u
   where u.id = v_uid;
 
@@ -95,7 +100,8 @@ begin
     'id', v_uid,
     'email', coalesce(v_email, ''),
     'name', coalesce(v_name, v_email, ''),
-    'role', v_role
+    'role', v_role,
+    'isActive', v_is_active
   );
 end;
 $$;
@@ -156,6 +162,10 @@ $$;
 ALTER TABLE "public"."user_roles" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "roles_admin_all" ON "public"."roles" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
+
+CREATE POLICY "waste_types_admin_all" ON "public"."waste_types" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
 
 CREATE POLICY "user_roles_admin_all" ON "public"."user_roles" TO "authenticated" USING ("public"."is_current_user_admin"()) WITH CHECK ("public"."is_current_user_admin"());
 

@@ -14,13 +14,23 @@ export type FriendSummary = {
   name: string;
   currentStreak: number;
   avatarUrl?: string | null;
+  avatarConfig?: Record<string, unknown> | null;
   lastActivityAt?: string | null;
   featuredMedals: FriendMedal[];
 };
 
 export type FriendMedal = {
   id: string;
+  slug: string;
   name: string;
   description?: string | null;
-  imageUrl?: string | null;
+};
+
+export type FriendRequest = {
+  id: string;
+  requesterId: string;
+  name: string;
+  avatarConfig?: Record<string, unknown> | null;
+  featuredMedals: FriendMedal[];
+  createdAt: string;
 };

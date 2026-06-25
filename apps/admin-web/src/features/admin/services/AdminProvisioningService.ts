@@ -5,7 +5,7 @@ export type ProvisionAdminUserInput = {
   email: string;
   password?: string;
   name: string;
-  roleName: "ADMIN" | "MANAGER" | "VIEWER";
+  roleName: "ADMIN" | "MANAGER";
 };
 
 export async function provisionAdminUser(input: ProvisionAdminUserInput): Promise<void> {
@@ -13,8 +13,9 @@ export async function provisionAdminUser(input: ProvisionAdminUserInput): Promis
     body: input,
   });
 
-  if (error) throw new Error(error.message || "Error al crear empleado");
+  if (error) throw new Error(error.message || "Error al crear usuario.");
 
   const response = data as { error?: string } | null;
   if (response?.error) throw new Error(response.error);
 }
+
