@@ -1,17 +1,24 @@
 import { Link, useLocation } from "react-router-dom";
 import { useUser } from "../context/UserContext";
-import RoleNavbar, { type NavItem } from "./RoleNavbar";
+import RoleNavbar from "./RoleNavbar";
 
-const MANAGER_NAV_ITEMS: NavItem[] = [
-  { label: "Métricas", path: "/metrics" },
-  { label: "Datos Curiosos", path: "/fun-facts" },
-  { label: "Instrucciones", path: "/instructions" },
-];
+type NavItem = {
+  label: string;
+  path: string;
+};
+
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", path: "/control-panel" },
-  { label: "Usuarios", path: "/config/users" },
-  { label: "Universidades", path: "/config/universities" },
+  { label: "Métricas", path: "/metricas" },
+  { label: "Datos curiosos", path: "/fun-facts" },
+  { label: "Instrucciones", path: "/instrucciones" },
+  { label: "Cuentas", path: "/cuentas" },
+];
+
+const MANAGER_NAV_ITEMS: NavItem[] = [
+  { label: "Métricas", path: "/metricas" },
+  { label: "Datos curiosos", path: "/fun-facts" },
+  { label: "Instrucciones", path: "/instrucciones" },
 ];
 
 export default function Header() {
@@ -34,7 +41,7 @@ export default function Header() {
           to="/"
           className="absolute left-6 top-1/2 z-10 -translate-y-1/2 whitespace-nowrap text-[2.15rem] font-extrabold leading-none tracking-normal text-white antialiased md:left-8"
         >
-          Reciclame
+          Recíclame
         </Link>
 
         {isAuthRoute ? null : <RoleNavbar items={navItems} />}

@@ -101,9 +101,9 @@ begin
     select jsonb_agg(
       jsonb_build_object(
         'id', a.id,
+        'slug', a.slug,
         'name', a.name,
-        'description', a.description,
-        'image_url', null::text
+        'description', a.description
       ) order by a.name
     ) as featured_medals
     from public.user_featured_medals ufm
@@ -300,9 +300,9 @@ begin
     select jsonb_agg(
       jsonb_build_object(
         'id', a.id,
+        'slug', a.slug,
         'name', a.name,
-        'description', a.description,
-        'image_url', null::text
+        'description', a.description
       ) order by a.name
     ) as featured_medals
     from public.user_featured_medals ufm

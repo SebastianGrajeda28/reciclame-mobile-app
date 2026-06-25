@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,10 +12,13 @@ import { StreakInvalidationProvider } from '@/src/contexts/StreakInvalidationCon
 import { RewardOverlayProvider } from '@/src/contexts/RewardOverlayContext';
 import { RecycleRewardOverlay } from '@/src/features/recycling/components/RecycleRewardOverlay';
 import { DevPanel } from '@/src/dev/DevPanel';
+import { setupNotificationListeners } from '@/src/services/pushNotifications';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function RootLayout() {
+  useEffect(() => setupNotificationListeners(), []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>

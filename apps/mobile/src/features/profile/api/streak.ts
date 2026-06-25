@@ -1,5 +1,10 @@
 import { supabase } from '@/src/services/supabase/client';
-export { getStreakProgress, type StreakProgress } from '@/src/services/streakProgress';
+export {
+  getStreakProgress,
+  recoverStreak,
+  type StreakProgress,
+  type RecoverStreakResult,
+} from '@/src/services/streakProgress';
 
 export type WeekDay = {
   date: string;

@@ -32,12 +32,9 @@ const Login: React.FC = () => {
       await signInWithEmail(email, password);
       navigate("/");
     } catch (err: unknown) {
-      const status = (err as { status?: number })?.status;
-      if (status && status >= 500) {
-        toast.error("Servidor no disponible, intente más tarde.");
-      } else {
-        toast.error("Credenciales incorrectas.");
-      }
+      toast.error(
+        err instanceof Error ? err.message : "Credenciales incorrectas",
+      );
     } finally {
       setLoading(false);
     }
@@ -59,13 +56,15 @@ const Login: React.FC = () => {
             <h1 className="mt-4 max-w-[240px] text-[28px] font-semibold leading-8 text-slate-900">
               Recicla, gana puntos y cuida el planeta
             </h1>
-            <p className="mt-2 text-sm text-slate-500">Inicia sesión para continuar</p>
+            <p className="mt-2 text-sm text-slate-500">
+              Inicia sesión para continuar
+            </p>
           </header>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <label htmlFor="email" className="block space-y-1.5">
               <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">
-                Email
+                Correo electrónico
               </span>
               <span className="relative block">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -83,10 +82,16 @@ const Login: React.FC = () => {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500">
-                  Password
+                <Label
+                  htmlFor="password"
+                  className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500"
+                >
+                  Contraseña
                 </Label>
-                <Link to="/forgot-password" className="text-xs font-medium text-emerald-700 hover:text-emerald-800">
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                >
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
@@ -105,9 +110,15 @@ const Login: React.FC = () => {
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  aria-label={
+                    showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -122,13 +133,22 @@ const Login: React.FC = () => {
 
             <aside className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>Tu sesión se mantendrá iniciada mientras no cierres el navegador.</p>
+              <p>
+                Tu sesión se mantendrá iniciada mientras no cierres el
+                navegador.
+              </p>
             </aside>
 
             <footer className="px-3 text-center text-[11px] leading-4 text-slate-400">
-              Al continuar aceptas nuestros{' '}
-              <span className="font-medium text-emerald-700">Términos de Servicio</span> y{' '}
-              <span className="font-medium text-emerald-700">Política de Privacidad</span>.
+              Al continuar aceptas nuestros{" "}
+              <span className="font-medium text-emerald-700">
+                Términos de Servicio
+              </span>{" "}
+              y{" "}
+              <span className="font-medium text-emerald-700">
+                Política de Privacidad
+              </span>
+              .
             </footer>
           </form>
         </article>

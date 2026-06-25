@@ -383,7 +383,7 @@ export default function InstructionStepsSection({
     setDepositImagePreview(binType?.imageUrl ?? undefined);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDepositImageFile(undefined);
-  }, [binType?.id]);
+  }, [binType?.id, binType?.imageUrl, binType?.depositInstruction]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
