@@ -8,30 +8,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Copy, X } from "lucide-react";
+import { Check, Copy, Pencil, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  assignUserRole,
-  deactivateUser,
-  deactivateUserRole,
   getRoles,
-  restoreUser,
-  type AppUser,
+  setEmployeeRole,
+  updateEmployee,
+  type AppEmployee,
 } from "../services/AdminUsersService";
 
 interface Props {
-  user: AppUser;
+  user: AppEmployee;
   onClose: () => void;
   onUpdated: () => void;
 }
 
-function toggleClasses(selected: boolean) {
-  return `flex-1 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-    selected ? "bg-[#18b566] text-white" : "text-slate-600 hover:bg-slate-100"
+function toggleClasses(selected: boolean, disabled = false) {
+  return `flex-1 rounded-md px-4 py-2 text-sm font-semibold transition ${
+    selected
+      ? "bg-[#18b566] text-white"
+      : disabled
+        ? "cursor-not-allowed text-slate-400"
+        : "text-slate-600 hover:bg-slate-100"
   }`;
 }
 
@@ -48,7 +50,7 @@ function CopyButton({ value }: { value: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="ml-2 shrink-0 rounded p-0.5 text-gray-400 transition hover:text-gray-600"
+      className="shrink-0 rounded p-0.5 text-gray-400 transition hover:text-gray-600"
       aria-label="Copiar"
     >
       {copied ? <Check className="h-3.5 w-3.5 text-[#18b566]" /> : <Copy className="h-3.5 w-3.5" />}
@@ -56,27 +58,87 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function DetailRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function EditableDetailRow({
+  label,
+  value,
+  editable = false,
+  canEdit = true,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  editable?: boolean;
+  canEdit?: boolean;
+  onChange?: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+
   return (
     <div className="flex items-center gap-3 py-1.5">
       <span className="w-36 shrink-0 text-gray-500">{label}</span>
       <div className="min-w-0 flex-1 overflow-x-auto">
-        <span className={`whitespace-nowrap font-medium text-gray-700 ${mono ? "font-mono text-xs" : ""}`}>
-          {value}
-        </span>
+        {editing && editable && canEdit ? (
+          <Input
+            autoFocus
+            value={value}
+            onChange={(e) => onChange?.(e.target.value)}
+            onBlur={() => setEditing(false)}
+            className="h-7 text-sm"
+          />
+        ) : (
+          <span className="whitespace-nowrap font-medium text-gray-700">
+            {value || "—"}
+          </span>
+        )}
       </div>
-      <div className="shrink-0 pl-2">
+      <div className="flex shrink-0 items-center gap-1 pl-1">
+        {editable && canEdit && !editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded p-0.5 text-gray-400 transition hover:text-gray-600"
+            aria-label="Editar"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
         <CopyButton value={value} />
       </div>
     </div>
   );
 }
 
+type RoleOption = "manager" | "admin";
+
+function resolveRoleOption(roleName: string | null): RoleOption {
+  if (roleName?.toUpperCase() === "ADMIN") return "admin";
+  return "manager";
+}
+
+const roleLabel: Record<RoleOption, string> = {
+  manager: "Manager",
+  admin: "Administrador",
+};
+
+function ChangeRow({ label, from, to }: { label: string; from: string; to: string }) {
+  return (
+    <div className="flex items-center gap-2 py-1 text-sm">
+      <span className="w-16 shrink-0 text-slate-500">{label}</span>
+      <span className="max-w-[120px] truncate font-medium text-slate-700">{from}</span>
+      <span className="text-slate-400">→</span>
+      <span className="max-w-[120px] truncate font-semibold text-[#18b566]">{to}</span>
+    </div>
+  );
+}
+
 export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
-  const [isActive, setIsActive] = useState(user.isActive);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(user.roleId);
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email);
+  const [selectedRole, setSelectedRole] = useState<RoleOption>(resolveRoleOption(user.roleName));
   const [saving, setSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const canEdit = user.isActive;
 
   const { data: availableRoles = [], isLoading, error } = useQuery({
     queryKey: ["admin-roles"],
@@ -85,28 +147,33 @@ export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
     refetchOnWindowFocus: false,
   });
 
-  const hasRole = !!user.roleId;
-
-  const adminRole = availableRoles.find((r) => r.name.toUpperCase() === "ADMIN");
+  const adminRole   = availableRoles.find((r) => r.name.toUpperCase() === "ADMIN");
   const managerRole = availableRoles.find((r) => r.name.toUpperCase() === "MANAGER");
 
-  const activeChanged = isActive !== user.isActive;
-  const roleChanged = hasRole && isActive && selectedRoleId !== user.roleId;
-  const hasChanges = activeChanged || roleChanged;
-
-  const selectedRoleName = availableRoles.find((r) => r.id === selectedRoleId)?.name ?? "";
+  const originalRole = resolveRoleOption(user.roleName);
+  const nameChanged  = name.trim() !== user.name;
+  const emailChanged = email.trim() !== user.email;
+  const dataChanged  = nameChanged || emailChanged;
+  const roleChanged  = selectedRole !== originalRole;
+  const hasChanges   = canEdit && (dataChanged || roleChanged);
 
   async function handleConfirmSave() {
     setSaving(true);
     try {
-      if (activeChanged) {
-        if (isActive) await restoreUser(user.id);
-        else await deactivateUser(user.id);
+      if (dataChanged) {
+        await updateEmployee(user.id, {
+          name: name.trim(),
+          email: emailChanged ? email.trim() : undefined,
+        });
       }
-      if (roleChanged && selectedRoleId && user.userRoleAssignmentId) {
-        await deactivateUserRole(user.userRoleAssignmentId);
-        await assignUserRole(user.id, selectedRoleId);
+
+      if (roleChanged) {
+        const newRoleId = selectedRole === "admin" ? adminRole?.id : managerRole?.id;
+        if (newRoleId) {
+          await setEmployeeRole(user.id, newRoleId);
+        }
       }
+
       toast.success("Cambios guardados correctamente");
       onUpdated();
       onClose();
@@ -130,92 +197,65 @@ export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
             <X className="h-5 w-5" />
           </button>
 
-          <h2 className="mb-4 text-lg font-bold">Gestionar Cuenta</h2>
+          <h2 className="mb-1 text-lg font-bold">Gestionar Cuenta</h2>
+          {!canEdit && (
+            <p className="mb-4 text-xs text-slate-400">
+              Esta cuenta está inactiva. Restáurala para poder editar.
+            </p>
+          )}
+          {canEdit && <div className="mb-4" />}
 
           <div className="mb-5 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm">
-            <DetailRow label="ID" value={user.id} mono />
-            <DetailRow label="Email" value={user.email} />
-            <DetailRow label="Nombre" value={user.name} />
-            <DetailRow
+            <EditableDetailRow label="Nombre" value={name} editable canEdit={canEdit} onChange={setName} />
+            <EditableDetailRow label="Email"  value={email} editable canEdit={canEdit} onChange={setEmail} />
+            <EditableDetailRow
               label="Último login"
               value={user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("es-PE") : "—"}
             />
-            <DetailRow
-              label="Últ. modificación"
-              value={user.updatedAt ? new Date(user.updatedAt).toLocaleString("es-PE") : "—"}
-            />
-            <DetailRow
+            <EditableDetailRow
               label="Creado"
               value={new Date(user.createdAt).toLocaleString("es-PE")}
             />
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-gray-400">Cargando...</p>
+            <p className="text-sm text-gray-400">Cargando roles...</p>
           ) : error ? (
-            <p className="text-sm text-red-500">Error al cargar datos</p>
+            <p className="text-sm text-red-500">Error al cargar roles</p>
           ) : (
             <div className="space-y-5">
               <div className="rounded-xl border border-gray-200 p-4">
-                <p className="mb-2 text-sm font-medium">Estado de la cuenta</p>
+                <p className="mb-2 text-sm font-medium text-gray-700">Rol</p>
                 <div className="inline-flex w-full rounded-lg border border-[#d9dee2] bg-white p-1">
                   <button
                     type="button"
-                    onClick={() => setIsActive(true)}
-                    className={toggleClasses(isActive)}
+                    disabled={!canEdit || !managerRole}
+                    onClick={() => canEdit && managerRole && setSelectedRole("manager")}
+                    className={toggleClasses(selectedRole === "manager", !canEdit)}
                   >
-                    Activo
+                    Manager
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsActive(false)}
-                    className={toggleClasses(!isActive)}
+                    disabled={!canEdit || !adminRole}
+                    onClick={() => canEdit && adminRole && setSelectedRole("admin")}
+                    className={toggleClasses(selectedRole === "admin", !canEdit)}
                   >
-                    Inactivo
+                    Administrador
                   </button>
                 </div>
               </div>
 
-              {hasRole && isActive && (
-                <div className="rounded-xl border border-gray-200 p-4">
-                  <p className="mb-2 text-sm font-medium">Rol asignado</p>
-                  <div className="inline-flex w-full rounded-lg border border-[#d9dee2] bg-white p-1">
-                    <button
-                      type="button"
-                      disabled={!adminRole}
-                      onClick={() => adminRole && setSelectedRoleId(adminRole.id)}
-                      className={toggleClasses(selectedRoleId === adminRole?.id)}
-                    >
-                      Administrador
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!managerRole}
-                      onClick={() => managerRole && setSelectedRoleId(managerRole.id)}
-                      className={toggleClasses(selectedRoleId === managerRole?.id)}
-                    >
-                      Manager
-                    </button>
-                  </div>
-                </div>
+              {canEdit && (
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={!hasChanges || saving}
+                  onClick={() => setShowConfirm(true)}
+                >
+                  Guardar cambios
+                </Button>
               )}
-
-              {hasRole && !isActive && (
-                <div className="rounded-xl border border-gray-200 p-4">
-                  <p className="text-sm text-gray-400">
-                    El rol no puede modificarse mientras la cuenta esté inactiva.
-                  </p>
-                </div>
-              )}
-
-              <Button
-                type="button"
-                className="w-full"
-                disabled={!hasChanges || saving}
-                onClick={() => setShowConfirm(true)}
-              >
-                Guardar cambios
-              </Button>
             </div>
           )}
         </div>
@@ -225,26 +265,28 @@ export default function ManageUserModal({ user, onClose, onUpdated }: Props) {
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Guardar cambios?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se aplicarán los siguientes cambios para {user.email}:
-              {activeChanged && (
-                <span className="mt-2 block">
-                  Estado:{" "}
-                  <Badge variant={isActive ? "default" : "secondary"}>
-                    {isActive ? "Activo" : "Inactivo"}
-                  </Badge>
-                </span>
-              )}
-              {roleChanged && (
-                <span className="mt-2 block">
-                  Rol: <Badge variant="default">{selectedRoleName}</Badge>
-                </span>
-              )}
+            <AlertDialogDescription asChild>
+              <div className="mt-1">
+                <p className="mb-3 text-sm text-slate-500">
+                  Se aplicarán los siguientes cambios para la cuenta:
+                </p>
+                <div className="space-y-1">
+                  {nameChanged  && <ChangeRow label="Nombre" from={user.name}          to={name.trim()} />}
+                  {emailChanged && <ChangeRow label="Email"  from={user.email}         to={email.trim()} />}
+                  {roleChanged  && <ChangeRow label="Rol"    from={roleLabel[originalRole]} to={roleLabel[selectedRole]} />}
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction disabled={saving} onClick={handleConfirmSave}>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleConfirmSave();
+              }}
+            >
               {saving ? "Guardando..." : "Confirmar"}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -9,8 +9,8 @@ const MANAGER_NAV_ITEMS: NavItem[] = [
 ];
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", path: "/control-panel" },
-  { label: "Usuarios", path: "/config/users" },
+  { label: "Panel de Control", path: "/control-panel" },
+  { label: "Empleados", path: "/config/users" },
   { label: "Universidades", path: "/config/universities" },
 ];
 

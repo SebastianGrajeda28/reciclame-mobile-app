@@ -48,19 +48,7 @@ export function UniversityForm({ onSubmit, disabled }: UniversityFormProps) {
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>Campuses</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => append({ name: "", address: "" })}
-            disabled={fields.length >= MAX_CAMPUSES_PER_UNIVERSITY}
-          >
-            <Plus className="mr-1 h-3 w-3" />
-            Agregar campus
-          </Button>
-        </div>
+        <Label>Campuses</Label>
 
         <div className="space-y-3">
           {fields.map((field, index) => (
@@ -102,6 +90,17 @@ export function UniversityForm({ onSubmit, disabled }: UniversityFormProps) {
             </div>
           ))}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => append({ name: "", address: "" })}
+          disabled={fields.length >= MAX_CAMPUSES_PER_UNIVERSITY}
+        >
+          <Plus className="mr-1 h-3 w-3" />
+          Agregar campus
+        </Button>
       </div>
 
       <Button type="submit" className="w-full" disabled={disabled}>
