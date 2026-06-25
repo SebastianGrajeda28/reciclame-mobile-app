@@ -53,7 +53,7 @@ export default function CreateUniversityDialog({ onClose, onCreated }: Props) {
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
           <X className="h-5 w-5" />
         </button>
-        <h2 className="mb-5 text-lg font-bold">Crear Nueva Universidad</h2>
+        <h2 className="mb-5 text-lg font-bold">Crear Universidad</h2>
         <UniversityForm onSubmit={handleSubmit} disabled={saving} />
       </div>
     </div>

@@ -1,174 +1,303 @@
-import { Button } from "@/components/ui/button";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
+import { useQuery } from "@tanstack/react-query";
+import { Building2, GraduationCap, MapPin, Users } from "lucide-react";
 import {
-  AlertTriangle,
-  Building2,
-  GraduationCap,
-  RefreshCcw,
-  Users,
-  UserX,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
+  getControlPanel,
+  type RecentCampus,
+  type RecentEmployee,
+  type RecentUniversity,
+} from "../services/AdminPanelControlService";
 
-const kpis = [
-  { label: "Usuarios activos", value: "128", icon: Users, accent: "text-emerald-600", bg: "bg-emerald-100" },
-  { label: "Universidades", value: "9", icon: GraduationCap, accent: "text-sky-600", bg: "bg-sky-100" },
-  { label: "Campuses", value: "16", icon: Building2, accent: "text-violet-600", bg: "bg-violet-100" },
-  { label: "Usuarios inactivos", value: "4", icon: UserX, accent: "text-rose-600", bg: "bg-rose-100" },
-];
+const CONTROL_PANEL_QUERY_KEY = "admin-control-panel";
 
-const recentUsers = [
-  { name: "Ariel Gómez", email: "ariel@reciclame.pe", role: "MANAGER", date: "Hoy" },
-  { name: "Camila Ruiz", email: "camila@reciclame.pe", role: "MANAGER", date: "Ayer" },
-  { name: "Diego Torres", email: "diego@reciclame.pe", role: "ADMIN", date: "Hace 2 días" },
-];
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-const recentUniversities = [
-  { name: "Universidad San Marcos", campuses: 3, date: "Hace 3 días" },
-  { name: "PUCP", campuses: 2, date: "Hace 5 días" },
-];
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 1) return "Justo ahora";
+  if (minutes < 60) return `Hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  const days = Math.round(hours / 24);
+  return `Hace ${days} d`;
+}
 
-const alerts = [
-  {
-    title: "2 universidades sin manager asignado",
-    description: "Asigna un responsable para que puedan operar.",
-    icon: AlertTriangle,
-    accent: "text-amber-600",
-    bg: "bg-amber-50",
-  },
-  {
-    title: "3 operaciones de sincronización fallidas",
-    description: "Hay registros offline que no se sincronizaron.",
-    icon: RefreshCcw,
-    accent: "text-rose-600",
-    bg: "bg-rose-50",
-  },
-];
+function translateRole(roleName: string): string {
+  if (roleName.toUpperCase() === "ADMIN") return "Administrador";
+  if (roleName.toUpperCase() === "MANAGER") return "Manager";
+  return roleName;
+}
+
+// ---------------------------------------------------------------------------
+// KPI Card
+// ---------------------------------------------------------------------------
+
+interface KpiCardProps {
+  label: string;
+  value: string;
+  icon: typeof Users;
+  accent: string;
+  bg: string;
+}
+
+function KpiCard({ label, value, icon: Icon, accent, bg }: KpiCardProps) {
+  return (
+    <AppSurface className="px-5 py-5">
+      <div className="flex items-center gap-3">
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${bg} ${accent}`}>
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-2xl font-bold text-slate-900">{value}</p>
+          <p className="truncate text-xs font-medium text-slate-500">{label}</p>
+        </div>
+      </div>
+    </AppSurface>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Activity columns
+// ---------------------------------------------------------------------------
+
+function StatusBadge({ isActive }: { isActive: boolean }) {
+  return isActive ? (
+    <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+      Activo
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-md border border-rose-200 bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+      Inactivo
+    </span>
+  );
+}
+
+function UniversityRow({ entry }: { entry: RecentUniversity }) {
+  return (
+    <div className="py-3">
+      <div className="flex items-center gap-2">
+        <StatusBadge isActive={entry.isActive} />
+      </div>
+      <p className="mt-1 truncate text-sm font-medium text-slate-900" title={entry.name}>
+        {entry.name}
+      </p>
+      <p className="mt-0.5 text-xs text-slate-400">{timeAgo(entry.lastModifiedAt)}</p>
+    </div>
+  );
+}
+
+function CampusRow({ entry }: { entry: RecentCampus }) {
+  return (
+    <div className="py-3">
+      <div className="flex items-center gap-2">
+        <StatusBadge isActive={entry.isActive} />
+      </div>
+      <p className="mt-1 truncate text-sm font-medium text-slate-900" title={entry.name}>
+        {entry.name}
+      </p>
+      <p className="mt-0.5 truncate text-xs text-slate-500">{entry.universityName}</p>
+      <p className="mt-0.5 text-xs text-slate-400">{timeAgo(entry.lastModifiedAt)}</p>
+    </div>
+  );
+}
+
+function EmployeeRow({ entry }: { entry: RecentEmployee }) {
+  return (
+    <div className="py-3">
+      <div className="flex items-center gap-2">
+        <StatusBadge isActive={entry.isActive} />
+        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+          {translateRole(entry.roleName)}
+        </span>
+      </div>
+      <p className="mt-1 truncate text-sm font-medium text-slate-900" title={entry.email}>
+        {entry.email}
+      </p>
+      <p className="mt-0.5 text-xs text-slate-400">{timeAgo(entry.lastModifiedAt)}</p>
+    </div>
+  );
+}
+
+interface ActivityColumnProps<T> {
+  title: string;
+  icon: typeof Users;
+  iconBg: string;
+  iconColor: string;
+  entries: T[];
+  renderRow: (entry: T) => React.ReactNode;
+}
+
+function ActivityColumn<T extends { id: string }>({
+  title,
+  icon: Icon,
+  iconBg,
+  iconColor,
+  entries,
+  renderRow,
+}: ActivityColumnProps<T>) {
+  return (
+    <AppSurface className="flex flex-col">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-4">
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${iconBg} ${iconColor}`}>
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+      </div>
+      <div className="divide-y divide-slate-100 px-5">
+        {entries.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-400">Sin actividad reciente.</p>
+        ) : (
+          entries.map((entry) => (
+            <div key={entry.id}>{renderRow(entry)}</div>
+          ))
+        )}
+      </div>
+    </AppSurface>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
+function SkeletonCard() {
+  return (
+    <AppSurface className="px-5 py-5">
+      <div className="flex items-center gap-3">
+        <div className="h-11 w-11 shrink-0 animate-pulse rounded-xl bg-slate-100" />
+        <div className="flex-1 space-y-2">
+          <div className="h-6 w-16 animate-pulse rounded bg-slate-100" />
+          <div className="h-3 w-32 animate-pulse rounded bg-slate-100" />
+        </div>
+      </div>
+    </AppSurface>
+  );
+}
+
+function SkeletonColumn() {
+  return (
+    <AppSurface className="flex flex-col">
+      <div className="border-b border-slate-100 px-5 py-4">
+        <div className="h-4 w-28 animate-pulse rounded bg-slate-100" />
+      </div>
+      <div className="divide-y divide-slate-100 px-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="space-y-1.5 py-3">
+            <div className="h-4 w-16 animate-pulse rounded bg-slate-100" />
+            <div className="h-4 w-40 animate-pulse rounded bg-slate-100" />
+            <div className="h-3 w-20 animate-pulse rounded bg-slate-100" />
+          </div>
+        ))}
+      </div>
+    </AppSurface>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 export default function ControlPanel() {
-  const navigate = useNavigate();
+  const { data, isLoading, error } = useQuery({
+    queryKey: [CONTROL_PANEL_QUERY_KEY],
+    queryFn: getControlPanel,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
 
   return (
     <AppPage>
-      <div className="flex flex-col gap-3 md:min-h-[72px] md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">Panel de Control</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Administra la configuración general de la plataforma.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 rounded-lg border-slate-200 px-5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-            onClick={() => navigate("/config/universities")}
-          >
-            <GraduationCap className="mr-2 h-4 w-4" />
-            Universidades
-          </Button>
-          <Button
-            type="button"
-            className="h-10 rounded-lg bg-[#18b566] px-5 text-sm font-semibold text-white hover:bg-[#129a56]"
-            onClick={() => navigate("/config/users")}
-          >
-            <Users className="mr-2 h-4 w-4" />
-            Gestión de Cuentas
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">Panel de Control</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Estructura y actividad reciente de la plataforma.
+        </p>
       </div>
 
+      {/* KPIs */}
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {kpis.map((kpi) => (
-          <AppSurface key={kpi.label} className="px-5 py-5">
-            <div className="flex items-center gap-3">
-              <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${kpi.bg} ${kpi.accent}`}>
-                <kpi.icon className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{kpi.value}</p>
-                <p className="text-xs font-medium text-slate-500">{kpi.label}</p>
-              </div>
-            </div>
-          </AppSurface>
-        ))}
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+        ) : (
+          <>
+            <KpiCard
+              label="Universidades activas"
+              value={String(data?.kpis.activeUniversities ?? 0)}
+              icon={GraduationCap}
+              accent="text-sky-600"
+              bg="bg-sky-100"
+            />
+            <KpiCard
+              label="Campuses activos"
+              value={String(data?.kpis.activeCampuses ?? 0)}
+              icon={Building2}
+              accent="text-violet-600"
+              bg="bg-violet-100"
+            />
+            <KpiCard
+              label="Empleados con acceso vigente"
+              value={String(data?.kpis.activeEmployees ?? 0)}
+              icon={Users}
+              accent="text-emerald-600"
+              bg="bg-emerald-100"
+            />
+            <KpiCard
+              label="Cuentas registradas (app)"
+              value={(data?.kpis.registeredUsers ?? 0).toLocaleString("es-PE")}
+              icon={MapPin}
+              accent="text-slate-600"
+              bg="bg-slate-100"
+            />
+          </>
+        )}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <AppSurface className="lg:col-span-2">
-          <div className="flex items-center justify-between px-5 pt-5">
-            <h2 className="text-sm font-semibold text-slate-900">Actividad reciente</h2>
-          </div>
-          <div className="mt-3 divide-y divide-slate-100 px-5 pb-5">
-            {recentUsers.map((user) => (
-              <div key={user.email} className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
-                    {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{user.name}</p>
-                    <p className="text-xs text-slate-500">{user.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                    {user.role}
-                  </span>
-                  <span className="text-xs text-slate-400">{user.date}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </AppSurface>
+      {/* Activity log */}
+      <p className="mt-8 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        Actividad reciente
+      </p>
 
-        <AppSurface>
-          <div className="flex items-center justify-between px-5 pt-5">
-            <h2 className="text-sm font-semibold text-slate-900">Pendientes</h2>
-          </div>
-          <div className="mt-3 flex flex-col gap-3 px-5 pb-5">
-            {alerts.map((alert) => (
-              <div key={alert.title} className={`flex items-start gap-3 rounded-xl ${alert.bg} px-3 py-3`}>
-                <alert.icon className={`mt-0.5 h-4 w-4 shrink-0 ${alert.accent}`} />
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{alert.title}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{alert.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </AppSurface>
+      {!!error && (
+        <p className="mt-2 text-sm text-red-600">
+          No se pudo cargar el panel. Intenta nuevamente.
+        </p>
+      )}
+
+      <div className="mt-2 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => <SkeletonColumn key={i} />)
+        ) : (
+          <>
+            <ActivityColumn
+              title="Universidades"
+              icon={GraduationCap}
+              iconBg="bg-sky-100"
+              iconColor="text-sky-600"
+              entries={data?.recentActivityByType.university ?? []}
+              renderRow={(entry) => <UniversityRow entry={entry} />}
+            />
+            <ActivityColumn
+              title="Campuses"
+              icon={Building2}
+              iconBg="bg-violet-100"
+              iconColor="text-violet-600"
+              entries={data?.recentActivityByType.campus ?? []}
+              renderRow={(entry) => <CampusRow entry={entry} />}
+            />
+            <ActivityColumn
+              title="Empleados"
+              icon={Users}
+              iconBg="bg-emerald-100"
+              iconColor="text-emerald-600"
+              entries={data?.recentActivityByType.employee ?? []}
+              renderRow={(entry) => <EmployeeRow entry={entry} />}
+            />
+          </>
+        )}
       </div>
-
-      <AppSurface className="mt-6">
-        <div className="flex items-center justify-between px-5 pt-5">
-          <h2 className="text-sm font-semibold text-slate-900">Universidades recientes</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-8 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-            onClick={() => navigate("/config/universities")}
-          >
-            Ver todas
-          </Button>
-        </div>
-        <div className="mt-3 divide-y divide-slate-100 px-5 pb-5">
-          {recentUniversities.map((university) => (
-            <div key={university.name} className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-100 text-sky-700">
-                  <GraduationCap className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{university.name}</p>
-                  <p className="text-xs text-slate-500">{university.campuses} campuses</p>
-                </div>
-              </div>
-              <span className="text-xs text-slate-400">{university.date}</span>
-            </div>
-          ))}
-        </div>
-      </AppSurface>
     </AppPage>
   );
 }
