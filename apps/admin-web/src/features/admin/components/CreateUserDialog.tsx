@@ -29,11 +29,11 @@ export default function CreateUserDialog({ onClose, onCreated }: Props) {
         roleName: data.role,
       });
 
-      toast.success("Empleado creado correctamente");
+      toast.success("Empleado guardado correctamente");
       onCreated();
       onClose();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Error al crear empleado");
+      toast.error(err instanceof Error ? err.message : "Error al procesar la solicitud");
     } finally {
       setSaving(false);
     }

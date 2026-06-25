@@ -25,7 +25,7 @@ import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ProcessingScreen() {
   const navigation = useNavigation();
-  const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainerId } = useRecycleFlow();
+  const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainer } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
   const { fact } = useRotatingFunFact();
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
@@ -66,14 +66,14 @@ export function ProcessingScreen() {
           result.wasteTypeId,
         );
         if (closestContainer) {
-          setSelectedContainerId(closestContainer.id);
+          setSelectedContainer(closestContainer);
         }
       }
     });
     return () => {
       mounted = false;
     };
-  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainerId]);
+  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainer]);
 
   const containerMismatch = useMemo(() => {
     if (!state.selectedContainerId || !resolvedBinType) return false;

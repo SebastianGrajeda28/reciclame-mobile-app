@@ -153,7 +153,7 @@ export default function UsersPage() {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700"
           >
-            Email
+            Correo
             <ArrowUpDown className="h-3 w-3" />
           </button>
         ),
@@ -273,7 +273,7 @@ export default function UsersPage() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por email..."
+                placeholder="Buscar por correo..."
                 className="bg-white pl-9 pr-9"
               />
               {search && (
@@ -287,7 +287,6 @@ export default function UsersPage() {
                 </button>
               )}
             </div>
-
             <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as RoleFilter)}>
               <SelectTrigger className="w-[200px] bg-white">
                 <SelectValue placeholder="Filtrar por rol" />
@@ -298,10 +297,8 @@ export default function UsersPage() {
                 <SelectItem value="manager">Managers</SelectItem>
               </SelectContent>
             </Select>
-
             {isFetching && <span className="text-sm text-slate-500">Actualizando...</span>}
           </div>
-
           <div className="inline-flex rounded-lg border border-[#d9dee2] bg-white p-1">
             <button
               type="button"
@@ -325,7 +322,6 @@ export default function UsersPage() {
             No se pudieron cargar las cuentas. Intenta nuevamente.
           </p>
         )}
-
         {!error && total === 0 && (
           <div className="mt-4 rounded-2xl border border-dashed border-[#b7c7d6] bg-[#eef3f8] px-8 py-12 text-center">
             <p className="text-sm text-slate-600">
@@ -339,7 +335,6 @@ export default function UsersPage() {
             </p>
           </div>
         )}
-
         {!error && total > 0 && (
           <>
             <div className={`mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white transition-opacity ${isFetching ? "opacity-60" : "opacity-100"}`}>
@@ -441,7 +436,6 @@ export default function UsersPage() {
                 </TableBody>
               </Table>
             </div>
-
             <div className="mt-4 flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 Mostrando {pageRows.length} de {total} empleados.
@@ -488,7 +482,6 @@ export default function UsersPage() {
           </>
         )}
       </AppSurface>
-
       {selectedUser && (
         <ManageUserModal
           user={selectedUser}
@@ -496,7 +489,6 @@ export default function UsersPage() {
           onUpdated={() => void queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })}
         />
       )}
-
       {showCreate && (
         <CreateUserDialog
           onClose={() => setShowCreate(false)}

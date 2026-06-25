@@ -18,6 +18,7 @@ import {
   AppIconButton,
   AppSegmentedControl,
   AppText,
+  BADGE_STATIC_DATA,
   StreakHeatBadge,
   theme,
 } from '@/src/ui';
@@ -75,10 +76,11 @@ function UserAvatar({
 // ── Shared: medal strip ───────────────────────────────────────────────────────
 
 function FriendMedalBadge({ medal }: { medal: FriendMedal }) {
+  const localImage = BADGE_STATIC_DATA[medal.slug]?.image;
   return (
     <View style={styles.medalBadge}>
-      {medal.imageUrl ? (
-        <Image source={{ uri: medal.imageUrl }} style={styles.medalImage} resizeMode="contain" />
+      {localImage ? (
+        <Image source={localImage} style={styles.medalImage} resizeMode="contain" />
       ) : (
         <AppIcon name="award" size={theme.iconSizes.sm} color={theme.colors.success} />
       )}
@@ -489,18 +491,14 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s1,
   },
   medalBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: theme.radius.full,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.success,
-    backgroundColor: theme.colors.primaryLight,
   },
   medalImage: {
-    width: 20,
-    height: 20,
+    width: 28,
+    height: 28,
   },
   streakBox: {
     minWidth: 56,
