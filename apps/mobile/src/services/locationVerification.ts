@@ -5,7 +5,7 @@ import { isWithinDistance } from '@/src/utils/location';
  * Maximum distance in meters that a user can be from a recycling point
  * to still be able to register a recycling action with verified location.
  */
-const MAX_DISTANCE_METERS = 50; // 50 meters
+const MAX_DISTANCE_METERS = 250; // 50 meters
 
 /**
  * Verifies if the user's current location is within the allowed distance
