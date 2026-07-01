@@ -1,15 +1,15 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { LogOut, KeyRound, Eye, EyeOff } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { selfRevokeAccess, updateCurrentUserPassword } from "@/features/auth/services/authService";
+import { Eye, EyeOff, KeyRound, LogOut, UserX } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { updateCurrentUserPassword } from "@/features/auth/services/authService";
 import { useUser } from "../context/UserContext";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -17,6 +17,8 @@ const ROLE_LABELS: Record<string, string> = {
   MANAGER: "Manager",
   VIEWER: "Viewer",
 };
+
+const CONFIRM_PHRASE = "Darme de baja";
 
 export default function ProfilePopover() {
   const { account } = useUser();
@@ -28,7 +30,13 @@ export default function ProfilePopover() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [openRevokeDialog, setOpenRevokeDialog] = useState(false);
+  const [revokeConfirmText, setRevokeConfirmText] = useState("");
+  const [revokeLoading, setRevokeLoading] = useState(false);
+
   if (!account) return null;
+
+  const isManager = (account.role ?? "").toUpperCase() === "MANAGER";
 
   const initials = account.name
     ? account.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
@@ -57,6 +65,22 @@ export default function ProfilePopover() {
       setLoading(false);
     }
   };
+
+  const handleSelfRevoke = async () => {
+    setRevokeLoading(true);
+    try {
+      await selfRevokeAccess(account.id);
+      toast.success("Se ha dado de baja tu acceso");
+      setOpenRevokeDialog(false);
+      navigate("/logout");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error al dar de baja el acceso");
+    } finally {
+      setRevokeLoading(false);
+    }
+  };
+
+  const canConfirmRevoke = revokeConfirmText.trim() === CONFIRM_PHRASE;
 
   return (
     <>
@@ -111,6 +135,20 @@ export default function ProfilePopover() {
               <LogOut className="h-4 w-4" />
               Cerrar sesión
             </Button>
+
+            {isManager && (
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+                onClick={() => {
+                  setOpenPopover(false);
+                  setOpenRevokeDialog(true);
+                }}
+              >
+                <UserX className="h-4 w-4" />
+                Darme de baja
+              </Button>
+            )}
           </div>
         </PopoverContent>
       </Popover>
@@ -162,6 +200,53 @@ export default function ProfilePopover() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {isManager && (
+        <Dialog
+          open={openRevokeDialog}
+          onOpenChange={(open) => {
+            setOpenRevokeDialog(open);
+            if (!open) setRevokeConfirmText("");
+          }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-red-600">Darme de baja</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600">
+                Esta acción quitará tu acceso a la plataforma de administración. Tu rol actual
+                quedará desactivado y no podrás volver a iniciar sesión hasta que un administrador
+                te lo restaure.
+              </p>
+
+              <div className="space-y-1">
+                <Label htmlFor="revoke-confirm">
+                  Escribe <span className="font-semibold">"{CONFIRM_PHRASE}"</span> para confirmar
+                </Label>
+                <Input
+                  id="revoke-confirm"
+                  value={revokeConfirmText}
+                  onChange={(e) => setRevokeConfirmText(e.target.value)}
+                  placeholder={CONFIRM_PHRASE}
+                  autoComplete="off"
+                />
+              </div>
+
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full"
+                disabled={!canConfirmRevoke || revokeLoading}
+                onClick={handleSelfRevoke}
+              >
+                {revokeLoading ? "Procesando…" : "Confirmar"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
