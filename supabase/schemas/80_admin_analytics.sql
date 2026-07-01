@@ -283,8 +283,8 @@ GRANT ALL ON FUNCTION "public"."get_control_panel"() TO service_role;
 -- SECTION 4 — Admin dashboard
 -- -----------------------------------------------------------------------------
 
-DROP FUNCTION IF EXISTS "app_analytics"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone, uuid);
-DROP FUNCTION IF EXISTS "public"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone, uuid);
+DROP FUNCTION IF EXISTS "app_analytics"."get_manager_dashboard"(timestamp with time zone, timestamp with time zone, uuid);
+DROP FUNCTION IF EXISTS "public"."get_manager_dashboard"(timestamp with time zone, timestamp with time zone, uuid);
 
 CREATE OR REPLACE FUNCTION "app_analytics"."get_manager_dashboard"(
   "p_start" timestamp with time zone,
