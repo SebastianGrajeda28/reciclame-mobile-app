@@ -4,7 +4,6 @@ declare global {
   }
 }
 
-import ControlPanelPage from "@/features/admin/pages/ControlPanelPage";
 import AdminConfigPage from "@/features/admin/pages/UniversitiesPage";
 import UsersPage from "@/features/admin/pages/UsersPage";
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
@@ -80,7 +79,6 @@ function AppShell() {
             <Route path="/config/users" element={<UsersPage />} />
             <Route path="/config/universities" element={<AdminConfigPage />} />
           </Route>
-          <Route path="/control-panel" element={<ControlPanelPage />} />
 
           <Route path="/home" element={<Navigate to="/" replace />} />
           <Route path="/unauthorized" element={<Navigate to="/logout" replace />} />

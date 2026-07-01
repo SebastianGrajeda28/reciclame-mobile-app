@@ -1,3 +1,4 @@
+import usuarioPerfil from "@/assets/usuario_perfil.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,8 +39,9 @@ export default function ProfilePopover() {
 
   const isManager = (account.role ?? "").toUpperCase() === "MANAGER";
 
-  const initials = account.name
-    ? account.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+  const hasName = Boolean(account.name && account.name.trim().length > 0);
+  const firstLetter = hasName
+    ? account.name!.trim()[0].toUpperCase()
     : account.email[0].toUpperCase();
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -88,8 +90,16 @@ export default function ProfilePopover() {
         <PopoverTrigger asChild>
           <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-(--brand) focus:ring-offset-2">
             <Avatar className="cursor-pointer transition hover:opacity-80">
-              <AvatarImage src="https://github.com/shadcn.png" />
-              <AvatarFallback>{initials}</AvatarFallback>
+              {hasName ? (
+                <AvatarFallback className="bg-slate-700 text-lg font-semibold text-white">
+                  {firstLetter}
+                </AvatarFallback>
+              ) : (
+                <>
+                  <AvatarImage src={usuarioPerfil} alt="Foto de perfil" />
+                  <AvatarFallback>{firstLetter}</AvatarFallback>
+                </>
+              )}
             </Avatar>
           </button>
         </PopoverTrigger>
@@ -97,8 +107,16 @@ export default function ProfilePopover() {
         <PopoverContent align="end" className="w-72 overflow-hidden p-0">
           <div className="flex items-center gap-3 border-b bg-gray-50 p-4">
             <Avatar className="h-12 w-12">
-              <AvatarImage src="https://github.com/shadcn.png" />
-              <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+              {hasName ? (
+                <AvatarFallback className="bg-slate-700 text-lg font-semibold text-white">
+                  {firstLetter}
+                </AvatarFallback>
+              ) : (
+                <>
+                  <AvatarImage src={usuarioPerfil} alt="Foto de perfil" />
+                  <AvatarFallback className="text-lg">{firstLetter}</AvatarFallback>
+                </>
+              )}
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{account.name || "—"}</p>

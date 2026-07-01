@@ -10,7 +10,6 @@ export const ADMIN_EDGE_FUNCTIONS = {
 export const ADMIN_RPCS = {
   currentAccount: "get_current_account",
   dashboard: "get_manager_dashboard",
-  controlPanel: "get_control_panel",
   employeesList: "get_employees_list",
   updateEmployee: "update_employee",
   setEmployeeRole: "set_employee_role",
