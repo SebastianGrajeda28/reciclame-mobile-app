@@ -33,6 +33,8 @@ const sampleRow = {
   friend_id: 'aaaaaaaa-0000-0000-0000-000000000001',
   name: 'Ana Recicladora',
   current_streak: 5,
+  current_level: 3,
+  current_heat: 60,
   avatar_base_style: 'https://cdn.example.com/avatar-1.png',
   avatar_config: sampleAvatarConfig,
   last_activity_at: '2026-06-01T14:30:00Z',
@@ -67,12 +69,29 @@ describe('getFriends', () => {
     expect(friend.id).toBe(sampleRow.friend_id);
     expect(friend.name).toBe('Ana Recicladora');
     expect(friend.currentStreak).toBe(5);
+    expect(friend.currentLevel).toBe(3);
+    expect(friend.currentHeat).toBe(60);
     expect(friend.avatarUrl).toBe('https://cdn.example.com/avatar-1.png');
     expect(friend.lastActivityAt).toBe('2026-06-01T14:30:00Z');
     expect(friend.avatarConfig).toEqual(sampleAvatarConfig);
     expect(friend.featuredMedals).toHaveLength(1);
     expect(friend.featuredMedals[0].name).toBe('Reciclador Inicial');
     expect(friend.featuredMedals[0].slug).toBe('primer-paso');
+  });
+
+  test('Debería mapear nivel y calor a null cuando el remoto aún no los devuelve', async () => {
+    // Preparar
+    const legacyRow: Partial<typeof sampleRow> = { ...sampleRow };
+    delete legacyRow.current_level;
+    delete legacyRow.current_heat;
+    mockedRpc.mockResolvedValue({ data: [legacyRow], error: null });
+
+    // Actuar
+    const result = await getFriends('user-123');
+
+    // Afirmar
+    expect(result[0].currentLevel).toBeNull();
+    expect(result[0].currentHeat).toBeNull();
   });
 
   test('Debería retornar lista vacía cuando el usuario no tiene amigos', async () => {
