@@ -51,6 +51,7 @@ New database work should start in `supabase/schemas/*` and then generate additiv
 - `20260607000001_add_avatar_config.sql` — avatar configuration additions
 - `20260615000000_achievement_unlock_logic.sql` — initial achievement unlock RPC + trigger wiring
 - `20260618000000_gamification_expand_achievement_conditions.sql` — 16 new condition types (bin type, waste type, location, social, manual detection); seeds 25 achievements; restores achievement check in progress trigger
+- `20260701000000_friends_profile_add_streak_level_heat.sql` — friends RPC exposes conserved streak level and heat so the friends list colors by level, not days
 
 ## Recycling flow and progress
 

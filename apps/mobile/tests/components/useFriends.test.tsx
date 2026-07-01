@@ -14,6 +14,8 @@ const sampleFriend: FriendSummary = {
   id: 'aaaaaaaa-0000-0000-0000-000000000001',
   name: 'Ana Recicladora',
   currentStreak: 5,
+  currentLevel: 3,
+  currentHeat: 60,
   avatarUrl: 'https://cdn.example.com/avatar-1.png',
   lastActivityAt: '2026-06-01T14:30:00Z',
   featuredMedals: [
