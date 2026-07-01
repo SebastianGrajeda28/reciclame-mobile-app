@@ -43,10 +43,10 @@ const kpiMetrics = [
     icon: Users,
   },
   {
-    title: "Tasa de confirmación",
+    title: "Tasa de Registros Confirmados",
     value: "87%",
-    subtitle: "Sesiones que terminaron en confirmación",
-    delta: "43 de 52 llegaron a confirmar",
+    subtitle: "Sesiones que terminaron en registro confirmado",
+    delta: "43 de 52 llegaron a registrar",
     icon: ScanSearch,
   },
 ];
@@ -71,7 +71,7 @@ const funnelSteps = [
   { label: "Procesaron", value: 91, color: "#1c8fdf" },
   { label: "Mapa", value: 67, color: "#22c76f" },
   { label: "Instrucciones", value: 52, color: "#3ed08b" },
-  { label: "Confirmaron", value: 43, color: "#129a56" },
+  { label: "Registraron", value: 43, color: "#129a56" },
 ];
 
 const weeklyTrend = [
@@ -87,14 +87,14 @@ const weeklyTrend = [
 
 const categoryChartConfig = {
   confirmed: {
-    label: "Confirmados",
+    label: "Registrados",
     color: "#22c76f",
   },
 } satisfies ChartConfig;
 
 const weeklyChartConfig = {
   value: {
-    label: "Confirmados",
+    label: "Registrados",
     color: "#22c76f",
   },
 } satisfies ChartConfig;
@@ -251,10 +251,10 @@ export default function MetricsPage() {
               icon: Users,
             },
             {
-              title: "Tasa de confirmación",
+              title: "Tasa de Registros Confirmados",
               value: `${dashboardData.kpis.confirmationRate}%`,
-              subtitle: "Sesiones que terminaron en confirmación",
-              delta: `${dashboardData.funnel[4]?.value ?? 0} de ${dashboardData.funnel[0]?.value ?? 0} sesiones confirmadas`,
+              subtitle: "Sesiones que terminaron en registro confirmado",
+              delta: `${dashboardData.funnel[4]?.value ?? 0} de ${dashboardData.funnel[0]?.value ?? 0} sesiones registradas`,
               icon: ScanSearch,
             },
           ]
@@ -345,7 +345,7 @@ export default function MetricsPage() {
             { "Métrica": "Kg reciclados", "Valor": dashboardData.kpis.totalKg },
             { "Métrica": "Usuarios activos", "Valor": dashboardData.kpis.activeUsersInPeriod },
             { "Métrica": "Usuarios nuevos", "Valor": dashboardData.kpis.newUsersInPeriod },
-            { "Métrica": "Tasa de confirmación (%)", "Valor": dashboardData.kpis.confirmationRate },
+            { "Métrica": "Tasa de Registros Confirmados (%)", "Valor": dashboardData.kpis.confirmationRate },
           ],
         },
         {
@@ -367,14 +367,14 @@ export default function MetricsPage() {
           name: "Residuos más reciclados",
           rows: renderedTopResidues.map((row) => ({
             "Residuo": row.name,
-            "Confirmados": row.confirmed,
+            "Unidades Registradas": row.confirmed,
           })),
         },
         {
           name: "Tendencia temporal",
           rows: renderedTrend.map((point) => ({
             "Periodo": point.label,
-            "Confirmados": point.value,
+            "Unidades Registradas": point.value,
           })),
         },
         {
@@ -382,7 +382,7 @@ export default function MetricsPage() {
           rows: filteredDetailRows.map((row) => ({
             "Residuo": row.residue,
             "Escaneos": row.scans,
-            "Confirmados": row.confirmed,
+            "Unidades Registradas": row.confirmed,
             "Tasa (%)": row.rate,
             "Kg reciclados": row.kilograms,
           })),
@@ -683,7 +683,7 @@ export default function MetricsPage() {
                   <div>
                     <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Residuos mas reciclados</h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      Comparativo de residuos con mas confirmaciones en el periodo.
+                      Comparativo de residuos con más unidades registradas en el periodo.
                     </p>
                   </div>
                   <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
@@ -740,7 +740,7 @@ export default function MetricsPage() {
                   <div>
                     <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Tendencia temporal</h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      Evolucion de reciclajes confirmados a lo largo del tiempo.
+                      Evolucion de reciclajes registrados a lo largo del tiempo.
                     </p>
                   </div>
                   <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
@@ -793,7 +793,7 @@ export default function MetricsPage() {
       <div>
         <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Residuos por detalle</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Compara escaneos, confirmados, tasa y kg entre los residuos seleccionados.
+          Compara escaneos, unidades registradas, tasa y kg entre los residuos seleccionados.
         </p>
       </div>
     </div>
