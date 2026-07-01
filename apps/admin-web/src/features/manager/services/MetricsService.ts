@@ -5,6 +5,7 @@ export type DashboardResponse = {
   filters: {
     start: string;
     end: string;
+    universityId: string | null;
   };
   kpis: {
     totalRecyclings: number;
@@ -40,10 +41,15 @@ export type DashboardResponse = {
   }>;
 };
 
-export async function fetchDashboard(start: string, end: string): Promise<DashboardResponse> {
+export async function fetchDashboard(
+  start: string,
+  end: string,
+  universityId?: string | null
+): Promise<DashboardResponse> {
   const { data, error } = await supabase.rpc(ADMIN_RPCS.dashboard, {
     p_start: start,
     p_end: end,
+    p_university_id: universityId ?? null,
   });
   console.log("RPC dashboard response:", { data, error });
   if (error) {

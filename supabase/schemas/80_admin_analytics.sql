@@ -283,163 +283,271 @@ GRANT ALL ON FUNCTION "public"."get_control_panel"() TO service_role;
 -- SECTION 4 — Admin dashboard
 -- -----------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION "app_analytics"."get_admin_dashboard"(
-  p_start timestamp with time zone,
-  p_end   timestamp with time zone
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public', 'auth'
-AS $$
-DECLARE
-  v_uid      uuid := auth.uid();
+DROP FUNCTION IF EXISTS "app_analytics"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone, uuid);
+DROP FUNCTION IF EXISTS "public"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone, uuid);
+
+CREATE OR REPLACE FUNCTION "app_analytics"."get_manager_dashboard"(
+  "p_start" timestamp with time zone,
+  "p_end" timestamp with time zone,
+  "p_university_id" uuid DEFAULT NULL
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
   v_is_admin boolean;
-  v_result   jsonb;
-BEGIN
-  IF p_start IS NULL OR p_end IS NULL THEN
-    RAISE EXCEPTION 'p_start and p_end are required';
-  END IF;
+  v_result jsonb;
+begin
+  if p_start is null or p_end is null then
+    raise exception 'p_start and p_end are required';
+  end if;
 
-  IF p_start > p_end THEN
-    RAISE EXCEPTION 'p_start must be less than or equal to p_end';
-  END IF;
+  if p_start > p_end then
+    raise exception 'p_start must be less than or equal to p_end';
+  end if;
 
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.user_roles ur
-    JOIN public.roles r ON r.id = ur.role_id
-    WHERE ur.user_id  = v_uid
-      AND ur.is_active = true
-      AND r.is_active  = true
-  ) INTO v_is_admin;
+  select exists (
+    select 1
+    from public.user_roles ur
+    join public.roles r on r.id = ur.role_id
+    where ur.user_id = v_uid
+      and ur.is_active = true
+      and r.is_active = true
+  )
+  into v_is_admin;
 
-  IF NOT COALESCE(v_is_admin, false) THEN
-    RAISE EXCEPTION 'role required';
-  END IF;
+  if not coalesce(v_is_admin, false) then
+    raise exception 'role required';
+  end if;
 
-  WITH session_scope AS (
-    SELECT * FROM public.recycling_sessions
-    WHERE started_at >= p_start AND started_at <= p_end
+  with session_scope as (
+    select rs.*
+    from public.recycling_sessions rs
+    left join public.recycling_points rp on rp.id = rs.recycling_point_id
+    left join public.campuses c on c.id = rp.campus_id
+    where rs.started_at >= p_start
+      and rs.started_at <= p_end
+      and (p_university_id is null or c.university_id = p_university_id)
   ),
-  record_scope AS (
-    SELECT * FROM public.recycling_records
-    WHERE created_at >= p_start AND created_at <= p_end
+  record_scope as (
+    select rr.*
+    from public.recycling_records rr
+    left join public.recycling_points rp on rp.id = rr.recycling_point_id
+    left join public.campuses c on c.id = rp.campus_id
+    where rr.created_at >= p_start
+      and rr.created_at <= p_end
+      and (p_university_id is null or c.university_id = p_university_id)
   ),
-  kpis AS (
-    SELECT jsonb_build_object(
-      'totalRecyclings',    (SELECT COUNT(*)::int FROM record_scope),
-      'totalKg',            COALESCE((SELECT ROUND(SUM(estimated_weight)::numeric / 1000, 1) FROM record_scope), 0),
-      'activeUsersInPeriod',(SELECT COUNT(*)::int FROM public.users u WHERE u.last_login_at >= p_start AND u.last_login_at <= p_end),
-      'newUsersInPeriod',   (SELECT COUNT(*)::int FROM public.users u WHERE u.created_at    >= p_start AND u.created_at    <= p_end),
-      'confirmationRate',   COALESCE((
-        SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE outcome = 'confirmed') / NULLIF(COUNT(*), 0), 0)
-        FROM session_scope
-      ), 0)
-    ) AS data
-  ),
-  funnel AS (
-    SELECT jsonb_agg(jsonb_build_object('label', label, 'value', value) ORDER BY sort_order) AS data
-    FROM (
-      SELECT 1, 'Iniciaron',     COUNT(*)::int                                                                               FROM session_scope
-      UNION ALL SELECT 2, 'Processing',  COUNT(*) FILTER (WHERE furthest_step IN ('processing','manual','map','instructions','success'))::int FROM session_scope
-      UNION ALL SELECT 3, 'Mapa',        COUNT(*) FILTER (WHERE furthest_step IN ('map','instructions','success'))::int                       FROM session_scope
-      UNION ALL SELECT 4, 'Instrucciones',COUNT(*) FILTER (WHERE furthest_step IN ('instructions','success'))::int                            FROM session_scope
-      UNION ALL SELECT 5, 'Confirmaron', COUNT(*) FILTER (WHERE outcome = 'confirmed')::int                                                  FROM session_scope
-    ) stages(sort_order, label, value)
-  ),
-  top_residues AS (
-    SELECT COALESCE(jsonb_agg(jsonb_build_object('name', name, 'confirmed', confirmed) ORDER BY confirmed DESC, name ASC), '[]'::jsonb) AS data
-    FROM (
-      SELECT COALESCE(wt.name, 'Desconocido') AS name, COUNT(*)::int AS confirmed
-      FROM public.recycling_records rr
-      LEFT JOIN public.waste_types wt ON wt.id = rr.waste_type_id
-      WHERE rr.created_at >= p_start AND rr.created_at <= p_end
-      GROUP BY wt.name ORDER BY confirmed DESC, name ASC LIMIT 6
-    ) rows
-  ),
-  quality_base AS (
-    SELECT
-      COUNT(*) FILTER (WHERE confidence_score IS NOT NULL AND confidence_score >= 0.8 AND COALESCE(waste_type_overridden,false) = false)::int AS high_confidence,
-      COUNT(*) FILTER (WHERE confidence_score IS NOT NULL AND confidence_score <  0.8 AND COALESCE(waste_type_overridden,false) = false)::int AS low_confidence,
-      COUNT(*) FILTER (WHERE COALESCE(waste_type_overridden, false) = true)::int AS overridden
-    FROM session_scope
-  ),
-  recognition_quality AS (
-    SELECT jsonb_agg(jsonb_build_object('name',name,'count',count_value,'percentage',CASE WHEN total=0 THEN 0 ELSE ROUND(100.0*count_value/total) END,'color',color) ORDER BY sort_order) AS data
-    FROM (
-      SELECT 1,'Alta confianza',   high_confidence,'#22c76f',(high_confidence+low_confidence+overridden) FROM quality_base
-      UNION ALL SELECT 2,'Baja confianza',    low_confidence, '#f4b740',(high_confidence+low_confidence+overridden) FROM quality_base
-      UNION ALL SELECT 3,'Corregidos por usuario',overridden, '#0b2f4e',(high_confidence+low_confidence+overridden) FROM quality_base
-    ) rows(sort_order,name,count_value,color,total)
-  ),
-  trend AS (
-    SELECT COALESCE(jsonb_agg(jsonb_build_object('label',label,'value',value) ORDER BY period_start), '[]'::jsonb) AS data
-    FROM (
-      SELECT date_trunc('week', created_at) AS period_start, to_char(date_trunc('week',created_at),'"sem. "IW') AS label, COUNT(*)::int AS value
-      FROM public.recycling_records WHERE created_at >= p_start AND created_at <= p_end
-      GROUP BY date_trunc('week', created_at)
-    ) rows
-  ),
-  detail_rows AS (
-    SELECT COALESCE(jsonb_agg(jsonb_build_object('residue',residue,'scans',scans,'confirmed',confirmed,'rate',rate,'kilograms',kilograms) ORDER BY confirmed DESC, scans DESC, residue ASC), '[]'::jsonb) AS data
-    FROM (
-      WITH scans AS (
-        SELECT final_waste_type_id AS waste_type_id, COUNT(*)::int AS scans
-        FROM session_scope WHERE final_waste_type_id IS NOT NULL GROUP BY final_waste_type_id
+  kpis as (
+    select jsonb_build_object(
+      'totalRecyclings', (select count(*)::int from record_scope),
+      'totalKg', coalesce((select round(sum(estimated_weight)::numeric / 1000, 1) from record_scope), 0),
+      'activeUsersInPeriod', (
+        select count(*)::int
+        from public.users u
+        left join public.user_profiles up on up.user_id = u.id
+        where u.last_login_at >= p_start
+          and u.last_login_at <= p_end
+          and (p_university_id is null or up.university_id = p_university_id)
       ),
-      confirmed AS (
-        SELECT waste_type_id, COUNT(*)::int AS confirmed, COALESCE(ROUND(SUM(estimated_weight)::numeric/1000,1),0) AS kilograms
-        FROM record_scope GROUP BY waste_type_id
+      'newUsersInPeriod', (
+        select count(*)::int
+        from public.users u
+        left join public.user_profiles up on up.user_id = u.id
+        where u.created_at >= p_start
+          and u.created_at <= p_end
+          and (p_university_id is null or up.university_id = p_university_id)
+      ),
+      'confirmationRate', coalesce((
+        select round(
+          100.0 * count(*) filter (where outcome = 'confirmed') / nullif(count(*), 0),
+          0
+        )
+        from session_scope
+      ), 0)
+    ) as data
+  ),
+  funnel as (
+    select jsonb_agg(
+      jsonb_build_object('label', label, 'value', value)
+      order by sort_order
+    ) as data
+    from (
+      select 1 as sort_order, 'Iniciaron' as label, count(*)::int as value from session_scope
+      union all
+      select 2, 'Processing', count(*) filter (where furthest_step in ('processing', 'manual', 'map', 'instructions', 'success'))::int from session_scope
+      union all
+      select 3, 'Mapa', count(*) filter (where furthest_step in ('map', 'instructions', 'success'))::int from session_scope
+      union all
+      select 4, 'Instrucciones', count(*) filter (where furthest_step in ('instructions', 'success'))::int from session_scope
+      union all
+      select 5, 'Confirmaron', count(*) filter (where outcome = 'confirmed')::int from session_scope
+    ) stages
+  ),
+  top_residues as (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object('name', name, 'confirmed', confirmed)
+        order by confirmed desc, name asc
+      ),
+      '[]'::jsonb
+    ) as data
+    from (
+      select
+        coalesce(wt.name, 'Desconocido') as name,
+        count(*)::int as confirmed
+      from record_scope rr
+      left join public.waste_types wt on wt.id = rr.waste_type_id
+      group by wt.name
+      order by confirmed desc, name asc
+      limit 6
+    ) rows
+  ),
+  quality_base as (
+    select
+      count(*) filter (
+        where confidence_score is not null
+          and confidence_score >= 0.8
+          and coalesce(waste_type_overridden, false) = false
+      )::int as high_confidence,
+      count(*) filter (
+        where confidence_score is not null
+          and confidence_score < 0.8
+          and coalesce(waste_type_overridden, false) = false
+      )::int as low_confidence,
+      count(*) filter (
+        where coalesce(waste_type_overridden, false) = true
+      )::int as overridden
+    from session_scope
+  ),
+  recognition_quality as (
+    select jsonb_agg(
+      jsonb_build_object(
+        'name', name,
+        'count', count_value,
+        'percentage', case when total = 0 then 0 else round(100.0 * count_value / total) end,
+        'color', color
       )
-      SELECT
-        COALESCE(wt.name,'Desconocido') AS residue,
-        COALESCE(scans.scans,0)::int    AS scans,
-        COALESCE(confirmed.confirmed,0)::int AS confirmed,
-        CASE WHEN COALESCE(scans.scans,0)=0 THEN 0 ELSE ROUND(100.0*COALESCE(confirmed.confirmed,0)/scans.scans,0) END AS rate,
-        COALESCE(confirmed.kilograms,0) AS kilograms
-      FROM public.waste_types wt
-      LEFT JOIN scans     ON scans.waste_type_id     = wt.id
-      LEFT JOIN confirmed ON confirmed.waste_type_id = wt.id
-      WHERE COALESCE(scans.scans,0)>0 OR COALESCE(confirmed.confirmed,0)>0
-      ORDER BY COALESCE(confirmed.confirmed,0) DESC, COALESCE(scans.scans,0) DESC, COALESCE(wt.name,'Desconocido') ASC
-      LIMIT 10
+      order by sort_order
+    ) as data
+    from (
+      select 1 as sort_order, 'Alta confianza' as name, high_confidence as count_value, '#22c76f' as color,
+             (high_confidence + low_confidence + overridden) as total
+      from quality_base
+      union all
+      select 2, 'Baja confianza', low_confidence, '#f4b740', (high_confidence + low_confidence + overridden)
+      from quality_base
+      union all
+      select 3, 'Corregidos por usuario', overridden, '#0b2f4e', (high_confidence + low_confidence + overridden)
+      from quality_base
+    ) rows
+  ),
+  trend as (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object('label', label, 'value', value)
+        order by period_start
+      ),
+      '[]'::jsonb
+    ) as data
+    from (
+      select
+        date_trunc('week', created_at) as period_start,
+        to_char(date_trunc('week', created_at), '"sem. "IW') as label,
+        count(*)::int as value
+      from record_scope
+      group by date_trunc('week', created_at)
+      order by date_trunc('week', created_at)
+    ) rows
+  ),
+  detail_rows as (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'residue', residue,
+          'scans', scans,
+          'confirmed', confirmed,
+          'rate', rate,
+          'kilograms', kilograms
+        )
+        order by confirmed desc, scans desc, residue asc
+      ),
+      '[]'::jsonb
+    ) as data
+    from (
+      with scans as (
+        select
+          final_waste_type_id as waste_type_id,
+          count(*)::int as scans
+        from session_scope
+        where final_waste_type_id is not null
+        group by final_waste_type_id
+      ),
+      confirmed as (
+        select
+          waste_type_id,
+          count(*)::int as confirmed,
+          coalesce(round(sum(estimated_weight)::numeric / 1000, 1), 0) as kilograms
+        from record_scope
+        group by waste_type_id
+      )
+      select
+        coalesce(wt.name, 'Desconocido') as residue,
+        coalesce(scans.scans, 0)::int as scans,
+        coalesce(confirmed.confirmed, 0)::int as confirmed,
+        case
+          when coalesce(scans.scans, 0) = 0 then 0
+          else round(100.0 * coalesce(confirmed.confirmed, 0) / scans.scans, 0)
+        end as rate,
+        coalesce(confirmed.kilograms, 0) as kilograms
+      from public.waste_types wt
+      left join scans on scans.waste_type_id = wt.id
+      left join confirmed on confirmed.waste_type_id = wt.id
+      where coalesce(scans.scans, 0) > 0
+         or coalesce(confirmed.confirmed, 0) > 0
+      order by coalesce(confirmed.confirmed, 0) desc, coalesce(scans.scans, 0) desc, coalesce(wt.name, 'Desconocido') asc
+      limit 10
     ) rows
   )
-  SELECT jsonb_build_object(
-    'filters',          jsonb_build_object('start', p_start, 'end', p_end),
-    'kpis',             kpis.data,
-    'funnel',           COALESCE(funnel.data, '[]'::jsonb),
-    'topResidues',      top_residues.data,
-    'recognitionQuality', COALESCE(recognition_quality.data, '[]'::jsonb),
-    'trend',            trend.data,
-    'detailRows',       detail_rows.data
+  select jsonb_build_object(
+    'filters', jsonb_build_object('start', p_start, 'end', p_end, 'universityId', p_university_id),
+    'kpis', kpis.data,
+    'funnel', coalesce(funnel.data, '[]'::jsonb),
+    'topResidues', top_residues.data,
+    'recognitionQuality', coalesce(recognition_quality.data, '[]'::jsonb),
+    'trend', trend.data,
+    'detailRows', detail_rows.data
   )
-  INTO v_result
-  FROM kpis, funnel, top_residues, recognition_quality, trend, detail_rows;
+  into v_result
+  from kpis, funnel, top_residues, recognition_quality, trend, detail_rows;
 
-  RETURN v_result;
-END;
+  return v_result;
+end;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_admin_dashboard"(
-  p_start timestamp with time zone,
-  p_end   timestamp with time zone
-)
-RETURNS jsonb
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path TO 'public', 'auth', 'app_analytics'
-AS $$
-  SELECT app_analytics.get_admin_dashboard(p_start, p_end);
+ALTER FUNCTION "app_analytics"."get_manager_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone, "p_university_id" uuid) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_manager_dashboard"(
+  "p_start" timestamp with time zone,
+  "p_end" timestamp with time zone,
+  "p_university_id" uuid DEFAULT NULL
+) RETURNS "jsonb"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth', 'app_analytics'
+    AS $$
+  select app_analytics.get_manager_dashboard(p_start, p_end, p_university_id);
 $$;
 
-REVOKE ALL ON FUNCTION "app_analytics"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone) FROM PUBLIC;
-GRANT  ALL ON FUNCTION "app_analytics"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone) TO service_role;
+ALTER FUNCTION "public"."get_manager_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone, "p_university_id" uuid) OWNER TO "postgres";
 
-GRANT ALL ON FUNCTION "public"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone) TO anon;
-GRANT ALL ON FUNCTION "public"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone) TO authenticated;
-GRANT ALL ON FUNCTION "public"."get_admin_dashboard"(timestamp with time zone, timestamp with time zone) TO service_role;
+REVOKE ALL ON FUNCTION "app_analytics"."get_manager_dashboard"(timestamp with time zone, timestamp with time zone, uuid) FROM PUBLIC;
+GRANT  ALL ON FUNCTION "app_analytics"."get_manager_dashboard"(timestamp with time zone, timestamp with time zone, uuid) TO service_role;
+GRANT ALL ON FUNCTION "public"."get_manager_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone, "p_university_id" uuid) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_manager_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone, "p_university_id" uuid) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_manager_dashboard"("p_start" timestamp with time zone, "p_end" timestamp with time zone, "p_university_id" uuid) TO "service_role";
+
 
 
 -- -----------------------------------------------------------------------------

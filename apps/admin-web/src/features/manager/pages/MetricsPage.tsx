@@ -1,9 +1,11 @@
 import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportToXlsxMultiSheet } from "@/lib/exportUtils";
+import { formatCompactNumber } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 import { useUser } from "@/shared/context/UserContext";
@@ -13,6 +15,7 @@ import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Pie, Pi
 import { ResidueComparisonGrid } from "../components/ResidueComparisonGrid";
 import { ResidueFilterChips } from "../components/ResidueFilterChips";
 import { fetchDashboard, type DashboardResponse } from "../services/MetricsService";
+import { getUniversities, type University } from "../services/UniversitiesService";
 
 type DatePreset = "last7" | "last30" | "historical" | "custom";
 type DashboardTab = "flow" | "results";
@@ -172,6 +175,8 @@ export default function MetricsPage() {
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [selectedResidues, setSelectedResidues] = useState<string[]>([]);
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [selectedUniversityId, setSelectedUniversityId] = useState<string>("all");
   const totalDays = useMemo(() => differenceInDaysInclusive(dateFrom, dateTo), [dateFrom, dateTo]);
   const topResidueChartHeight = Math.max(220, (dashboardData?.topResidues.length ?? topResidues.length) * 30 + 20);
 
@@ -180,9 +185,25 @@ export default function MetricsPage() {
       return;
     }
 
+    getUniversities()
+      .then(setUniversities)
+      .catch((error) => {
+        console.error("[MetricsDashboard] No se pudieron cargar universidades:", error);
+      });
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
     let cancelled = false;
 
-    fetchDashboard(dateFrom.toISOString(), dateTo.toISOString())
+    fetchDashboard(
+      dateFrom.toISOString(),
+      dateTo.toISOString(),
+      selectedUniversityId === "all" ? null : selectedUniversityId
+    )
       .then((data) => {
         if (!cancelled) {
           setDashboardData(data);
@@ -199,7 +220,7 @@ export default function MetricsPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, dateFrom, dateTo]);
+  }, [session, dateFrom, dateTo, selectedUniversityId]);
 
   const renderedKpis = useMemo(
     () =>
@@ -207,26 +228,26 @@ export default function MetricsPage() {
         ? [
             {
               title: "Reciclajes totales",
-              value: dashboardData.kpis.totalRecyclings.toLocaleString("es-PE"),
+              value: formatCompactNumber(dashboardData.kpis.totalRecyclings),
               subtitle: "Acciones de reciclaje confirmadas",
               delta: `${dashboardData.funnel[4]?.value ?? 0} confirmados en el periodo`,
               icon: CheckCircle2,
             },
             {
               title: "Kg reciclados",
-              value: `${dashboardData.kpis.totalKg.toFixed(1)} kg`,
+              value: `${formatCompactNumber(dashboardData.kpis.totalKg)} kg`,
               subtitle: "Peso total reciclado en el periodo",
               delta:
                 dashboardData.detailRows[0] != null
-                  ? `${dashboardData.detailRows[0].residue} lidera con ${dashboardData.detailRows[0].kilograms.toFixed(1)} kg`
+                  ? `${dashboardData.detailRows[0].residue} lidera con ${formatCompactNumber(dashboardData.detailRows[0].kilograms)} kg`
                   : "Sin registros en el periodo",
               icon: Scale,
             },
             {
               title: "Usuarios activos",
-              value: dashboardData.kpis.activeUsersInPeriod.toLocaleString("es-PE"),
+              value: formatCompactNumber(dashboardData.kpis.activeUsersInPeriod),
               subtitle: "Usuarios con actividad en el periodo",
-              delta: `${dashboardData.kpis.newUsersInPeriod} usuarios nuevos`,
+              delta: `${formatCompactNumber(dashboardData.kpis.newUsersInPeriod)} usuarios nuevos`,
               icon: Users,
             },
             {
@@ -303,10 +324,17 @@ export default function MetricsPage() {
     const formatExportDate = (date: Date) =>
       new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric" }).format(date);
 
-    const filename =
+    const selectedUniversityName =
+      selectedUniversityId === "all"
+        ? "Todas las universidades"
+        : universities.find((u) => u.id === selectedUniversityId)?.name ?? "Universidad";
+
+    const rangeLabel =
       datePreset === "historical"
-        ? `Metricas - Historico (${formatExportDate(new Date())})`
-        : `Metricas - ${formatExportDate(dateFrom)} al ${formatExportDate(dateTo)}`;
+        ? `Historico (${formatExportDate(new Date())})`
+        : `${formatExportDate(dateFrom)} al ${formatExportDate(dateTo)}`;
+
+    const filename = `Metricas - ${selectedUniversityName} - ${rangeLabel}`;
 
     exportToXlsxMultiSheet(
       [
@@ -399,6 +427,15 @@ export default function MetricsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center content-center gap-3 md:self-center md:justify-end">
+          <button
+              type="button"
+              onClick={handleExport}
+              disabled={!dashboardData}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-input bg-white px-4 text-xs font-medium text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-90"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Exportar
+          </button>
           {[
             { key: "last7", label: "Ultima semana" },
             { key: "last30", label: "Ultimo mes" },
@@ -503,15 +540,19 @@ export default function MetricsPage() {
               </div>
             </PopoverContent>
           </Popover>
-          <button
-              type="button"
-              onClick={handleExport}
-              disabled={!dashboardData}
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-input bg-white px-4 text-xs font-medium text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-90"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Exportar
-          </button>
+          <Select value={selectedUniversityId} onValueChange={setSelectedUniversityId}>
+            <SelectTrigger className="h-10 w-[220px] border-[#d7e6f2] bg-white text-sm font-semibold text-[#0b2f4e]">
+              <SelectValue placeholder="Universidad" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              <SelectItem value="all">Todas las universidades</SelectItem>
+              {universities.map((university) => (
+                <SelectItem key={university.id} value={university.id}>
+                  {university.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
