@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { Check, ChevronDown, ChevronUp, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,8 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { WasteType } from "../services/WasteTypesService";
+import { Check, ChevronDown, ChevronUp, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import type { Instruction, InstructionPayload } from "../services/InstructionsService";
+import type { WasteType } from "../services/WasteTypesService";
 import InstructionStepsSection from "./InstructionStepsSection";
 
 type PendingAction = "edit" | "deactivate" | "restore" | null;

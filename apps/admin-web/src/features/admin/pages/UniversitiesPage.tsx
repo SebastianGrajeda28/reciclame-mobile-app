@@ -34,7 +34,7 @@ import {
   restoreUniversity,
   type AppUniversity,
   type UniversitySortColumn,
-} from "../services/AdminUniversitiesService";
+} from "../services/UniversitiesService";
 
 type UniversitiesTab = "active" | "inactive";
 

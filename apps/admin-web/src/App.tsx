@@ -4,8 +4,7 @@ declare global {
   }
 }
 
-import UserPage from "@/features/account/pages/UserPage";
-import AdminPanel from "@/features/admin/pages/ControlPanel";
+import ControlPanelPage from "@/features/admin/pages/ControlPanelPage";
 import AdminConfigPage from "@/features/admin/pages/UniversitiesPage";
 import UsersPage from "@/features/admin/pages/UsersPage";
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
@@ -14,9 +13,9 @@ import ForgotPassword from "@/features/auth/pages/ForgotPassword";
 import Login from "@/features/auth/pages/Login";
 import Logout from "@/features/auth/pages/Logout";
 import ResetPassword from "@/features/auth/pages/ResetPassword";
-import FunFactsPage from "@/features/content/pages/FunFactsPage";
-import InstructionsPage from "@/features/content/pages/InstructionsPage";
-import MetricsDashboard from "@/features/dashboard/pages/MetricsDashboard";
+import FunFactsPage from "@/features/manager/pages/FunFactsPage";
+import InstructionsPage from "@/features/manager/pages/InstructionsPage";
+import MetricsPage from "@/features/manager/pages/MetricsPage";
 import { useEffect, useState } from "react";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -33,7 +32,7 @@ function RootEntry() {
   if (!account) return <Navigate to="/login" replace />;
 
   const role = (account.role ?? "").toUpperCase();
-  if (role === "ADMIN") return <Navigate to="/control-panel" replace />;
+  if (role === "ADMIN") return <Navigate to="/config/users" replace />;
   if (role === "MANAGER") return <Navigate to="/metrics" replace />;
 
   return <Navigate to="/logout?reason=unauthorized" replace />;
@@ -71,18 +70,17 @@ function AppShell() {
           <Route path="/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
 
           <Route element={<ProtectedRoute allowedRoles={["MANAGER"]} />}>
-            <Route path="/metrics" element={<MetricsDashboard />} />
+            <Route path="/metrics" element={<MetricsPage />} />
             <Route path="/fun-facts" element={<FunFactsPage />} />
             <Route path="/instructions" element={<InstructionsPage />} />
             <Route path="/recycling-points" element={<InstructionsPage />} />
-            <Route path="/my-account" element={<UserPage />} />
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
-            <Route path="/control-panel" element={<AdminPanel />} />
             <Route path="/config/users" element={<UsersPage />} />
             <Route path="/config/universities" element={<AdminConfigPage />} />
           </Route>
+          <Route path="/control-panel" element={<ControlPanelPage />} />
 
           <Route path="/home" element={<Navigate to="/" replace />} />
           <Route path="/unauthorized" element={<Navigate to="/logout" replace />} />

@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
-import { MAX_CAMPUSES_PER_UNIVERSITY } from "../services/AdminUniversitiesService";
+import { MAX_CAMPUSES_PER_UNIVERSITY } from "../services/UniversitiesService";
 
 export interface CampusFormData {
   name: string;

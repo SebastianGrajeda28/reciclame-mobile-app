@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
 import { ResidueComparisonGrid } from "../components/ResidueComparisonGrid";
 import { ResidueFilterChips } from "../components/ResidueFilterChips";
-import { fetchDashboard, type DashboardResponse } from "../services/dashboardService";
+import { fetchDashboard, type DashboardResponse } from "../services/MetricsService";
 
 type DatePreset = "last7" | "last30" | "historical" | "custom";
 type DashboardTab = "flow" | "results";
@@ -163,7 +163,7 @@ function formatRangeLabel(dateFrom: Date, dateTo: Date) {
 
 const mockToday = new Date();
 
-export default function MetricsDashboard() {
+export default function MetricsPage() {
   const { session } = useUser();
   const [dateFrom, setDateFrom] = useState<Date>(addDays(mockToday, -6));
   const [dateTo, setDateTo] = useState<Date>(mockToday);

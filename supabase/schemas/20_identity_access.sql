@@ -57,7 +57,7 @@ CREATE OR REPLACE FUNCTION "app_admin"."is_current_user_admin"() RETURNS boolean
     where ur.user_id = auth.uid()
       and ur.is_active = true
       and r.is_active = true
-      and r.name = 'ADMIN'
+      and r.name in ('ADMIN', 'MANAGER')
   );
 $$;
 

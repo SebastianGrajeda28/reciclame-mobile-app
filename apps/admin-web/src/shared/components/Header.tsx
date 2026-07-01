@@ -1,3 +1,4 @@
+import logo from "@/assets/reciclame_logo.png";
 import { Link, useLocation } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import RoleNavbar from "./RoleNavbar";
@@ -14,7 +15,7 @@ const MANAGER_NAV_ITEMS: NavItem[] = [
 ];
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
-  { label: "Panel de Control", path: "/control-panel" },
+//  { label: "Panel de Control", path: "/control-panel" },
   { label: "Empleados", path: "/config/users" },
   { label: "Universidades", path: "/config/universities" },
 ];
@@ -37,9 +38,9 @@ export default function Header() {
       <div className="relative h-20 w-full px-6 md:px-8">
         <Link
           to="/"
-          className="absolute left-6 top-1/2 z-10 -translate-y-1/2 whitespace-nowrap text-[2.15rem] font-extrabold leading-none tracking-normal text-white antialiased md:left-8"
+          className="absolute left-6 top-1/2 z-10 -translate-y-1/2 md:left-8"
         >
-          Recíclame
+          <img src={logo} alt="Recíclame" className="h-10 w-auto" />
         </Link>
 
         {isAuthRoute ? null : <RoleNavbar items={navItems} />}

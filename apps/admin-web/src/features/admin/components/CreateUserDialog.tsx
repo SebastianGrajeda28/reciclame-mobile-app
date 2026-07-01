@@ -1,10 +1,10 @@
 import { X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { provisionAdminUser } from "../services/AdminProvisioningService";
-import { AccountForm } from "./AccountForm";
+import { provisionAdminUser } from "../services/ProvisioningService";
+import { UserForm } from "./UserForm";
 
-interface AccountFormData {
+interface UserFormData {
   name: string;
   email: string;
   password?: string;
@@ -19,7 +19,7 @@ interface Props {
 export default function CreateUserDialog({ onClose, onCreated }: Props) {
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (data: AccountFormData) => {
+  const handleSubmit = async (data: UserFormData) => {
     setSaving(true);
     try {
       await provisionAdminUser({
@@ -49,7 +49,7 @@ export default function CreateUserDialog({ onClose, onCreated }: Props) {
         <p className="mb-5 text-sm text-slate-500">
           Si el correo ya pertenece a un usuario de la app móvil, se le asignará el rol y se establecerá la contraseña indicada.
         </p>
-        <AccountForm mode="register" onSubmit={handleSubmit} disabled={saving} />
+        <UserForm mode="register" onSubmit={handleSubmit} disabled={saving} />
       </div>
     </div>
   );

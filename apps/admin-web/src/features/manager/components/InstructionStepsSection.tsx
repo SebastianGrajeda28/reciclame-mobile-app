@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { uploadBinTypeImage, uploadInstructionStepImage } from "@/features/admin/services/AdminStorageService";
+import { uploadBinTypeImage, uploadInstructionStepImage } from "@/features/admin/services/StorageService";
 import {
   closestCenter,
   DndContext,
