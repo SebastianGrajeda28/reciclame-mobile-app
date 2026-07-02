@@ -1,6 +1,6 @@
-import { router, useNavigation } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { BackHandler, StyleSheet, View } from 'react-native';
 
 import { routes } from '@/src/constants/routes';
 import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
@@ -28,15 +28,29 @@ export function SuccessScreen() {
     });
   }, [navigation, resetFlow]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        console.log('[NAV] SuccessScreen — botón retroceder (hardware) presionado');
+        router.replace('/(tabs)');
+        return true;
+      });
+      return () => sub.remove();
+    }, [])
+  );
+
   function handleDone() {
+    console.log('[NAV] SuccessScreen — botón "Volver al mapa" presionado');
     router.replace('/(tabs)');
   }
 
   function handleRecycleAnother() {
+    console.log('[NAV] SuccessScreen — botón "Reciclar otro ítem" presionado');
     router.replace('/recycle/camera');
   }
 
   function handleViewHistory() {
+    console.log('[NAV] SuccessScreen — botón "Ver mi historial" presionado');
     router.push(routes.recycleHistory);
   }
 

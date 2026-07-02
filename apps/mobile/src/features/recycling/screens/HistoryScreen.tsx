@@ -16,7 +16,7 @@ import {
 } from '@/src/features/recycling/utils/historyGrouping';
 import { useCurrentUser } from '@/src/hooks/useCurrentUser';
 import { AppChip, AppIcon, AppScreen, AppSegmentedControl, AppText, theme } from '@/src/ui';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -42,6 +42,10 @@ export function HistoryScreen() {
   const currentUser = useCurrentUser();
   const [horizon, setHorizon] = useState<Horizon>('all');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    console.log('[NAV] Estoy en HistoryScreen');
+  }, []);
 
 
   const filters = useMemo(() => {

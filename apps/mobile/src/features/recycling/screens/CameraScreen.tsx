@@ -24,6 +24,7 @@ export function CameraScreen() {
   const { session } = useAuth();
 
   useEffect(() => {
+    console.log('[NAV] Estoy en CameraScreen');
     startNewFlow(session?.user.id ?? null);
     markStep('camera');
   }, []);

@@ -85,6 +85,10 @@ const FILTERS: {
 ];
 
 export function MapScreen() {
+  useEffect(() => {
+    console.log('[NAV] Estoy en MapScreen (principal)');
+  }, []);
+
   const location = useStudentLocation();
   const [recenter, setRecenter] = useState<(() => void) | null>(null);
   const [category, setCategory] = useState<string>('all');

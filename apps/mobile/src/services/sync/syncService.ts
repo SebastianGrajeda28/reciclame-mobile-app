@@ -147,3 +147,36 @@ export async function refreshStaleContentCaches(): Promise<void> {
     console.log('[SYNC] Refresco de caches completado');
   }
 }
+
+export async function forceRefreshAllCaches(): Promise<void> {
+  if (isRefreshing) {
+    console.log('[SYNC] Ya hay un refresco de cache en curso, saltando.');
+    return;
+  }
+  isRefreshing = true;
+  console.log('[SYNC] Forzando refresco de todas las caches...');
+
+  const tasks = [
+    { name: 'fun_facts', refresh: refreshFunFactsCache },
+    { name: 'instructions', refresh: refreshInstructionsCache },
+    { name: 'recycling_points', refresh: refreshRecyclingPointsCache },
+    { name: 'waste_types', refresh: refreshWasteTypesCache },
+    { name: 'bin_types', refresh: refreshBinTypesCache },
+    { name: 'mappings', refresh: () => refreshMappingsCache(PUCP_UNIVERSITY_ID) },
+  ];
+
+  try {
+    await Promise.allSettled(
+      tasks.map(async (t) => {
+        try {
+          await t.refresh();
+        } catch (e) {
+          console.warn(`[SYNC] Error al forzar refresco de ${t.name}:`, e);
+        }
+      }),
+    );
+  } finally {
+    isRefreshing = false;
+    console.log('[SYNC] Refresco forzado completado');
+  }
+}

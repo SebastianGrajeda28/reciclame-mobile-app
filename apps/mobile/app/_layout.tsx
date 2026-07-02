@@ -52,7 +52,10 @@ export default function RootLayout() {
                             title: 'Reciclaje registrado',
                             headerLeft: () => (
                               <Pressable
-                                onPress={() => router.replace('/(tabs)')}
+                                onPress={() => {
+                                  console.log('[NAV] SuccessScreen — botón retroceder (header) presionado');
+                                  router.replace('/(tabs)');
+                                }}
                                 hitSlop={12}
                                 accessibilityRole="button"
                                 accessibilityLabel="Volver al inicio"

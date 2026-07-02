@@ -8,10 +8,12 @@ import { ProfileSettingsRow } from '@/src/features/profile/components/ProfileSet
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useUserSettings } from '@/src/hooks/useUserSettings';
+import { forceRefreshAllCaches } from '@/src/services/sync/syncService';
 import { AppButton, AppIcon, AppIconButton, AppSwitch, theme } from '@/src/ui';
 
 export function ProfileSettingsScreen() {
   const [signingOut, setSigningOut] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const { signOut } = useAuth();
   const { settings, updateSetting } = useUserSettings();
 
@@ -22,6 +24,18 @@ export function ProfileSettingsScreen() {
     }
 
     router.replace('/(tabs)/yo');
+  }
+
+  async function handleForceSync() {
+    try {
+      setSyncing(true);
+      await forceRefreshAllCaches();
+      Alert.alert('Listo', 'Datos actualizados correctamente.');
+    } catch {
+      Alert.alert('Error', 'No se pudo actualizar. Intenta de nuevo.');
+    } finally {
+      setSyncing(false);
+    }
   }
 
   async function handleSignOut() {
@@ -87,6 +101,16 @@ export function ProfileSettingsScreen() {
               onValueChange={(v) => updateSetting({ skipRecyclingInstructions: v })}
             />
           }
+        />
+      </View>
+
+      <View style={styles.section}>
+        <ProfileSectionLabel>Datos</ProfileSectionLabel>
+        <AppButton
+          label="Actualizar datos"
+          variant="outline"
+          loading={syncing}
+          onPress={handleForceSync}
         />
       </View>
 

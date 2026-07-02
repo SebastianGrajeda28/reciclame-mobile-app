@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { AvatarErrorBoundary } from '@/src/avatar/AvatarErrorBoundary';
 import { AvatarComposer } from '@/src/features/profile/components/AvatarComposer';
 import { ProfileAvatarDisplay } from '@/src/features/profile/components/ProfileAvatarDisplay';
 import { AvatarConfig } from '@/src/features/profile/data/avatarCatalog';
@@ -38,7 +39,13 @@ export function ProfileHeroCard({
           }
         />
         {avatarConfig ? (
-          <AvatarComposer config={avatarConfig} size={132} blink />
+          <AvatarErrorBoundary
+            fallback={
+              <ProfileAvatarDisplay avatarUrl={avatarUrl} displayName={displayName} size="lg" />
+            }
+          >
+            <AvatarComposer config={avatarConfig} size={132} blink />
+          </AvatarErrorBoundary>
         ) : (
           <ProfileAvatarDisplay avatarUrl={avatarUrl} displayName={displayName} size="lg" />
         )}

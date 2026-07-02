@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvatarComposer } from '@/src/avatar';
+import { AvatarErrorBoundary } from '@/src/avatar/AvatarErrorBoundary';
 import type { AvatarConfig } from '@/src/avatar/avatarCatalog';
 import { routes } from '@/src/constants/routes';
 import { useFriends } from '@/src/features/friends/hooks/useFriends';
@@ -25,6 +26,7 @@ import {
 import { formatRelativeTime } from '@/src/utils/dates';
 
 type Tab = 'friends' | 'requests';
+
 
 const MAX_VISIBLE_MEDALS = 3;
 
@@ -56,10 +58,22 @@ function UserAvatar({
   const initials = buildInitials(name);
   const config = avatarConfig as AvatarConfig | null | undefined;
 
+  const fallback = avatarUrl ? (
+    <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+  ) : (
+    <View style={styles.avatarFallback}>
+      <AppText variant="h4" style={styles.avatarInitials}>
+        {initials}
+      </AppText>
+    </View>
+  );
+
   return (
     <View style={styles.avatarShell}>
       {config ? (
-        <AvatarComposer config={config} size={68} blink={false} />
+        <AvatarErrorBoundary fallback={fallback}>
+          <AvatarComposer config={config} size={68} blink={false} />
+        </AvatarErrorBoundary>
       ) : avatarUrl ? (
         <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
       ) : (

@@ -209,7 +209,8 @@ export function moustacheKey(colorAndStyle: string) {
 }
 
 export function getAsset(key: string): number | null {
-  return (avatarAssets as Record<string, number>)[key] ?? null;
+  const value = (avatarAssets as Record<string, unknown>)[key];
+  return typeof value === 'number' ? value : null;
 }
 
 export function getLayers(config: AvatarConfig, eyeFrame: 1 | 2 = 1, includeBg = true): { key: string; source: number }[] {
