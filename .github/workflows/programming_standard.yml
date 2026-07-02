@@ -13,24 +13,27 @@ jobs:
       - name: Checkout del código
         uses: actions/checkout@v4
 
-      - name: Configurar Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: 'latest'
+          node-version: '20'
+
+      - name: Habilitar Corepack
+        run: corepack enable
 
       - name: Instalación de dependencias
-        run: bun install
+        run: yarn install --immutable
 
       # 1. Verificación de Estilo y Tipado
       - name: Ejecutar Lint (Check de any, PascalCase, Indentación)
-        run: bun run lint
+        run: yarn lint
 
       # 2. Verificación de Tests Unitarios
       - name: Ejecutar Tests Unitarios
-        run: bun run test:coverage
+        run: yarn test:coverage
         env:
           CI: true
 
       # 3. Verificación de Build
       - name: Validar compilación de TypeScript
-        run: bun run typecheck
+        run: yarn typecheck
