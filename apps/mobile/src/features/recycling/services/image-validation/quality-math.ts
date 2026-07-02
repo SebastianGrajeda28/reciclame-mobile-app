@@ -1,4 +1,9 @@
-import { BLUR_LAPLACIAN_VAR_MIN, BRIGHTNESS_MAX, BRIGHTNESS_MIN } from './config';
+import {
+  BLUR_LAPLACIAN_VAR_MIN,
+  BRIGHTNESS_MAX,
+  BRIGHTNESS_MIN,
+  BRIGHT_PIXEL_FRACTION_MAX,
+} from './config';
 import type { ImageQualityMetrics, ImageQualityResult } from './types';
 
 // Funciones puras (sin decodificación ni nativos) para poder testearlas con
@@ -61,14 +66,69 @@ export function laplacianVariance(
 }
 
 /**
+ * Fracción de píxeles clavados en sombras (< shadowLevel) y en altas luces
+ * (> highlightLevel). A diferencia de la media, detecta siluetas / alto contraste:
+ * un sujeto oscuro sobre cielo claro promedia a un valor medio, pero deja una gran
+ * fracción de píxeles casi negros (pérdida de detalle en el sujeto).
+ * @returns Fracciones en 0-1.
+ */
+export function pixelFractions(
+  gray: ArrayLike<number>,
+  shadowLevel: number,
+  highlightLevel: number,
+): { dark: number; bright: number } {
+  if (gray.length === 0) return { dark: 0, bright: 0 };
+  let dark = 0;
+  let bright = 0;
+  for (let i = 0; i < gray.length; i += 1) {
+    if (gray[i] < shadowLevel) dark += 1;
+    else if (gray[i] > highlightLevel) bright += 1;
+  }
+  return { dark: dark / gray.length, bright: bright / gray.length };
+}
+
+/**
+ * Desviación estándar de los píxeles en sombra (< shadowLevel). Distingue una
+ * sombra plana/subexpuesta (std baja, sin detalle) de un objeto oscuro con textura
+ * (std alta: reflejos, bordes). Devuelve 0 si no hay píxeles oscuros.
+ */
+export function darkRegionStdDev(gray: ArrayLike<number>, shadowLevel: number): number {
+  let count = 0;
+  let sum = 0;
+  let sumSq = 0;
+  for (let i = 0; i < gray.length; i += 1) {
+    const v = gray[i];
+    if (v < shadowLevel) {
+      count += 1;
+      sum += v;
+      sumSq += v * v;
+    }
+  }
+  if (count === 0) return 0;
+  const mean = sum / count;
+  return Math.sqrt(Math.max(0, sumSq / count - mean * mean));
+}
+
+/**
  * Decide si la imagen es aceptable a partir de sus métricas. Función pura.
- * Prioridad: exposición (más evidente) antes que desenfoque.
+ * Exposición (media O fracción de píxeles clavados) antes que desenfoque.
  */
 export function evaluateQuality(metrics: ImageQualityMetrics): ImageQualityResult {
+  // NOTA: la detección de "oscura por silueta" (fracción de sombra + planitud/std)
+  // quedó DESACTIVADA a pedido — daba falsos positivos con objetos negros legítimos.
+  // Las métricas darkFraction/darkRegionStdDev se siguen calculando y logueando
+  // ([QUALITY]) para calibrar. Para reactivarla, reimporta DARK_PIXEL_FRACTION_MAX y
+  // DARK_REGION_STDDEV_MAX de ./config, descomenta esto y súmalo al if de abajo:
+  //   const darkSilhouette =
+  //     metrics.darkFraction > DARK_PIXEL_FRACTION_MAX &&
+  //     metrics.darkRegionStdDev < DARK_REGION_STDDEV_MAX;
+
+  // Oscura: solo por media muy baja (heurística conservadora).
   if (metrics.brightness < BRIGHTNESS_MIN) {
     return { ok: false, reason: 'dark', metrics };
   }
-  if (metrics.brightness > BRIGHTNESS_MAX) {
+  // Quemada: media muy alta, o gran parte de la imagen en altas luces.
+  if (metrics.brightness > BRIGHTNESS_MAX || metrics.brightFraction > BRIGHT_PIXEL_FRACTION_MAX) {
     return { ok: false, reason: 'bright', metrics };
   }
   if (metrics.laplacianVariance < BLUR_LAPLACIAN_VAR_MIN) {

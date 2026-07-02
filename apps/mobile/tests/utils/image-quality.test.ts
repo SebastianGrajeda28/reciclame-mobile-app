@@ -1,9 +1,25 @@
 import {
+  darkRegionStdDev,
   evaluateQuality,
   laplacianVariance,
   meanBrightness,
+  pixelFractions,
   rgbaToGrayscale,
 } from '@/src/features/recycling/services/image-validation/quality-math';
+import type { ImageQualityMetrics } from '@/src/features/recycling/services/image-validation/types';
+
+// Métricas por defecto (nítida y bien expuesta); cada test sobrescribe lo que le interesa.
+// darkRegionStdDev alto por defecto = sombra con textura (no plana).
+function metrics(overrides: Partial<ImageQualityMetrics> = {}): ImageQualityMetrics {
+  return {
+    brightness: 128,
+    laplacianVariance: 500,
+    darkFraction: 0,
+    brightFraction: 0,
+    darkRegionStdDev: 40,
+    ...overrides,
+  };
+}
 
 describe('rgbaToGrayscale', () => {
   it('Debería convertir blanco a 255 y negro a 0', () => {
@@ -47,33 +63,81 @@ describe('laplacianVariance', () => {
   });
 });
 
-describe('evaluateQuality', () => {
-  it('Debería aceptar una imagen nítida y bien expuesta', () => {
-    const result = evaluateQuality({ brightness: 128, laplacianVariance: 500 });
-    expect(result.ok).toBe(true);
+describe('pixelFractions', () => {
+  it('Debería contar todo como sombra si todos los píxeles son negros', () => {
+    expect(pixelFractions([0, 0, 0, 0], 35, 225)).toEqual({ dark: 1, bright: 0 });
   });
 
-  it('Debería rechazar una imagen oscura', () => {
-    const result = evaluateQuality({ brightness: 20, laplacianVariance: 500 });
-    expect(result.ok).toBe(false);
+  it('Debería contar todo como alta luz si todos los píxeles son blancos', () => {
+    expect(pixelFractions([255, 255, 255], 35, 225)).toEqual({ dark: 0, bright: 1 });
+  });
+
+  it('Debería repartir sombras y altas luces (silueta simplificada)', () => {
+    // mitad casi negra, mitad casi blanca
+    expect(pixelFractions([0, 0, 255, 255], 35, 225)).toEqual({ dark: 0.5, bright: 0.5 });
+  });
+
+  it('Debería devolver 0/0 para un array vacío', () => {
+    expect(pixelFractions([], 35, 225)).toEqual({ dark: 0, bright: 0 });
+  });
+});
+
+describe('darkRegionStdDev', () => {
+  it('Debería ser 0 en una sombra plana (todos los oscuros iguales)', () => {
+    expect(darkRegionStdDev([0, 0, 0, 0], 35)).toBe(0);
+  });
+
+  it('Debería ser alta cuando los píxeles oscuros tienen textura', () => {
+    // objeto oscuro con detalle: valores repartidos bajo el nivel de sombra
+    expect(darkRegionStdDev([0, 10, 20, 30], 35)).toBeGreaterThan(8);
+  });
+
+  it('Debería ignorar los píxeles claros (solo mide la zona oscura)', () => {
+    // los 200 se ignoran; solo cuentan 0 y 4 → std pequeña
+    expect(darkRegionStdDev([0, 4, 200, 200], 35)).toBeCloseTo(2, 0);
+  });
+
+  it('Debería devolver 0 si no hay píxeles oscuros', () => {
+    expect(darkRegionStdDev([100, 150, 200], 35)).toBe(0);
+  });
+});
+
+describe('evaluateQuality', () => {
+  it('Debería aceptar una imagen nítida y bien expuesta', () => {
+    expect(evaluateQuality(metrics()).ok).toBe(true);
+  });
+
+  it('Debería rechazar una imagen oscura por media baja', () => {
+    const result = evaluateQuality(metrics({ brightness: 20 }));
     expect(!result.ok && result.reason).toBe('dark');
   });
 
-  it('Debería rechazar una imagen quemada', () => {
-    const result = evaluateQuality({ brightness: 240, laplacianVariance: 500 });
-    expect(result.ok).toBe(false);
+  it('Ya NO rechaza por silueta: detección oscura-por-fracción desactivada', () => {
+    // Aunque la sombra sea grande y plana, con brillo medio OK ahora pasa (no la caza
+    // por fracción para no confundir objetos negros legítimos). La media sigue activa.
+    const result = evaluateQuality(
+      metrics({ brightness: 110, darkFraction: 0.6, darkRegionStdDev: 3 }),
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it('Debería rechazar una imagen quemada por media alta', () => {
+    const result = evaluateQuality(metrics({ brightness: 240 }));
+    expect(!result.ok && result.reason).toBe('bright');
+  });
+
+  it('Debería rechazar por alta luz clavada aunque la media pase', () => {
+    const result = evaluateQuality(metrics({ brightness: 150, brightFraction: 0.6 }));
     expect(!result.ok && result.reason).toBe('bright');
   });
 
   it('Debería rechazar una imagen borrosa', () => {
-    const result = evaluateQuality({ brightness: 128, laplacianVariance: 10 });
-    expect(result.ok).toBe(false);
+    const result = evaluateQuality(metrics({ laplacianVariance: 10 }));
     expect(!result.ok && result.reason).toBe('blur');
   });
 
   it('Debería priorizar la exposición sobre el desenfoque', () => {
-    // oscura Y borrosa → reporta "dark" primero
-    const result = evaluateQuality({ brightness: 10, laplacianVariance: 5 });
+    const result = evaluateQuality(metrics({ brightness: 10, laplacianVariance: 5 }));
     expect(!result.ok && result.reason).toBe('dark');
   });
 });
