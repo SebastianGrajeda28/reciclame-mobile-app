@@ -3,6 +3,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { CameraView } from 'expo-camera';
 import Feather from '@expo/vector-icons/Feather';
 import { router, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CameraFlashToggle } from '@/src/features/recycling/components/CameraFlashToggle';
 import { CameraShutterButton } from '@/src/features/recycling/components/CameraShutterButton';
@@ -13,10 +14,16 @@ import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useAuth } from '@/src/hooks/useAuth';
 import { AppText, theme } from '@/src/ui';
 
+const MODE_TABS_HEIGHT = 48;
+const MODE_TABS_BOTTOM_GAP = theme.spacing.s4;
+
 export function CameraScreen() {
   const navigation = useNavigation();
   const { setCapturedPhotoUri, resetFlow, startNewFlow, markStep } = useRecycleFlow();
   const { session } = useAuth();
+  const insets = useSafeAreaInsets();
+  const modeTabsBottom = insets.bottom + MODE_TABS_BOTTOM_GAP;
+  const bottomBarPaddingBottom = modeTabsBottom + MODE_TABS_HEIGHT + theme.spacing.s4;
 
   useEffect(() => {
     startNewFlow(session?.user.id ?? null);
@@ -69,7 +76,7 @@ export function CameraScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: bottomBarPaddingBottom }]}>
         <CameraFlashToggle flash={flash} onToggle={toggleFlash} />
 
         <CameraShutterButton onPress={handleCapture} />
@@ -82,7 +89,7 @@ export function CameraScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.modeTabs}>
+      <View style={[styles.modeTabs, { bottom: modeTabsBottom }]}>
         <Pressable style={[styles.modeTab, styles.modeTabActive]}>
           <Feather name="camera" size={14} color={theme.colors.primary} />
           <AppText style={styles.modeTabLabelActive}>Escanear</AppText>
@@ -124,7 +131,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingTop: theme.spacing.s4,
-    paddingBottom: theme.spacing.s16 + theme.spacing.s4,
     paddingHorizontal: theme.spacing.s8,
     flexDirection: 'row',
     alignItems: 'center',
@@ -144,12 +150,13 @@ const styles = StyleSheet.create({
   },
   modeTabs: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    left: theme.spacing.s6,
+    right: theme.spacing.s6,
+    minHeight: MODE_TABS_HEIGHT,
     flexDirection: 'row',
     backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingBottom: theme.spacing.s4,
+    borderRadius: theme.radius.full,
+    overflow: 'hidden',
   },
   modeTab: {
     flex: 1,
@@ -157,11 +164,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.s3,
   },
   modeTabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.primary,
+    backgroundColor: 'rgba(67,223,139,0.16)',
   },
   modeTabLabel: {
     fontSize: theme.fontSizes.sm,
