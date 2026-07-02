@@ -21,6 +21,23 @@ mock.module('expo-sqlite', () => ({
   }),
 }));
 
+mock.module('expo-file-system', () => {
+  const store: Record<string, string> = {};
+  class Dir {
+    exists = true;
+    create() {}
+  }
+  class Fil {
+    private key: string;
+    constructor(_dir: unknown, key: string) { this.key = key; }
+    get exists() { return this.key in store; }
+    async text() { return store[this.key] ?? null; }
+    write(v: string) { store[this.key] = v; }
+    delete() { delete store[this.key]; }
+  }
+  return { Directory: Dir, File: Fil, Paths: { document: '/tmp' } };
+});
+
 mock.module('@react-native-async-storage/async-storage', () => ({
   default: {
     getItem: () => Promise.resolve(null),
