@@ -1,31 +1,44 @@
-import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-    flexRender,
-    getCoreRowModel,
-    useReactTable,
-    type ColumnDef,
-    type PaginationState,
-    type SortingState,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Building2, Search, X } from "lucide-react";
+import { ArrowUpDown, Building2, Eye, Pencil, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import CreateUniversityDialog from "../components/CreateUniversityDialog";
 import ManageUniversityModal from "../components/ManageUniversityModal";
 import {
-    getAdminUniversities,
-    type AppUniversity,
-    type UniversitySortColumn,
+  deactivateUniversity,
+  getAdminUniversities,
+  restoreUniversity,
+  type AppUniversity,
+  type UniversitySortColumn,
 } from "../services/AdminUniversitiesService";
 
 type UniversitiesTab = "active" | "inactive";
 
+const UNIVERSITIES_QUERY_KEY = "admin-universities";
 const SEARCH_DEBOUNCE_MS = 500;
 
 function tabClasses(selected: boolean) {
@@ -35,11 +48,13 @@ function tabClasses(selected: boolean) {
 }
 
 export default function UniversitiesPage() {
+  const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<UniversitiesTab>("active");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUniversity, setSelectedUniversity] = useState<AppUniversity | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [pendingStatusUniversity, setPendingStatusUniversity] = useState<AppUniversity | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
@@ -47,7 +62,6 @@ export default function UniversitiesPage() {
     const timeoutId = setTimeout(() => {
       setDebouncedSearch(search.trim());
     }, SEARCH_DEBOUNCE_MS);
-
     return () => clearTimeout(timeoutId);
   }, [search]);
 
@@ -56,16 +70,18 @@ export default function UniversitiesPage() {
   const sortBy = (activeSort?.id as UniversitySortColumn | undefined) ?? "createdAt";
   const sortDir = activeSort ? (activeSort.desc ? "desc" : "asc") : "desc";
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: [
-      "admin-universities",
-      pagination.pageIndex,
-      pagination.pageSize,
-      isActive,
-      debouncedSearch,
-      sortBy,
-      sortDir,
-    ],
+  const queryKey = [
+    UNIVERSITIES_QUERY_KEY,
+    pagination.pageIndex,
+    pagination.pageSize,
+    isActive,
+    debouncedSearch,
+    sortBy,
+    sortDir,
+  ];
+
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey,
     queryFn: () =>
       getAdminUniversities({
         limit: pagination.pageSize,
@@ -78,6 +94,17 @@ export default function UniversitiesPage() {
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ universityId, activate }: { universityId: string; activate: boolean }) =>
+      activate ? restoreUniversity(universityId) : deactivateUniversity(universityId),
+    onSuccess: (_, variables) => {
+      toast.success(variables.activate ? "Universidad restaurada" : "Universidad desactivada");
+      setPendingStatusUniversity(null);
+      void queryClient.invalidateQueries({ queryKey: [UNIVERSITIES_QUERY_KEY] });
+    },
+    onError: () => toast.error("Error al cambiar el estado de la universidad"),
   });
 
   const universities = data?.universities ?? [];
@@ -96,14 +123,6 @@ export default function UniversitiesPage() {
             Nombre
             <ArrowUpDown className="h-3 w-3" />
           </button>
-        ),
-      },
-      {
-        id: "status",
-        accessorFn: (row) => row.isActive,
-        enableSorting: false,
-        header: () => (
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Estado</span>
         ),
       },
       {
@@ -158,6 +177,15 @@ export default function UniversitiesPage() {
           </button>
         ),
       },
+      {
+        id: "actions",
+        enableSorting: false,
+        header: () => (
+          <span className="block text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Acciones
+          </span>
+        ),
+      },
     ],
     []
   );
@@ -207,7 +235,7 @@ export default function UniversitiesPage() {
     <AppPage>
       <div className="flex flex-col gap-3 md:min-h-[72px] md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">Universidades</h1>
+          <h1 className="text-[3rem] font-extrabold leading-none text-[#0b2f4e]">Gestión de Universidades</h1>
           <p className="mt-2 text-sm text-slate-500">
             Gestión de universidades registradas en la plataforma.
           </p>
@@ -244,7 +272,6 @@ export default function UniversitiesPage() {
                 </button>
               )}
             </div>
-
             {isFetching && <span className="text-sm text-slate-500">Actualizando...</span>}
           </div>
 
@@ -286,7 +313,11 @@ export default function UniversitiesPage() {
 
         {!error && total > 0 && (
           <>
-            <div className={`mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white transition-opacity ${isFetching ? "opacity-60" : "opacity-100"}`}>
+            <div
+              className={`mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white transition-opacity ${
+                isFetching ? "opacity-60" : "opacity-100"
+              }`}
+            >
               <Table className="table-fixed">
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -307,19 +338,14 @@ export default function UniversitiesPage() {
                 <TableBody>
                   {pageRows.map((row) => {
                     const university = row.original;
+                    const isProcessing =
+                      statusMutation.isPending &&
+                      statusMutation.variables?.universityId === university.id;
+
                     return (
-                      <TableRow
-                        key={university.id}
-                        className="cursor-pointer border-slate-200 hover:bg-slate-50"
-                        onClick={() => setSelectedUniversity(university)}
-                      >
+                      <TableRow key={university.id} className="border-slate-200 hover:bg-slate-50">
                         <TableCell className="w-64 truncate border-r border-slate-200 font-medium text-left">
                           {university.name}
-                        </TableCell>
-                        <TableCell className="border-r border-slate-200 text-center">
-                          <Badge variant={university.isActive ? "default" : "secondary"}>
-                            {university.isActive ? "Activa" : "Inactiva"}
-                          </Badge>
                         </TableCell>
                         <TableCell className="border-r border-slate-200 text-center text-sm text-slate-500">
                           {university.campusCount}
@@ -332,8 +358,53 @@ export default function UniversitiesPage() {
                             ? new Date(university.lastModifiedAt).toLocaleString("es-PE")
                             : "—"}
                         </TableCell>
-                        <TableCell className="text-center text-sm text-slate-500">
+                        <TableCell className="border-r border-slate-200 text-center text-sm text-slate-500">
                           {new Date(university.createdAt).toLocaleDateString("es-PE")}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {university.isActive ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedUniversity(university)}
+                                  disabled={isProcessing}
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isProcessing}
+                                  onClick={() => setPendingStatusUniversity(university)}
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-40"
+                                >
+                                  {isProcessing ? "..." : "Desactivar"}
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedUniversity(university)}
+                                  disabled={isProcessing}
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  Mostrar
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isProcessing}
+                                  onClick={() => setPendingStatusUniversity(university)}
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-medium text-emerald-600 transition hover:bg-emerald-50 disabled:opacity-40"
+                                >
+                                  {isProcessing ? "..." : "Restaurar"}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -370,7 +441,9 @@ export default function UniversitiesPage() {
                   variant="outline"
                   size="sm"
                   disabled={!canGoPrevious}
-                  onClick={() => setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
+                  onClick={() =>
+                    setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex - 1 }))
+                  }
                 >
                   Anterior
                 </Button>
@@ -379,7 +452,9 @@ export default function UniversitiesPage() {
                   variant="outline"
                   size="sm"
                   disabled={!canGoNext}
-                  onClick={() => setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+                  onClick={() =>
+                    setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }))
+                  }
                 >
                   Siguiente
                 </Button>
@@ -393,13 +468,56 @@ export default function UniversitiesPage() {
         <ManageUniversityModal
           university={selectedUniversity}
           onClose={() => setSelectedUniversity(null)}
-          onUpdated={() => refetch()}
+          onUpdated={() => void queryClient.invalidateQueries({ queryKey: [UNIVERSITIES_QUERY_KEY] })}
         />
       )}
 
       {showCreate && (
-        <CreateUniversityDialog onClose={() => setShowCreate(false)} onCreated={() => refetch()} />
+        <CreateUniversityDialog
+          onClose={() => setShowCreate(false)}
+          onCreated={() => void queryClient.invalidateQueries({ queryKey: [UNIVERSITIES_QUERY_KEY] })}
+        />
       )}
+
+      <AlertDialog
+        open={!!pendingStatusUniversity}
+        onOpenChange={(open) => !open && setPendingStatusUniversity(null)}
+      >
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingStatusUniversity?.isActive ? "¿Desactivar universidad?" : "¿Restaurar universidad?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatusUniversity?.isActive
+                ? `La universidad "${pendingStatusUniversity.name}" quedará inactiva.`
+                : `La universidad "${pendingStatusUniversity?.name}" volverá a estar activa.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={statusMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={statusMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingStatusUniversity) {
+                  statusMutation.mutate({
+                    universityId: pendingStatusUniversity.id,
+                    activate: !pendingStatusUniversity.isActive,
+                  });
+                }
+              }}
+              className={pendingStatusUniversity?.isActive ? "bg-red-600 hover:bg-red-700" : ""}
+            >
+              {statusMutation.isPending
+                ? "Guardando..."
+                : pendingStatusUniversity?.isActive
+                  ? "Desactivar"
+                  : "Restaurar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppPage>
   );
 }

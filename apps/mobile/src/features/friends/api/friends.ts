@@ -12,6 +12,9 @@ type FriendSummaryRow = {
   friend_id: string;
   name: string;
   current_streak: number;
+  // Ausentes si el remoto aún no tiene la migración 20260701000000.
+  current_level?: number;
+  current_heat?: number;
   avatar_base_style: string | null;
   avatar_config: Record<string, unknown> | null;
   last_activity_at: string | null;
@@ -32,6 +35,8 @@ function mapFriendSummary(row: FriendSummaryRow): FriendSummary {
     id: row.friend_id,
     name: row.name,
     currentStreak: row.current_streak,
+    currentLevel: row.current_level ?? null,
+    currentHeat: row.current_heat ?? null,
     avatarUrl: row.avatar_base_style ?? null,
     avatarConfig: row.avatar_config ?? null,
     lastActivityAt: row.last_activity_at ?? null,
@@ -63,8 +68,8 @@ export async function getMyFriendCode(): Promise<string> {
 /**
  * Obtiene el listado de amigos vinculados del usuario con sus agregados de perfil.
  *
- * Resuelve en una única consulta RPC: nombre, racha actual, avatar activo,
- * medallas destacadas y marca de tiempo de la última actividad de reciclaje.
+ * Resuelve en una única consulta RPC: nombre, racha actual (días, nivel y calor),
+ * avatar activo, medallas destacadas y marca de tiempo de la última actividad de reciclaje.
  *
  * @param userId - ID del usuario autenticado.
  * @returns Lista de amigos ordenada alfabéticamente por nombre.

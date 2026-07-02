@@ -7,18 +7,16 @@ type NavItem = {
   path: string;
 };
 
-
-const ADMIN_NAV_ITEMS: NavItem[] = [
-  { label: "Métricas", path: "/metricas" },
-  { label: "Datos curiosos", path: "/fun-facts" },
-  { label: "Instrucciones", path: "/instrucciones" },
-  { label: "Cuentas", path: "/cuentas" },
+const MANAGER_NAV_ITEMS: NavItem[] = [
+  { label: "Métricas", path: "/metrics" },
+  { label: "Datos Curiosos", path: "/fun-facts" },
+  { label: "Instrucciones", path: "/instructions" },
 ];
 
-const MANAGER_NAV_ITEMS: NavItem[] = [
-  { label: "Métricas", path: "/metricas" },
-  { label: "Datos curiosos", path: "/fun-facts" },
-  { label: "Instrucciones", path: "/instrucciones" },
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  { label: "Panel de Control", path: "/control-panel" },
+  { label: "Empleados", path: "/config/users" },
+  { label: "Universidades", path: "/config/universities" },
 ];
 
 export default function Header() {

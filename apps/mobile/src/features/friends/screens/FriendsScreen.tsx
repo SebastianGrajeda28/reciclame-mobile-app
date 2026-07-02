@@ -149,7 +149,11 @@ function FriendListItem({ friend }: { friend: FriendSummary }) {
         ) : null}
       </View>
       <View style={styles.streakBox}>
-        <StreakHeatBadge streakDays={friend.currentStreak} />
+        <StreakHeatBadge
+          streakDays={friend.currentStreak}
+          level={friend.currentLevel}
+          heat={friend.currentHeat}
+        />
       </View>
     </View>
   );

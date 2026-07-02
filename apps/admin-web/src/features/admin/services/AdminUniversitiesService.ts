@@ -193,6 +193,99 @@ export async function createUniversity({ name }: CreateUniversityParams): Promis
   return data as CreatedUniversity;
 }
 
+export async function updateUniversity(universityId: string, name: string): Promise<void> {
+  const trimmedName = name.trim();
+  if (!trimmedName) throw new Error("El nombre de la universidad es requerido");
+
+  const { error } = await supabase.rpc(ADMIN_RPCS.updateUniversity, {
+    p_university_id: universityId,
+    p_name: trimmedName,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function deactivateUniversity(universityId: string): Promise<void> {
+  const { error } = await supabase.rpc(ADMIN_RPCS.setUniversityActive, {
+    p_university_id: universityId,
+    p_is_active: false,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function restoreUniversity(universityId: string): Promise<void> {
+  const { error } = await supabase.rpc(ADMIN_RPCS.setUniversityActive, {
+    p_university_id: universityId,
+    p_is_active: true,
+  });
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// Campus upsert — edit existing (name, address, isActive) + insert new ones.
+// A single RPC call handles everything; activate/deactivate is just another
+// field on the same payload so no separate RPC is needed.
+// ---------------------------------------------------------------------------
+
+export type CampusUpsertInput = {
+  /** Present for existing campuses; omitted for new ones. */
+  id?: string;
+  name: string;
+  address?: string | null;
+  /** Only applied when updating an existing campus (id present). */
+  isActive?: boolean;
+};
+
+export type UpsertedCampus = {
+  id: string;
+  name: string;
+  address: string | null;
+};
+
+type UpdateUniversityCampusesResponse = {
+  universityId: string;
+  campuses: UpsertedCampus[];
+};
+
+export type UpdateUniversityCampusesParams = {
+  universityId: string;
+  campuses: CampusUpsertInput[];
+};
+
+export async function updateUniversityCampuses({
+  universityId,
+  campuses,
+}: UpdateUniversityCampusesParams): Promise<UpsertedCampus[]> {
+  if (!universityId) throw new Error("universityId es requerido");
+  if (!campuses.length) throw new Error("Se requiere al menos un campus");
+  if (campuses.length > MAX_CAMPUSES_PER_UNIVERSITY) {
+    throw new Error(`No se pueden procesar más de ${MAX_CAMPUSES_PER_UNIVERSITY} campuses a la vez`);
+  }
+
+  const payload = campuses.map((campus) => {
+    const trimmedName = campus.name.trim();
+    if (!trimmedName) throw new Error("Cada campus requiere un nombre");
+    return {
+      ...(campus.id ? { id: campus.id } : {}),
+      name: trimmedName,
+      address: campus.address?.trim() ? campus.address.trim() : null,
+      ...(campus.id && campus.isActive !== undefined ? { isActive: campus.isActive } : {}),
+    };
+  });
+
+  const { data, error } = await supabase.rpc(ADMIN_RPCS.updateUniversityCampuses, {
+    p_university_id: universityId,
+    p_campuses: payload,
+  });
+  if (error) throw new Error(error.message);
+
+  const response = (data as UpdateUniversityCampusesResponse) ?? { universityId, campuses: [] };
+  return response.campuses ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Legacy batch-create (kept for CreateUniversityDialog flow)
+// ---------------------------------------------------------------------------
+
 export type CampusInput = {
   name: string;
   address?: string | null;
@@ -218,23 +311,15 @@ export async function createUniversityCampuses({
   universityId,
   campuses,
 }: CreateUniversityCampusesParams): Promise<CreatedCampus[]> {
-  if (!universityId) {
-    throw new Error("universityId es requerido");
-  }
-
-  if (!campuses.length) {
-    throw new Error("Se requiere al menos un campus");
-  }
-
+  if (!universityId) throw new Error("universityId es requerido");
+  if (!campuses.length) throw new Error("Se requiere al menos un campus");
   if (campuses.length > MAX_CAMPUSES_PER_UNIVERSITY) {
     throw new Error(`No se pueden agregar más de ${MAX_CAMPUSES_PER_UNIVERSITY} campuses a la vez`);
   }
 
   const payload = campuses.map((campus) => {
     const trimmedName = campus.name.trim();
-    if (!trimmedName) {
-      throw new Error("Cada campus requiere un nombre");
-    }
+    if (!trimmedName) throw new Error("Cada campus requiere un nombre");
     return {
       name: trimmedName,
       address: campus.address?.trim() ? campus.address.trim() : null,
@@ -248,6 +333,5 @@ export async function createUniversityCampuses({
   if (error) throw new Error(error.message);
 
   const response = (data as CreateUniversityCampusesResponse) ?? { universityId, campuses: [] };
-
   return response.campuses ?? [];
 }

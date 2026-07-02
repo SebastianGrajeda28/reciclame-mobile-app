@@ -45,7 +45,7 @@ export async function fetchDashboard(start: string, end: string): Promise<Dashbo
     p_start: start,
     p_end: end,
   });
-
+  console.log("RPC dashboard response:", { data, error });
   if (error) {
     throw new Error(error.message || "No se pudo cargar el dashboard");
   }

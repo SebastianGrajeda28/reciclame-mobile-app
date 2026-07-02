@@ -13,6 +13,8 @@ export type FriendSummary = {
   id: string;
   name: string;
   currentStreak: number;
+  currentLevel: number | null;
+  currentHeat: number | null;
   avatarUrl?: string | null;
   avatarConfig?: Record<string, unknown> | null;
   lastActivityAt?: string | null;

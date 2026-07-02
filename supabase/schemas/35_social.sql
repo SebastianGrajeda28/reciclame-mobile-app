@@ -61,7 +61,7 @@ CREATE INDEX "idx_friendships_status" ON "public"."friendships" USING "btree" ("
 
 CREATE UNIQUE INDEX "uq_friendships_pair" ON "public"."friendships" USING "btree" ("user_low", "user_high");
 
-CREATE OR REPLACE FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb", "avatar_config" "jsonb")
+CREATE OR REPLACE FUNCTION "app_social"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "current_level" integer, "current_heat" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb", "avatar_config" "jsonb")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -82,6 +82,9 @@ begin
     mf.friend_id,
     coalesce(up.alias, split_part(u.email, '@', 1)) as name,
     coalesce(prog.streak_days, 0) as current_streak,
+    coalesce(prog.level, 1) as current_level,
+    -- heat NULL = 50 (convención del dominio); sin fila = 0.
+    case when prog.user_id is null then 0 else coalesce(prog.heat, 50)::integer end as current_heat,
     av.base_style as avatar_base_style,
     la.last_activity_at,
     coalesce(med.featured_medals, '[]'::jsonb) as featured_medals,
@@ -115,7 +118,7 @@ begin
 end;
 $$;
 
-CREATE OR REPLACE FUNCTION "public"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb", "avatar_config" "jsonb")
+CREATE OR REPLACE FUNCTION "public"."get_friends_with_profile"("p_user_id" "uuid") RETURNS TABLE("friend_id" "uuid", "name" "text", "current_streak" integer, "current_level" integer, "current_heat" integer, "avatar_base_style" "text", "last_activity_at" timestamp with time zone, "featured_medals" "jsonb", "avatar_config" "jsonb")
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO 'public', 'app_social'
     AS $$
