@@ -13,5 +13,5 @@ export const binTypes: BinType[] = [
   { id: GLASS_BIN_TYPE_ID, name: 'Contenedor de vidrio', imageUrl: null, depositInstruction: null },
   { id: PAPER_CARDBOARD_BIN_TYPE_ID, name: 'Contenedor de papel y carton', imageUrl: null, depositInstruction: null },
   { id: BATTERIES_BIN_TYPE_ID, name: 'Contenedor de pilas', imageUrl: null, depositInstruction: null },
-  { id: RAEE_BIN_TYPE_ID, name: 'Contenedor RAEE', imageUrl: null, depositInstruction: null },
+  { id: RAEE_BIN_TYPE_ID, name: 'Contenedor RAEE (electrónicos)', imageUrl: null, depositInstruction: null },
 ];
