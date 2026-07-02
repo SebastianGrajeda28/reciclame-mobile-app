@@ -4,7 +4,9 @@ import { router } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 
 import { AvatarComposer } from '@/src/features/profile/components/AvatarComposer';
+import { ProfileAvatarDisplay } from '@/src/features/profile/components/ProfileAvatarDisplay';
 import { ProfileScreenContainer } from '@/src/features/profile/components/ProfileScreenContainer';
+import { AvatarErrorBoundary } from '@/src/avatar/AvatarErrorBoundary';
 import { ProfileSubpageHeader } from '@/src/features/profile/components/ProfileSubpageHeader';
 import { useAvatarConfig } from '@/src/features/profile/hooks/useAvatarConfig';
 import { useUnlockedCosmetics } from '@/src/features/profile/hooks/useUnlockedCosmetics';
@@ -394,7 +396,9 @@ export function ProfileAvatarScreen() {
                     style={[styles.raceSwatch, isSelected && styles.raceSwatchSelected]}
                     onPress={() => update({ race, skin, eyeColor: eyeColorForSkin(race, skin) })}
                   >
-                    <AvatarComposer config={racePreviewConfig} size={RACE_SWATCH_SIZE} blink={false} showBg={false} />
+                    <AvatarErrorBoundary fallback={<View style={{ width: RACE_SWATCH_SIZE - 4, height: RACE_SWATCH_SIZE - 4 }} />}>
+                      <AvatarComposer config={racePreviewConfig} size={RACE_SWATCH_SIZE} blink={false} showBg={false} />
+                    </AvatarErrorBoundary>
                   </TouchableOpacity>
                   <AppText variant="caption" style={[styles.swatchLabel, isSelected && styles.swatchLabelActive]}>
                     {RACE_LABELS[race]}
@@ -629,7 +633,9 @@ export function ProfileAvatarScreen() {
       />
 
       <View style={styles.previewContainer}>
-        <AvatarComposer config={config} size={AVATAR_SIZE} blink />
+        <AvatarErrorBoundary fallback={<ProfileAvatarDisplay displayName={config.race} size="lg" />}>
+          <AvatarComposer config={config} size={AVATAR_SIZE} blink />
+        </AvatarErrorBoundary>
       </View>
 
       <View style={styles.tabsContainer}>

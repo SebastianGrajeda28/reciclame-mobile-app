@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Canvas, FilterMode, Image as SkiaImage, MipmapMode, useImage } from '@shopify/react-native-skia';
+import { Canvas, FilterMode, Image as SkiaImage, MipmapMode, SkImage, useImage } from '@shopify/react-native-skia';
 
 import { AvatarConfig, getLayers } from './avatarCatalog';
 
@@ -19,26 +19,11 @@ const NEAREST_SAMPLING = {
   mipmap: MipmapMode.None,
 } as const;
 
+// Max layers getLayers can return: bg+base+ears+clothes+nose+mouth+eyes+brows+beard+moustache+hair+hat = 12
+const MAX_LAYERS = 12;
+
 function getPixelPerfectScale(size: number) {
   return Math.max(1, Math.floor(size / NATIVE_SIZE));
-}
-
-function AvatarLayer({ source, size }: { source: number; size: number }) {
-  const image = useImage(source);
-
-  if (!image) return null;
-
-  return (
-    <SkiaImage
-      image={image}
-      x={0}
-      y={0}
-      width={size}
-      height={size}
-      fit="fill"
-      sampling={NEAREST_SAMPLING}
-    />
-  );
 }
 
 export function AvatarComposer({ config, size = 160, blink = true, showBg = true }: AvatarComposerProps) {
@@ -69,19 +54,48 @@ export function AvatarComposer({ config, size = 160, blink = true, showBg = true
   const renderSize = NATIVE_SIZE * scale;
   const offset = (size - renderSize) / 2;
 
+  console.log('[AvatarComposer] layers:', layers.length, layers.map(l => `${l.key}(${l.source})`).join(','));
+
+  // useImage must be called outside Canvas (normal React reconciler, not Skia's).
+  // Calling it inside a Canvas child component prevents its body from running.
+  const i0  = useImage(layers[0]?.source  ?? null);
+  const i1  = useImage(layers[1]?.source  ?? null);
+  const i2  = useImage(layers[2]?.source  ?? null);
+  const i3  = useImage(layers[3]?.source  ?? null);
+  const i4  = useImage(layers[4]?.source  ?? null);
+  const i5  = useImage(layers[5]?.source  ?? null);
+  const i6  = useImage(layers[6]?.source  ?? null);
+  const i7  = useImage(layers[7]?.source  ?? null);
+  const i8  = useImage(layers[8]?.source  ?? null);
+  const i9  = useImage(layers[9]?.source  ?? null);
+  const i10 = useImage(layers[10]?.source ?? null);
+  const i11 = useImage(layers[11]?.source ?? null);
+
+  const images: (SkImage | null)[] = [i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11];
+  console.log('[AvatarComposer] images loaded:', images.filter(Boolean).length, '/', layers.length);
+
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <View style={[styles.inner, { width: renderSize, height: renderSize, top: offset, left: offset }]}>
         <Canvas
           style={[StyleSheet.absoluteFill, { width: renderSize, height: renderSize }]}
         >
-          {layers.map((layer) => (
-            <AvatarLayer
-              key={layer.key}
-              source={layer.source}
-              size={renderSize}
-            />
-          ))}
+          {layers.map((layer, idx) => {
+            const image = images[idx];
+            if (!image) return null;
+            return (
+              <SkiaImage
+                key={layer.key}
+                image={image}
+                x={0}
+                y={0}
+                width={renderSize}
+                height={renderSize}
+                fit="fill"
+                sampling={NEAREST_SAMPLING}
+              />
+            );
+          })}
         </Canvas>
       </View>
     </View>

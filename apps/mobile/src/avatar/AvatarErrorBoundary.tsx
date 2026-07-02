@@ -7,7 +7,8 @@ type State = { hasError: boolean };
 export class AvatarErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
 
-  static getDerivedStateFromError() {
+  static getDerivedStateFromError(error: unknown) {
+    console.error('[AvatarErrorBoundary] caught error:', error);
     return { hasError: true };
   }
 
