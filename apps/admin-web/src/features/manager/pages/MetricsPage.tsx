@@ -1,9 +1,11 @@
 import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportToXlsxMultiSheet } from "@/lib/exportUtils";
+import { formatCompactNumber } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 import { useUser } from "@/shared/context/UserContext";
@@ -12,7 +14,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
 import { ResidueComparisonGrid } from "../components/ResidueComparisonGrid";
 import { ResidueFilterChips } from "../components/ResidueFilterChips";
-import { fetchDashboard, type DashboardResponse } from "../services/dashboardService";
+import { fetchDashboard, type DashboardResponse } from "../services/MetricsService";
+import { getUniversities, type University } from "../services/UniversitiesService";
 
 type DatePreset = "last7" | "last30" | "historical" | "custom";
 type DashboardTab = "flow" | "results";
@@ -40,10 +43,10 @@ const kpiMetrics = [
     icon: Users,
   },
   {
-    title: "Tasa de confirmación",
+    title: "Tasa de Registros Confirmados",
     value: "87%",
-    subtitle: "Sesiones que terminaron en confirmación",
-    delta: "43 de 52 llegaron a confirmar",
+    subtitle: "Sesiones que terminaron en registro confirmado",
+    delta: "43 de 52 llegaron a registrar",
     icon: ScanSearch,
   },
 ];
@@ -68,7 +71,7 @@ const funnelSteps = [
   { label: "Procesaron", value: 91, color: "#1c8fdf" },
   { label: "Mapa", value: 67, color: "#22c76f" },
   { label: "Instrucciones", value: 52, color: "#3ed08b" },
-  { label: "Confirmaron", value: 43, color: "#129a56" },
+  { label: "Registraron", value: 43, color: "#129a56" },
 ];
 
 const weeklyTrend = [
@@ -84,14 +87,14 @@ const weeklyTrend = [
 
 const categoryChartConfig = {
   confirmed: {
-    label: "Confirmados",
+    label: "Registrados",
     color: "#22c76f",
   },
 } satisfies ChartConfig;
 
 const weeklyChartConfig = {
   value: {
-    label: "Confirmados",
+    label: "Registrados",
     color: "#22c76f",
   },
 } satisfies ChartConfig;
@@ -163,7 +166,7 @@ function formatRangeLabel(dateFrom: Date, dateTo: Date) {
 
 const mockToday = new Date();
 
-export default function MetricsDashboard() {
+export default function MetricsPage() {
   const { session } = useUser();
   const [dateFrom, setDateFrom] = useState<Date>(addDays(mockToday, -6));
   const [dateTo, setDateTo] = useState<Date>(mockToday);
@@ -172,6 +175,8 @@ export default function MetricsDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [selectedResidues, setSelectedResidues] = useState<string[]>([]);
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [selectedUniversityId, setSelectedUniversityId] = useState<string>("all");
   const totalDays = useMemo(() => differenceInDaysInclusive(dateFrom, dateTo), [dateFrom, dateTo]);
   const topResidueChartHeight = Math.max(220, (dashboardData?.topResidues.length ?? topResidues.length) * 30 + 20);
 
@@ -180,9 +185,25 @@ export default function MetricsDashboard() {
       return;
     }
 
+    getUniversities()
+      .then(setUniversities)
+      .catch((error) => {
+        console.error("[MetricsDashboard] No se pudieron cargar universidades:", error);
+      });
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
     let cancelled = false;
 
-    fetchDashboard(dateFrom.toISOString(), dateTo.toISOString())
+    fetchDashboard(
+      dateFrom.toISOString(),
+      dateTo.toISOString(),
+      selectedUniversityId === "all" ? null : selectedUniversityId
+    )
       .then((data) => {
         if (!cancelled) {
           setDashboardData(data);
@@ -199,7 +220,7 @@ export default function MetricsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [session, dateFrom, dateTo]);
+  }, [session, dateFrom, dateTo, selectedUniversityId]);
 
   const renderedKpis = useMemo(
     () =>
@@ -207,33 +228,33 @@ export default function MetricsDashboard() {
         ? [
             {
               title: "Reciclajes totales",
-              value: dashboardData.kpis.totalRecyclings.toLocaleString("es-PE"),
+              value: formatCompactNumber(dashboardData.kpis.totalRecyclings),
               subtitle: "Acciones de reciclaje confirmadas",
               delta: `${dashboardData.funnel[4]?.value ?? 0} confirmados en el periodo`,
               icon: CheckCircle2,
             },
             {
               title: "Kg reciclados",
-              value: `${dashboardData.kpis.totalKg.toFixed(1)} kg`,
+              value: `${formatCompactNumber(dashboardData.kpis.totalKg)} kg`,
               subtitle: "Peso total reciclado en el periodo",
               delta:
                 dashboardData.detailRows[0] != null
-                  ? `${dashboardData.detailRows[0].residue} lidera con ${dashboardData.detailRows[0].kilograms.toFixed(1)} kg`
+                  ? `${dashboardData.detailRows[0].residue} lidera con ${formatCompactNumber(dashboardData.detailRows[0].kilograms)} kg`
                   : "Sin registros en el periodo",
               icon: Scale,
             },
             {
               title: "Usuarios activos",
-              value: dashboardData.kpis.activeUsersInPeriod.toLocaleString("es-PE"),
+              value: formatCompactNumber(dashboardData.kpis.activeUsersInPeriod),
               subtitle: "Usuarios con actividad en el periodo",
-              delta: `${dashboardData.kpis.newUsersInPeriod} usuarios nuevos`,
+              delta: `${formatCompactNumber(dashboardData.kpis.newUsersInPeriod)} usuarios nuevos`,
               icon: Users,
             },
             {
-              title: "Tasa de confirmación",
+              title: "Tasa de Registros Confirmados",
               value: `${dashboardData.kpis.confirmationRate}%`,
-              subtitle: "Sesiones que terminaron en confirmación",
-              delta: `${dashboardData.funnel[4]?.value ?? 0} de ${dashboardData.funnel[0]?.value ?? 0} sesiones confirmadas`,
+              subtitle: "Sesiones que terminaron en registro confirmado",
+              delta: `${dashboardData.funnel[4]?.value ?? 0} de ${dashboardData.funnel[0]?.value ?? 0} sesiones registradas`,
               icon: ScanSearch,
             },
           ]
@@ -303,10 +324,17 @@ export default function MetricsDashboard() {
     const formatExportDate = (date: Date) =>
       new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric" }).format(date);
 
-    const filename =
+    const selectedUniversityName =
+      selectedUniversityId === "all"
+        ? "Todas las universidades"
+        : universities.find((u) => u.id === selectedUniversityId)?.name ?? "Universidad";
+
+    const rangeLabel =
       datePreset === "historical"
-        ? `Metricas - Historico (${formatExportDate(new Date())})`
-        : `Metricas - ${formatExportDate(dateFrom)} al ${formatExportDate(dateTo)}`;
+        ? `Historico (${formatExportDate(new Date())})`
+        : `${formatExportDate(dateFrom)} al ${formatExportDate(dateTo)}`;
+
+    const filename = `Metricas - ${selectedUniversityName} - ${rangeLabel}`;
 
     exportToXlsxMultiSheet(
       [
@@ -317,7 +345,7 @@ export default function MetricsDashboard() {
             { "Métrica": "Kg reciclados", "Valor": dashboardData.kpis.totalKg },
             { "Métrica": "Usuarios activos", "Valor": dashboardData.kpis.activeUsersInPeriod },
             { "Métrica": "Usuarios nuevos", "Valor": dashboardData.kpis.newUsersInPeriod },
-            { "Métrica": "Tasa de confirmación (%)", "Valor": dashboardData.kpis.confirmationRate },
+            { "Métrica": "Tasa de Registros Confirmados (%)", "Valor": dashboardData.kpis.confirmationRate },
           ],
         },
         {
@@ -339,14 +367,14 @@ export default function MetricsDashboard() {
           name: "Residuos más reciclados",
           rows: renderedTopResidues.map((row) => ({
             "Residuo": row.name,
-            "Confirmados": row.confirmed,
+            "Unidades Registradas": row.confirmed,
           })),
         },
         {
           name: "Tendencia temporal",
           rows: renderedTrend.map((point) => ({
             "Periodo": point.label,
-            "Confirmados": point.value,
+            "Unidades Registradas": point.value,
           })),
         },
         {
@@ -354,7 +382,7 @@ export default function MetricsDashboard() {
           rows: filteredDetailRows.map((row) => ({
             "Residuo": row.residue,
             "Escaneos": row.scans,
-            "Confirmados": row.confirmed,
+            "Unidades Registradas": row.confirmed,
             "Tasa (%)": row.rate,
             "Kg reciclados": row.kilograms,
           })),
@@ -399,6 +427,15 @@ export default function MetricsDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap items-center content-center gap-3 md:self-center md:justify-end">
+          <button
+              type="button"
+              onClick={handleExport}
+              disabled={!dashboardData}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-input bg-white px-4 text-xs font-medium text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-90"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Exportar
+          </button>
           {[
             { key: "last7", label: "Ultima semana" },
             { key: "last30", label: "Ultimo mes" },
@@ -503,15 +540,19 @@ export default function MetricsDashboard() {
               </div>
             </PopoverContent>
           </Popover>
-          <button
-              type="button"
-              onClick={handleExport}
-              disabled={!dashboardData}
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-input bg-white px-4 text-xs font-medium text-slate-900 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-90"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Exportar
-          </button>
+          <Select value={selectedUniversityId} onValueChange={setSelectedUniversityId}>
+            <SelectTrigger className="h-10 w-[220px] border-[#d7e6f2] bg-white text-sm font-semibold text-[#0b2f4e]">
+              <SelectValue placeholder="Universidad" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              <SelectItem value="all">Todas las universidades</SelectItem>
+              {universities.map((university) => (
+                <SelectItem key={university.id} value={university.id}>
+                  {university.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -642,7 +683,7 @@ export default function MetricsDashboard() {
                   <div>
                     <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Residuos mas reciclados</h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      Comparativo de residuos con mas confirmaciones en el periodo.
+                      Comparativo de residuos con más unidades registradas en el periodo.
                     </p>
                   </div>
                   <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
@@ -699,7 +740,7 @@ export default function MetricsDashboard() {
                   <div>
                     <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Tendencia temporal</h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      Evolucion de reciclajes confirmados a lo largo del tiempo.
+                      Evolucion de reciclajes registrados a lo largo del tiempo.
                     </p>
                   </div>
                   <span className="rounded-full bg-[#eef3f8] px-3 py-1 text-xs font-semibold text-[#0b2f4e]">
@@ -752,7 +793,7 @@ export default function MetricsDashboard() {
       <div>
         <h3 className="text-[1.9rem] font-bold text-[#0b2f4e]">Residuos por detalle</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Compara escaneos, confirmados, tasa y kg entre los residuos seleccionados.
+          Compara escaneos, unidades registradas, tasa y kg entre los residuos seleccionados.
         </p>
       </div>
     </div>

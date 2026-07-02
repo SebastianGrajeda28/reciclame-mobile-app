@@ -1,7 +1,8 @@
+import reciclameLogo from "@/assets/reciclame_logo_fondo_blanco.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Info, Lock, Mail, Recycle } from "lucide-react";
+import { Eye, EyeOff, Info, Lock, Mail } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -49,11 +50,12 @@ const Login: React.FC = () => {
       <section className="mx-auto flex min-h-full max-w-[1180px] items-center justify-center">
         <article className="w-full max-w-[420px] rounded-[22px] border border-slate-200/80 bg-[#f8faf9] px-6 py-8 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:px-10 md:py-10">
           <header className="mb-8 flex flex-col items-center text-center">
-            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-              <Recycle className="h-6 w-6" />
-            </span>
-            <p className="text-sm font-semibold text-slate-900">Recíclame</p>
-            <h1 className="mt-4 max-w-[240px] text-[28px] font-semibold leading-8 text-slate-900">
+            <img
+              src={reciclameLogo}
+              alt="Recíclame"
+              className="mb-2 h-[128px] w-[512px] object-contain"
+            />
+            <h1 className="mt-2 max-w-[240px] text-[28px] font-semibold leading-8 text-slate-900">
               Recicla, gana puntos y cuida el planeta
             </h1>
             <p className="mt-2 text-sm text-slate-500">

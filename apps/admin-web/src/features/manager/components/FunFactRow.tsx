@@ -1,5 +1,5 @@
-import { Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { FunFact } from "../services/FunFactsService";
 
 type FunFactRowProps = {

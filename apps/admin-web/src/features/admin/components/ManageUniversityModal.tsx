@@ -24,7 +24,7 @@ import {
   type AppCampus,
   type AppUniversity,
   type CampusSortColumn,
-} from "../services/AdminUniversitiesService";
+} from "../services/UniversitiesService";
 
 interface Props {
   university: AppUniversity;

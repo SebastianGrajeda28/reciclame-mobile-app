@@ -10,22 +10,22 @@ import {
 } from "@/components/ui/select";
 import { useForm, useWatch } from "react-hook-form";
 
-interface AccountFormData {
+interface UserFormData {
   name: string;
   email: string;
   password?: string;
   role: "ADMIN" | "MANAGER";
 }
 
-interface AccountFormProps {
+interface UserFormProps {
   mode: "register" | "update";
-  initialData?: Partial<AccountFormData>;
-  onSubmit: (data: AccountFormData) => void;
+  initialData?: Partial<UserFormData>;
+  onSubmit: (data: UserFormData) => void;
   disabled?: boolean;
 }
 
-export function AccountForm({ mode, initialData, onSubmit, disabled }: AccountFormProps) {
-  const { register, handleSubmit, setValue, control } = useForm<AccountFormData>({
+export function UserForm({ mode, initialData, onSubmit, disabled }: UserFormProps) {
+  const { register, handleSubmit, setValue, control } = useForm<UserFormData>({
     defaultValues: {
       name: initialData?.name ?? "",
       email: initialData?.email ?? "",
@@ -63,7 +63,7 @@ export function AccountForm({ mode, initialData, onSubmit, disabled }: AccountFo
 
       <div className="space-y-1">
         <Label>Rol</Label>
-        <Select value={role} onValueChange={(v) => setValue("role", v as AccountFormData["role"])}>
+        <Select value={role} onValueChange={(v) => setValue("role", v as UserFormData["role"])}>
           <SelectTrigger>
             <SelectValue placeholder="Selecciona un rol" />
           </SelectTrigger>

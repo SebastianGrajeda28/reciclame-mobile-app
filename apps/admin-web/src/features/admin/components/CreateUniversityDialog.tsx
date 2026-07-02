@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { createUniversity, createUniversityCampuses } from "../services/AdminUniversitiesService";
+import { createUniversity, createUniversityCampuses } from "../services/UniversitiesService";
 import { UniversityForm, type UniversityFormData } from "./UniversityForm";
 
 interface Props {

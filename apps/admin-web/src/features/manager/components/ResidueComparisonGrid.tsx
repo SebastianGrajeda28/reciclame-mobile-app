@@ -1,3 +1,4 @@
+import { formatCompactNumber } from "@/lib/formatUtils";
 import { useState } from "react";
 
 export type ResidueDetailRow = {
@@ -16,18 +17,6 @@ const PALETTE = ["#0b2f4e", "#22c76f", "#1c8fdf", "#f4b740", "#e2557c", "#7b5cf0
 
 function colorFor(index: number) {
   return PALETTE[index % PALETTE.length];
-}
-
-function fmt(value: number): string {
-  if (value >= 1_000_000) {
-    const n = value / 1_000_000;
-    return `${n % 1 === 0 ? n.toFixed(0) : parseFloat(n.toFixed(2))}M`;
-  }
-  if (value >= 1_000) {
-    const n = value / 1_000;
-    return `${n % 1 === 0 ? n.toFixed(0) : parseFloat(n.toFixed(1))}k`;
-  }
-  return `${value}`;
 }
 
 function lighten(hex: string): string {
@@ -77,11 +66,11 @@ function GroupedBarChart({ rows }: { rows: ResidueDetailRow[] }) {
         </div>
         <div className="flex gap-4 mt-0.5">
           <p className="text-[1.4rem] font-extrabold text-[#0b2f4e] leading-none">
-            {fmt(totalScans)}
+            {formatCompactNumber(totalScans)}
             <span className="ml-1 text-xs font-medium text-slate-400">escaneos</span>
           </p>
           <p className="text-[1.4rem] font-extrabold text-[#0b2f4e] leading-none">
-            {fmt(totalConfirmed)}
+            {formatCompactNumber(totalConfirmed)}
             <span className="ml-1 text-xs font-medium text-slate-400">registros</span>
           </p>
         </div>
@@ -108,7 +97,7 @@ function GroupedBarChart({ rows }: { rows: ResidueDetailRow[] }) {
                     style={{ width: `${Math.round(scanPct * 100)}%`, backgroundColor: light }}
                     onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, row })}
                   />
-                  <span className="text-[10px] font-bold text-slate-500">{fmt(row.scans)}</span>
+                  <span className="text-[10px] font-bold text-slate-500">{formatCompactNumber(row.scans)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div
@@ -116,7 +105,7 @@ function GroupedBarChart({ rows }: { rows: ResidueDetailRow[] }) {
                     style={{ width: `${Math.round(confPct * 100)}%`, backgroundColor: dark }}
                     onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, row })}
                   />
-                  <span className="text-[10px] font-bold text-slate-500">{fmt(row.confirmed)}</span>
+                  <span className="text-[10px] font-bold text-slate-500">{formatCompactNumber(row.confirmed)}</span>
                 </div>
               </div>
             </div>
@@ -142,7 +131,7 @@ function KgVerticalBar({ rows }: { rows: ResidueDetailRow[] }) {
           style={{ top: tooltip.y - 28, left: tooltip.x + 24 }}
         >
           <p className="font-bold text-[#0b2f4e] mb-1">{tooltip.row.residue}</p>
-          <p className="text-slate-600">{tooltip.row.kilograms.toLocaleString("es-PE")}</p>
+          <p className="text-slate-600">{formatCompactNumber(tooltip.row.kilograms)}</p>
           <p className="text-slate-400">
             {(() => {
               const pct = (tooltip.row.kilograms / total) * 100;
@@ -155,7 +144,7 @@ function KgVerticalBar({ rows }: { rows: ResidueDetailRow[] }) {
     <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <h4 className="text-[1.05rem] font-bold text-[#0b2f4e]">Kg totales</h4>
       <p className="mt-0.5 text-[1.4rem] font-extrabold text-[#0b2f4e] leading-none">
-        {fmt(total)}
+        {formatCompactNumber(total)}
         <span className="ml-1 text-xs font-medium text-slate-400">kg totales</span>
       </p>
       <div className="mt-3 flex flex-1 overflow-x-auto pb-1">
@@ -170,7 +159,7 @@ function KgVerticalBar({ rows }: { rows: ResidueDetailRow[] }) {
                     onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, row })}
                     onMouseLeave={() => setTooltip(null)}
                 >
-                <span className="text-[10px] font-bold text-[#0b2f4e]">{fmt(row.kilograms)}</span>
+                <span className="text-[10px] font-bold text-[#0b2f4e]">{formatCompactNumber(row.kilograms)}</span>
                 <div
                   className="w-full rounded-t-lg transition-all"
                   style={{
@@ -208,4 +197,3 @@ export function ResidueComparisonGrid({ rows }: ResidueComparisonGridProps) {
     </div>
   );
 }
-

@@ -37,7 +37,7 @@ import {
   type AppEmployee,
   type RoleFilter,
   type SortColumn,
-} from "../services/AdminUsersService";
+} from "../services/UsersService";
 
 type UsersTab = "active" | "inactive";
 

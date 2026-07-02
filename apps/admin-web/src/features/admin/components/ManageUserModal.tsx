@@ -19,7 +19,7 @@ import {
   setEmployeeRole,
   updateEmployee,
   type AppEmployee,
-} from "../services/AdminUsersService";
+} from "../services/UsersService";
 
 interface Props {
   user: AppEmployee;

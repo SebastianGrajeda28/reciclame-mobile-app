@@ -1,10 +1,9 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { exportToXlsx } from "@/lib/exportUtils";
 import { AppPage, AppSurface } from "@/shared/components/AppPage";
 import { useUser } from "@/shared/context/UserContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RotateCcw, Upload } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import InstructionStepsSection, {
@@ -14,10 +13,9 @@ import { getBinTypeByWasteTypeId, type BinType } from "../services/BinTypesServi
 import {
   createInstruction,
   getInstructions,
-  parseSteps,
   resetInstruction,
   type Instruction,
-  type InstructionStep,
+  type InstructionStep
 } from "../services/InstructionsService";
 import { getUniversities } from "../services/UniversitiesService";
 import { getWasteTypes } from "../services/WasteTypesService";
@@ -143,24 +141,6 @@ export default function InstructionsPage() {
     if (confirmResetId) resetMutation.mutate(confirmResetId);
   }
 
-  function handleExport() {
-    const universityName = universities.find((u) => u.id === selectedUniversityId)?.name ?? "universidad";
-
-    const rows = wasteTypes.map((wt) => {
-      const instruction = instructions.find((i) => i.wasteTypeId === wt.id);
-      const steps = instruction ? parseSteps(instruction) : [];
-
-      return {
-        "Tipo de residuo": wt.name,
-        "Paso 1": steps[0]?.text ?? "",
-        "Paso 2": steps[1]?.text ?? "",
-        "Paso 3": steps[2]?.text ?? "",
-      };
-    });
-
-    exportToXlsx(rows, `Instrucciones-${universityName}`);
-  }
-
   return (
     <AppPage>
       <div className="flex flex-col gap-3 md:min-h-[72px] md:flex-row md:items-center md:justify-between">
@@ -174,15 +154,6 @@ export default function InstructionsPage() {
         </div>
         {universities.length > 0 && (
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={isLoading || instructions.length === 0}
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-input bg-white px-4 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Exportar
-            </button>
             <Select value={selectedUniversityId} onValueChange={setSelectedUniversityId}>
               <SelectTrigger className="h-10 w-52 border-input bg-white text-sm">
                 <SelectValue placeholder="Selecciona universidad" />

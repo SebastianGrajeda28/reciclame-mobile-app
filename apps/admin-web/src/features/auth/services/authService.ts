@@ -47,3 +47,13 @@ export function onAuthStateChanged(callback: (event: string, session: Session | 
   const { data } = supabase.auth.onAuthStateChange((event, session) => callback(event, session));
   return data.subscription;
 }
+
+export async function selfRevokeAccess(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("user_roles")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  if (error) throw new Error(error.message);
+}
