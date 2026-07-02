@@ -4,16 +4,19 @@ import { Image, StyleSheet, View } from 'react-native';
 
 import { FunFactCard } from '@/src/features/recycling/components/FunFactCard';
 import { ProcessingLoadingView } from '@/src/features/recycling/components/ProcessingLoadingView';
-import { useRotatingFunFact } from '@/src/features/recycling/hooks/useFunFact';
 import {
-    useRecycleFlow,
-    useResolvedRecycleSelection,
+  useFunFactByWasteTypeId,
+  useRotatingFunFact,
+} from '@/src/features/recycling/hooks/useFunFact';
+import {
+  useRecycleFlow,
+  useResolvedRecycleSelection,
 } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
-    classifyWaste,
-    getConfidenceThreshold,
+  classifyWaste,
+  getConfidenceThreshold,
 } from '@/src/features/recycling/services/classification';
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteCategoryConfig } from '@/src/features/recycling/services/waste-category-config.mock';
@@ -25,9 +28,17 @@ import { AppButton, AppIcon, AppScreen, AppText, theme } from '@/src/ui';
 
 export function ProcessingScreen() {
   const navigation = useNavigation();
-  const { state, setPrediction, clearPrediction, clearSelectedContainer, markStep, setSelectedContainer } = useRecycleFlow();
+  const {
+    state,
+    setPrediction,
+    clearPrediction,
+    clearSelectedContainer,
+    markStep,
+    setSelectedContainer,
+  } = useRecycleFlow();
   const { finalWasteType, selectedContainer } = useResolvedRecycleSelection();
-  const { fact } = useRotatingFunFact();
+  const { fact: rotatingFact } = useRotatingFunFact();
+  const { funFact: resultFunFact } = useFunFactByWasteTypeId(state.finalWasteTypeId);
   const { binType: resolvedBinType } = useResolvedBinType(state.finalWasteTypeId);
   const loading = !state.finalWasteTypeId;
   const navigatingForward = useRef(false);
@@ -73,7 +84,15 @@ export function ProcessingScreen() {
     return () => {
       mounted = false;
     };
-  }, [setPrediction, state.capturedPhotoUri, state.finalWasteTypeId, state.selectedContainerId, settings?.locationVerificationEnabled, studentLocation, setSelectedContainer]);
+  }, [
+    setPrediction,
+    state.capturedPhotoUri,
+    state.finalWasteTypeId,
+    state.selectedContainerId,
+    settings?.locationVerificationEnabled,
+    studentLocation,
+    setSelectedContainer,
+  ]);
 
   const containerMismatch = useMemo(() => {
     if (!state.selectedContainerId || !resolvedBinType) return false;
@@ -117,7 +136,9 @@ export function ProcessingScreen() {
         </AppText>
 
         {loading ? (
-          <ProcessingLoadingView slot={fact ? <FunFactCard text={fact.text} /> : null} />
+          <ProcessingLoadingView
+            slot={rotatingFact ? <FunFactCard text={rotatingFact.text} /> : null}
+          />
         ) : (
           <>
             <AppText style={[styles.wasteLabel, categoryConfig && { color: categoryConfig.color }]}>
@@ -156,6 +177,10 @@ export function ProcessingScreen() {
                 Confianza baja — puedes corregir manualmente.
               </AppText>
             )}
+
+            {resultFunFact ? (
+              <FunFactCard text={resultFunFact.text} style={styles.resultFunFact} />
+            ) : null}
 
             <View style={styles.actions}>
               <AppButton
@@ -294,6 +319,9 @@ const styles = StyleSheet.create({
   },
   lowConfidenceNote: {
     fontSize: theme.fontSizes.sm,
+  },
+  resultFunFact: {
+    marginTop: theme.spacing.s2,
   },
   actions: {
     flexDirection: 'row',
