@@ -5,19 +5,15 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { ContainerSelectedCard } from '@/src/features/map/components/ContainerSelectedCard';
 import { RecycleMap } from '@/src/features/map/components/RecycleMap';
 import { useNearbyRecyclingPoints } from '@/src/features/map/hooks/useNearbyRecyclingPoints';
-import {
-    useRecycleFlow,
-    useResolvedRecycleSelection,
-} from '@/src/features/recycling/hooks/useRecycleFlow';
-import { useResolvedBinType } from '@/src/features/recycling/hooks/useResolvedBinType';
+import { useRecycleFlow } from '@/src/features/recycling/hooks/useRecycleFlow';
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import {
-    BATTERIES_BIN_TYPE_ID,
-    GLASS_BIN_TYPE_ID,
-    NON_RECOVERABLE_BIN_TYPE_ID,
-    PAPER_CARDBOARD_BIN_TYPE_ID,
-    PLASTICS_BIN_TYPE_ID,
-    RAEE_BIN_TYPE_ID,
+  BATTERIES_BIN_TYPE_ID,
+  GLASS_BIN_TYPE_ID,
+  NON_RECOVERABLE_BIN_TYPE_ID,
+  PAPER_CARDBOARD_BIN_TYPE_ID,
+  PLASTICS_BIN_TYPE_ID,
+  RAEE_BIN_TYPE_ID,
 } from '@/src/features/recycling/services/bin-types.mock';
 import type { NearbyRecyclingPoint } from '@/src/features/recycling/services/recycling-points';
 import { useStreakProgress } from '@/src/hooks/useStreakProgress';
@@ -90,20 +86,13 @@ export function MapScreen() {
   const [category, setCategory] = useState<string>('all');
   const { state, setSelectedContainer, clearSelectedContainer } = useRecycleFlow();
   const { data: streakData } = useStreakProgress();
-  const { finalWasteType } = useResolvedRecycleSelection();
-  const { binType: resolvedBinType, loading: resolvingBinType } = useResolvedBinType(
-    state.finalWasteTypeId,
-  );
 
   const nearbyRef = useRef<NearbyRecyclingPoint[]>([]);
   const selectedContainerIdRef = useRef(state.selectedContainerId);
 
   const binTypeIds = useMemo(() => {
-    if (state.finalWasteTypeId) {
-      return resolvedBinType ? [resolvedBinType.id] : [];
-    }
     return category === 'all' ? undefined : [category];
-  }, [category, resolvedBinType, state.finalWasteTypeId]);
+  }, [category]);
 
   const { data: nearbyPoints, loading } = useNearbyRecyclingPoints({ location, binTypeIds });
 
@@ -127,24 +116,23 @@ export function MapScreen() {
   );
 
   useEffect(() => {
-    if (!loading && !resolvingBinType && nearbyPoints.length === 0 && category !== 'all') {
+    if (!loading && nearbyPoints.length === 0 && category !== 'all') {
       Alert.alert(
         'Sin contenedores',
         'No se encontraron contenedores compatibles con este filtro.',
         [{ text: 'Entendido' }],
       );
     }
-  }, [category, loading, nearbyPoints.length, resolvingBinType]);
+  }, [category, loading, nearbyPoints.length]);
 
   useEffect(() => {
     if (
-      !resolvingBinType &&
       selectedContainerIdRef.current &&
       !nearbyRef.current.some((c) => c.id === selectedContainerIdRef.current)
     ) {
       clearSelectedContainer();
     }
-  }, [category, clearSelectedContainer, resolvedBinType, resolvingBinType]);
+  }, [category, clearSelectedContainer]);
 
   return (
     <AppScreen insetBottom={false}>
@@ -206,10 +194,9 @@ export function MapScreen() {
           <ContainerSelectedCard
             container={selectedContainer}
             userLocation={location}
-            finalWasteTypeLabel={finalWasteType?.label}
-            resolvedBinTypeName={resolvedBinType?.name}
             onDismiss={clearSelectedContainer}
             onRecycleHere={() => router.push('/recycle/camera')}
+            compact
           />
         ) : (
           <View style={styles.bottomCta}>

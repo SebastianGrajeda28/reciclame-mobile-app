@@ -1,28 +1,25 @@
 import {
-    createContext,
-    PropsWithChildren,
-    useCallback,
-    useContext,
-    useMemo,
-    useRef,
-    useState,
+  createContext,
+  PropsWithChildren,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 
 import { containers } from '@/src/features/recycling/services/containers.mock';
 import { wasteTypes } from '@/src/features/recycling/services/waste-types.mock';
-import type {
-  RecyclingContainer,
-  WasteType,
-} from '@/src/features/recycling/types/recycling.types';
+import type { RecyclingContainer, WasteType } from '@/src/features/recycling/types/recycling.types';
 import type { StreakResult } from '../api/recyclingLogs';
 import {
-    advanceStep,
-    clearPendingSession,
-    flushAndStartNewSession,
-    flushSession,
-    savePendingSession,
-    type FlowStep,
-    type LocalRecyclingSession,
+  advanceStep,
+  clearPendingSession,
+  flushAndStartNewSession,
+  flushSession,
+  savePendingSession,
+  type FlowStep,
+  type LocalRecyclingSession,
 } from '../api/recyclingSessions';
 
 type RecycleFlowState = {
@@ -68,17 +65,23 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     await savePendingSession(sessionRef.current);
   }, []);
 
-  const markStep = useCallback((step: FlowStep) => {
-    if (!sessionRef.current) return;
-    const next = advanceStep(sessionRef.current.furthestStep, step);
-    if (next !== sessionRef.current.furthestStep) {
-      updateSession({ furthestStep: next });
-    }
-  }, [updateSession]);
+  const markStep = useCallback(
+    (step: FlowStep) => {
+      if (!sessionRef.current) return;
+      const next = advanceStep(sessionRef.current.furthestStep, step);
+      if (next !== sessionRef.current.furthestStep) {
+        updateSession({ furthestStep: next });
+      }
+    },
+    [updateSession],
+  );
 
-  const markConfirmed = useCallback(async (recyclingRecordId: string) => {
-    await updateSession({ outcome: 'confirmed', recyclingRecordId, furthestStep: 'success' });
-  }, [updateSession]);
+  const markConfirmed = useCallback(
+    async (recyclingRecordId: string) => {
+      await updateSession({ outcome: 'confirmed', recyclingRecordId, furthestStep: 'success' });
+    },
+    [updateSession],
+  );
 
   const setStreakResult = useCallback((result: StreakResult) => {
     setState((prev) => ({ ...prev, streakResult: result }));
@@ -93,80 +96,98 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
     setState((prev) => ({ ...prev, capturedPhotoUri: uri }));
   }, []);
 
-  const setPrediction = useCallback((wasteTypeId: string, confidence: number, wasteType?: WasteType) => {
-    const resolvedWasteType = wasteType ?? wasteTypes.find((item) => item.id === wasteTypeId);
-    setState((prev) => ({
-      ...prev,
-      predictedWasteTypeId: wasteTypeId,
-      predictedWasteType: resolvedWasteType,
-      predictionConfidence: confidence,
-      finalWasteTypeId: wasteTypeId,
-      finalWasteType: resolvedWasteType,
-    }));
-    updateSession({
-      predictedWasteTypeId: wasteTypeId,
-      finalWasteTypeId: wasteTypeId,
-      confidenceScore: confidence,
-      detectionType: 'auto',
-    });
-  }, [updateSession]);
-
-  const setPredictedWasteType = useCallback((wasteType: WasteType, confidence: number) => {
-    setPrediction(wasteType.id, confidence, wasteType);
-  }, [setPrediction]);
-
-  const setFinalWasteType = useCallback((wasteType: WasteType) => {
-    setState((prev) => {
-      const hasPrediction = prev.predictedWasteTypeId !== undefined;
-      const overridden = hasPrediction && prev.predictedWasteTypeId !== wasteType.id;
-      updateSession({
-        finalWasteTypeId: wasteType.id,
-        // 'manual' only when the user picked without any AI prediction.
-        // If the AI predicted first, keep 'auto' regardless of whether they changed it.
-        detectionType: hasPrediction ? 'auto' : 'manual',
-        wasteTypeOverridden: overridden,
-      });
-      return { ...prev, finalWasteTypeId: wasteType.id, finalWasteType: wasteType };
-    });
-  }, [updateSession]);
-
-  const setFinalWasteTypeId = useCallback((wasteTypeId: string) => {
-    const resolvedWasteType = wasteTypes.find((item) => item.id === wasteTypeId);
-    if (resolvedWasteType) {
-      setFinalWasteType(resolvedWasteType);
-      return;
-    }
-
-    setState((prev) => {
-      const hasPrediction = prev.predictedWasteTypeId !== undefined;
-      const overridden = hasPrediction && prev.predictedWasteTypeId !== wasteTypeId;
-      updateSession({
+  const setPrediction = useCallback(
+    (wasteTypeId: string, confidence: number, wasteType?: WasteType) => {
+      const resolvedWasteType = wasteType ?? wasteTypes.find((item) => item.id === wasteTypeId);
+      setState((prev) => ({
+        ...prev,
+        predictedWasteTypeId: wasteTypeId,
+        predictedWasteType: resolvedWasteType,
+        predictionConfidence: confidence,
         finalWasteTypeId: wasteTypeId,
-        detectionType: hasPrediction ? 'auto' : 'manual',
-        wasteTypeOverridden: overridden,
+        finalWasteType: resolvedWasteType,
+      }));
+      updateSession({
+        predictedWasteTypeId: wasteTypeId,
+        finalWasteTypeId: wasteTypeId,
+        confidenceScore: confidence,
+        detectionType: 'auto',
       });
-      return { ...prev, finalWasteTypeId: wasteTypeId, finalWasteType: undefined };
-    });
-  }, [setFinalWasteType, updateSession]);
+    },
+    [updateSession],
+  );
 
-  const setSelectedContainer = useCallback((container: RecyclingContainer) => {
-    setState((prev) => ({
-      ...prev,
-      selectedContainerId: container.id,
-      selectedContainer: container,
-    }));
-    updateSession({ recyclingPointId: container.id });
-  }, [updateSession]);
+  const setPredictedWasteType = useCallback(
+    (wasteType: WasteType, confidence: number) => {
+      setPrediction(wasteType.id, confidence, wasteType);
+    },
+    [setPrediction],
+  );
 
-  const setSelectedContainerId = useCallback((containerId: string) => {
-    const resolvedContainer = containers.find((item) => item.id === containerId);
-    setState((prev) => ({
-      ...prev,
-      selectedContainerId: containerId,
-      selectedContainer: resolvedContainer,
-    }));
-    updateSession({ recyclingPointId: containerId });
-  }, [updateSession]);
+  const setFinalWasteType = useCallback(
+    (wasteType: WasteType) => {
+      setState((prev) => {
+        const hasPrediction = prev.predictedWasteTypeId !== undefined;
+        const overridden = hasPrediction && prev.predictedWasteTypeId !== wasteType.id;
+        updateSession({
+          finalWasteTypeId: wasteType.id,
+          // 'manual' only when the user picked without any AI prediction.
+          // If the AI predicted first, keep 'auto' regardless of whether they changed it.
+          detectionType: hasPrediction ? 'auto' : 'manual',
+          wasteTypeOverridden: overridden,
+        });
+        return { ...prev, finalWasteTypeId: wasteType.id, finalWasteType: wasteType };
+      });
+    },
+    [updateSession],
+  );
+
+  const setFinalWasteTypeId = useCallback(
+    (wasteTypeId: string) => {
+      const resolvedWasteType = wasteTypes.find((item) => item.id === wasteTypeId);
+      if (resolvedWasteType) {
+        setFinalWasteType(resolvedWasteType);
+        return;
+      }
+
+      setState((prev) => {
+        const hasPrediction = prev.predictedWasteTypeId !== undefined;
+        const overridden = hasPrediction && prev.predictedWasteTypeId !== wasteTypeId;
+        updateSession({
+          finalWasteTypeId: wasteTypeId,
+          detectionType: hasPrediction ? 'auto' : 'manual',
+          wasteTypeOverridden: overridden,
+        });
+        return { ...prev, finalWasteTypeId: wasteTypeId, finalWasteType: undefined };
+      });
+    },
+    [setFinalWasteType, updateSession],
+  );
+
+  const setSelectedContainer = useCallback(
+    (container: RecyclingContainer) => {
+      setState((prev) => ({
+        ...prev,
+        selectedContainerId: container.id,
+        selectedContainer: container,
+      }));
+      updateSession({ recyclingPointId: container.id });
+    },
+    [updateSession],
+  );
+
+  const setSelectedContainerId = useCallback(
+    (containerId: string) => {
+      const resolvedContainer = containers.find((item) => item.id === containerId);
+      setState((prev) => ({
+        ...prev,
+        selectedContainerId: containerId,
+        selectedContainer: resolvedContainer,
+      }));
+      updateSession({ recyclingPointId: containerId });
+    },
+    [updateSession],
+  );
 
   const clearSelectedContainer = useCallback(() => {
     setState((prev) => ({
@@ -197,17 +218,19 @@ export function RecycleFlowProvider({ children }: PropsWithChildren) {
   }, []);
 
   const resetFlow = useCallback(async (outcome: 'abandoned' | 'failed' = 'abandoned') => {
-    if (sessionRef.current && !sessionRef.current.outcome) {
-      sessionRef.current.outcome = outcome;
-      await savePendingSession(sessionRef.current);
-      const flushed = await flushSession(sessionRef.current);
+    const session = sessionRef.current;
+    sessionRef.current = null;
+    setState({});
+
+    if (session && !session.outcome) {
+      session.outcome = outcome;
+      await savePendingSession(session);
+      const flushed = await flushSession(session);
       if (flushed) {
         await clearPendingSession();
       }
       // if flush failed: AsyncStorage retains it, flushAndStartNewSession retries next flow
     }
-    sessionRef.current = null;
-    setState({});
   }, []);
 
   const value = useMemo<RecycleFlowContextValue>(
@@ -263,13 +286,10 @@ export function useRecycleFlow() {
 export function useResolvedRecycleSelection() {
   const { state } = useRecycleFlow();
   const predictedWasteType =
-    state.predictedWasteType ??
-    wasteTypes.find((item) => item.id === state.predictedWasteTypeId);
+    state.predictedWasteType ?? wasteTypes.find((item) => item.id === state.predictedWasteTypeId);
   const finalWasteType =
-    state.finalWasteType ??
-    wasteTypes.find((item) => item.id === state.finalWasteTypeId);
+    state.finalWasteType ?? wasteTypes.find((item) => item.id === state.finalWasteTypeId);
   const selectedContainer =
-    state.selectedContainer ??
-    containers.find((item) => item.id === state.selectedContainerId);
+    state.selectedContainer ?? containers.find((item) => item.id === state.selectedContainerId);
   return { predictedWasteType, finalWasteType, selectedContainer };
 }

@@ -4,9 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { binTypeConfig } from '@/src/features/recycling/services/bin-type-config.mock';
 import { haversineDistanceKm } from '@/src/features/recycling/services/distance';
+import type { RecyclingContainer } from '@/src/features/recycling/types/recycling.types';
 import { AppButton, AppIcon, AppText, theme } from '@/src/ui';
 import type { AppIconName } from '@/src/ui/components/AppIcon';
-import type { RecyclingContainer } from '@/src/features/recycling/types/recycling.types';
 
 type Props = {
   container: RecyclingContainer;
@@ -15,6 +15,7 @@ type Props = {
   resolvedBinTypeName?: string;
   onDismiss: () => void;
   onRecycleHere: () => void;
+  compact?: boolean;
   hideDismiss?: boolean;
 };
 
@@ -25,6 +26,7 @@ export function ContainerSelectedCard({
   resolvedBinTypeName,
   onDismiss,
   onRecycleHere,
+  compact,
   hideDismiss,
 }: Props) {
   const { bottom: bottomInset } = useSafeAreaInsets();
@@ -46,16 +48,24 @@ export function ContainerSelectedCard({
   }
 
   return (
-    <View style={[styles.card, { paddingBottom: theme.spacing.md + bottomInset }]}>
+    <View
+      style={[
+        styles.card,
+        compact ? styles.cardCompact : null,
+        { paddingBottom: compact ? theme.spacing.s2 : theme.spacing.md + bottomInset },
+      ]}
+    >
       {!hideDismiss && (
         <Pressable style={styles.dismissButton} onPress={onDismiss}>
-          <AppIcon name="close" size={theme.iconSizes.sm} color={theme.colors.textSecondary} />
+          <AppIcon name="close" size={theme.iconSizes.md} color={theme.colors.textSecondary} />
         </Pressable>
       )}
-      <View style={styles.info}>
+      <View style={[styles.info, compact ? styles.infoCompact : null]}>
         <AppText style={styles.eyebrow}>PUNTO DE RECICLAJE</AppText>
         <AppText style={styles.title}>{container.name}</AppText>
-        <AppText style={styles.label}>Contenedores disponibles</AppText>
+        <AppText style={[styles.label, compact ? styles.labelCompact : null]}>
+          Contenedores disponibles
+        </AppText>
         <View style={styles.iconsRow}>
           {availableIcons.map((item, i) => (
             <View key={i} style={[styles.icon, { backgroundColor: item.color }]}>
@@ -94,14 +104,27 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
     gap: theme.spacing.sm,
   },
+  cardCompact: {
+    paddingTop: theme.spacing.s3,
+    gap: theme.spacing.s2,
+  },
   dismissButton: {
     position: 'absolute',
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
-    padding: theme.spacing.xs,
+    top: theme.spacing.s2,
+    right: theme.spacing.s2,
+    width: 40,
+    height: 40,
+    borderRadius: theme.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.background,
+    zIndex: 1,
   },
   info: {
     gap: theme.spacing.xs,
+  },
+  infoCompact: {
+    gap: theme.spacing.xxs,
   },
   eyebrow: {
     fontSize: theme.fontSizes.xs,
@@ -118,6 +141,9 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.sm,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
+  },
+  labelCompact: {
+    marginTop: 0,
   },
   iconsRow: {
     flexDirection: 'row',
