@@ -254,8 +254,7 @@ export function ProcessingScreen() {
               <AppText style={styles.unidentifiedTitle}>No identificado</AppText>
             </View>
             <AppText muted style={styles.unidentifiedNote}>
-              No pudimos identificar el residuo con seguridad. Vuelve a tomar la foto con mejor
-              enfoque e iluminación, o indícanos tú de qué se trata.
+              No pudimos identificar el residuo con seguridad. Vuelve a tomar la foto, o indícanos tú de qué se trata.
             </AppText>
 
             <View style={styles.actions}>

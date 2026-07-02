@@ -1,11 +1,13 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 import jpeg from 'jpeg-js';
 
-import { QUALITY_ANALYSIS_SIZE } from './config';
+import { HIGHLIGHT_LEVEL, QUALITY_ANALYSIS_SIZE, SHADOW_LEVEL } from './config';
 import {
+  darkRegionStdDev,
   evaluateQuality,
   laplacianVariance,
   meanBrightness,
+  pixelFractions,
   rgbaToGrayscale,
 } from './quality-math';
 import type { ImageQualityMetrics, ImageQualityResult } from './types';
@@ -49,17 +51,26 @@ async function imageUriToGrayscale(
  */
 export async function analyzeImageQuality(uri: string): Promise<ImageQualityResult> {
   const { gray, width, height } = await imageUriToGrayscale(uri);
+  const fractions = pixelFractions(gray, SHADOW_LEVEL, HIGHLIGHT_LEVEL);
   const metrics: ImageQualityMetrics = {
     brightness: meanBrightness(gray),
     laplacianVariance: laplacianVariance(gray, width, height),
+    darkFraction: fractions.dark,
+    brightFraction: fractions.bright,
+    darkRegionStdDev: darkRegionStdDev(gray, SHADOW_LEVEL),
   };
   const result = evaluateQuality(metrics);
 
   if (__DEV__) {
     // Log de calibración: anota estos valores con fotos buenas/malas para ajustar
-    // BLUR_LAPLACIAN_VAR_MIN en config.ts. No se imprime en producción.
+    // los umbrales en config.ts. No se imprime en producción.
+    // darkStd bajo = sombra plana (subexpuesta); alto = objeto oscuro con textura.
     console.log(
-      `[QUALITY] lapVar=${metrics.laplacianVariance.toFixed(1)} brillo=${metrics.brightness.toFixed(0)} → ${
+      `[QUALITY] lapVar=${metrics.laplacianVariance.toFixed(1)} brillo=${metrics.brightness.toFixed(
+        0,
+      )} dark%=${(metrics.darkFraction * 100).toFixed(0)} bright%=${(
+        metrics.brightFraction * 100
+      ).toFixed(0)} darkStd=${metrics.darkRegionStdDev.toFixed(1)} → ${
         result.ok ? 'OK' : result.reason
       }`,
     );
