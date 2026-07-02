@@ -4,3 +4,10 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+.env
+.env.local
+
+# Expo CNG generated native folders
+android/
+ios/
